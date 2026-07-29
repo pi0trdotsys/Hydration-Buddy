@@ -51,7 +51,7 @@ function Index() {
       <HydrationWidget state={state} size="lg" className="max-w-none" />
 
       <div className="mt-6 grid gap-4 md:grid-cols-2">
-        <InsightCard eyebrow="Self-care na dziś" body={state.selfCare} />
+        <InsightCard eyebrow="Self-care na dziś" body={state.selfCareAlt} />
         <InsightCard eyebrow="Ciekawostka" body={state.fact} />
       </div>
 
