@@ -19,6 +19,9 @@ android {
     buildTypes {
         release {
             isMinifyEnabled = false
+            // Signed with the debug key so the release APK is directly installable
+            // (no Play Store distribution / real signing key for this project).
+            signingConfig = signingConfigs.getByName("debug")
         }
     }
 
