@@ -68,6 +68,7 @@ export function useHydrationMock() {
     streak: 5,
     week: WEEK,
     selfCare: pick(SELF_CARE[level], seed),
+    selfCareAlt: pick(SELF_CARE[level], seed + 1),
     fact: pick(FACTS, seed * 3 + 1),
     dayNote: pick(DAYPART_NOTES[daypart], seed),
     mascotLine: pick(MASCOT_LINES[level], seed * 5),
