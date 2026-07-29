@@ -50,6 +50,7 @@ private val Foreground = ColorProvider(com.kropi.hydration.ui.KropiColors.foregr
 private val Muted = ColorProvider(com.kropi.hydration.ui.KropiColors.mutedForeground)
 private val Secondary = ColorProvider(com.kropi.hydration.ui.KropiColors.secondary)
 private val CardBg = ColorProvider(com.kropi.hydration.ui.KropiColors.card)
+private val Warn = ColorProvider(androidx.compose.ui.graphics.Color(0xFFFF8A65))
 
 class HydrationWidget : GlanceAppWidget() {
 
@@ -128,6 +129,15 @@ private fun MediumLargeContent(state: HydrationState, large: Boolean) {
                 Text(
                     if (state.remaining > 0) "Zostało ${state.remaining} ml" else "Cel osiągnięty 🎉",
                     style = TextStyle(color = Aqua, fontSize = 9.sp),
+                    maxLines = 1,
+                )
+                Text(
+                    "Do teraz: ${state.targetSoFar} ml",
+                    style = TextStyle(
+                        color = if (state.isBehindSchedule) Warn else Muted,
+                        fontSize = 9.sp,
+                        fontWeight = if (state.isBehindSchedule) FontWeight.Bold else FontWeight.Normal,
+                    ),
                     maxLines = 1,
                 )
                 if (large) {

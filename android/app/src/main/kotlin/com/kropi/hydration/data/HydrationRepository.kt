@@ -1,7 +1,9 @@
 package com.kropi.hydration.data
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -11,6 +13,7 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
 import java.time.LocalTime
+import kotlin.math.roundToInt
 
 val Context.hydrationStore by preferencesDataStore(name = "hydration")
 
@@ -21,12 +24,27 @@ data class HydrationState(
     val intakes: List<Intake>,
     val streak: Int,
     val pokeSeed: Int,
+    val settings: HydrationSettings,
 ) {
     val total: Int get() = intakes.sumOf { it.ml }
     val progress: Double get() = (total.toDouble() / goal).coerceIn(0.0, 1.0)
     val remaining: Int get() = (goal - total).coerceAtLeast(0)
     val level: Level get() = levelFor(total.toDouble() / goal)
     val daypart: Daypart get() = daypartFor(LocalTime.now().hour)
+
+    /** How much you *should* have drunk by now, given the active drinking window. */
+    val targetSoFar: Int get() = targetSoFarAt(LocalTime.now())
+
+    fun targetSoFarAt(time: LocalTime): Int {
+        val startMin = settings.activeStartHour * 60
+        val endMin = settings.activeEndHour * 60
+        val nowMin = time.hour * 60 + time.minute
+        if (endMin <= startMin) return goal
+        val fraction = ((nowMin - startMin).toFloat() / (endMin - startMin)).coerceIn(0f, 1f)
+        return (goal * fraction).roundToInt()
+    }
+
+    val isBehindSchedule: Boolean get() = total < targetSoFar - settings.reminderGlassMl / 2
 
     private val seed: Int get() = intakes.size + Math.round(total / 100f)
     val selfCare: String get() = pick(SELF_CARE.getValue(level), seed)
@@ -42,6 +60,36 @@ private object Keys {
     val LAST_EPOCH_DAY = longPreferencesKey("last_epoch_day")
     val LAST_GOAL_MET_EPOCH_DAY = longPreferencesKey("last_goal_met_epoch_day")
     val POKE_SEED = intPreferencesKey("poke_seed")
+    val LAST_INTAKE_EPOCH_MINUTE = longPreferencesKey("last_intake_epoch_minute")
+    val SNOOZE_UNTIL_EPOCH_MINUTE = longPreferencesKey("snooze_until_epoch_minute")
+
+    val WEIGHT_KG = floatPreferencesKey("weight_kg")
+    val TEMPERATURE = stringPreferencesKey("temperature")
+    val ACTIVITY = stringPreferencesKey("activity")
+    val GOAL_MODE = stringPreferencesKey("goal_mode")
+    val MANUAL_GOAL = intPreferencesKey("manual_goal")
+    val ACTIVE_START_HOUR = intPreferencesKey("active_start_hour")
+    val ACTIVE_END_HOUR = intPreferencesKey("active_end_hour")
+    val REMINDER_GLASS_ML = intPreferencesKey("reminder_glass_ml")
+    val REMINDERS_ENABLED = booleanPreferencesKey("reminders_enabled")
+}
+
+private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
+    val defaults = HydrationSettings()
+    return HydrationSettings(
+        weightKg = prefs[Keys.WEIGHT_KG] ?: defaults.weightKg,
+        temperature = prefs[Keys.TEMPERATURE]?.let { runCatching { Temperature.valueOf(it) }.getOrNull() }
+            ?: defaults.temperature,
+        activity = prefs[Keys.ACTIVITY]?.let { runCatching { ActivityLevel.valueOf(it) }.getOrNull() }
+            ?: defaults.activity,
+        goalMode = prefs[Keys.GOAL_MODE]?.let { runCatching { GoalMode.valueOf(it) }.getOrNull() }
+            ?: defaults.goalMode,
+        manualGoalMl = prefs[Keys.MANUAL_GOAL] ?: defaults.manualGoalMl,
+        activeStartHour = prefs[Keys.ACTIVE_START_HOUR] ?: defaults.activeStartHour,
+        activeEndHour = prefs[Keys.ACTIVE_END_HOUR] ?: defaults.activeEndHour,
+        reminderGlassMl = prefs[Keys.REMINDER_GLASS_ML] ?: defaults.reminderGlassMl,
+        remindersEnabled = prefs[Keys.REMINDERS_ENABLED] ?: defaults.remindersEnabled,
+    )
 }
 
 private const val DEFAULT_GOAL = 2500
@@ -82,6 +130,7 @@ class HydrationRepository(private val context: Context) {
             intakes = decodeIntakes(prefs[Keys.INTAKES]),
             streak = prefs[Keys.STREAK] ?: 5,
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
+            settings = readSettings(prefs),
         )
     }
 
@@ -94,7 +143,7 @@ class HydrationRepository(private val context: Context) {
             val lastDay = prefs[Keys.LAST_EPOCH_DAY]
             if (lastDay == null) {
                 prefs[Keys.LAST_EPOCH_DAY] = today
-                prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: DEFAULT_GOAL
+                prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: readSettings(prefs).effectiveGoalMl
                 prefs[Keys.INTAKES] = encodeIntakes(SEED_INTAKES)
                 prefs[Keys.STREAK] = prefs[Keys.STREAK] ?: 5
                 return@edit
@@ -126,6 +175,46 @@ class HydrationRepository(private val context: Context) {
             val now = LocalTime.now()
             val updated = decodeIntakes(prefs[Keys.INTAKES]) + Intake(now.hour, now.minute, ml)
             prefs[Keys.INTAKES] = encodeIntakes(updated)
+            prefs[Keys.LAST_INTAKE_EPOCH_MINUTE] = java.time.LocalDateTime.now()
+                .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
+        }
+    }
+
+    /** Minutes since the last recorded sip, or null if none today. */
+    suspend fun minutesSinceLastIntake(): Long? {
+        val prefs = context.hydrationStore.data.first()
+        val last = prefs[Keys.LAST_INTAKE_EPOCH_MINUTE] ?: return null
+        val nowMinute = java.time.LocalDateTime.now()
+            .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
+        return (nowMinute - last).coerceAtLeast(0)
+    }
+
+    private fun nowEpochMinute(): Long =
+        java.time.LocalDateTime.now().atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
+
+    suspend fun snoozeFor(minutes: Long) {
+        context.hydrationStore.edit { prefs ->
+            prefs[Keys.SNOOZE_UNTIL_EPOCH_MINUTE] = nowEpochMinute() + minutes
+        }
+    }
+
+    suspend fun isSnoozed(): Boolean {
+        val until = context.hydrationStore.data.first()[Keys.SNOOZE_UNTIL_EPOCH_MINUTE] ?: return false
+        return nowEpochMinute() < until
+    }
+
+    suspend fun saveSettings(settings: HydrationSettings) {
+        context.hydrationStore.edit { prefs ->
+            prefs[Keys.WEIGHT_KG] = settings.weightKg
+            prefs[Keys.TEMPERATURE] = settings.temperature.name
+            prefs[Keys.ACTIVITY] = settings.activity.name
+            prefs[Keys.GOAL_MODE] = settings.goalMode.name
+            prefs[Keys.MANUAL_GOAL] = settings.manualGoalMl
+            prefs[Keys.ACTIVE_START_HOUR] = settings.activeStartHour
+            prefs[Keys.ACTIVE_END_HOUR] = settings.activeEndHour
+            prefs[Keys.REMINDER_GLASS_ML] = settings.reminderGlassMl
+            prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
+            prefs[Keys.GOAL] = settings.effectiveGoalMl
         }
     }
 
