@@ -1,7 +1,5 @@
 # Hydration Buddy — Kropi
 
-Zaplanuj mi makiety do aplikacji mierzącej nawodnienie. Przede wszystkim skalowalny widget, material, minimalistic, tech fancy design, komentarz na widgecie i na ekranie głównym z self-care + ciekawostka o nawodnieniu, piciu wody (obszerny zestaw). Klikalne butelki na widgecie (różne pojemności) + progress wypicia wody danego dnia oraz jakiś smaczek (w stylu maskotka itp.)
-
 ![Widget w trzech rozmiarach](docs/widget-showcase.svg)
 
 Jeden design, jeden komponent — renderowany na dwóch platformach:
