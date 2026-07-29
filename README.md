@@ -1,14 +1,16 @@
-# Welcome to your Lovable project
+# Hydration Buddy
+
+Zaplanuj mi makiety do aplikacji mierzącej nawodnienie. Przede wszystkim skalowalny widget, material, minimalistic, tech fancy design, komentarz na widgecie i na ekranie głównym z self-care + ciekawostka o nawodnieniu, piciu wody (obszerny zestaw). Klikalne butelki na widgecie (różne pojemności) + progress wypicia wody danego dnia oraz jakiś smaczek (w stylu maskotka itp.)
 
 This project was built with [Lovable](https://lovable.dev).
 
 ## Build with Lovable
 
-Open your project in the [Lovable editor](https://lovable.dev) and keep building.
+Continue developing this project in the [Lovable editor](https://lovable.dev/projects/a413940b-41b3-4aa0-9cf4-a633574bc5ff).
 
 - **Ship faster**: describe what you want to build and Lovable handles the code.
-- **Stay in sync**: connect the project to GitHub and every change made in Lovable is committed straight to your repository.
-- **Full ownership**: this code is yours. Push to your repository and your changes sync back into Lovable, ready for your next prompt.
+- **Stay in sync**: every change made in Lovable is committed straight to this repository.
+- **Full ownership**: this code is yours. Push to `main` on GitHub and your changes sync back into Lovable, ready for your next prompt.
 
 ## Development
 
@@ -20,10 +22,3 @@ cd <repository-name>
 npm i
 npm run dev
 ```
-
-## Built with
-
-- TanStack Start
-- TypeScript
-- React
-- Tailwind CSS
