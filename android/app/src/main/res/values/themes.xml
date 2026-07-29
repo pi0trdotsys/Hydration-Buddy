@@ -1,0 +1,7 @@
+<resources>
+    <style name="Theme.Kropi" parent="android:Theme.Material.NoActionBar">
+        <item name="android:statusBarColor">#020F19</item>
+        <item name="android:navigationBarColor">#020F19</item>
+        <item name="android:windowBackground">#020F19</item>
+    </style>
+</resources>

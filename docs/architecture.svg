@@ -1,0 +1,48 @@
+<svg viewBox="0 0 1000 460" xmlns="http://www.w3.org/2000/svg" font-family="'Space Grotesk','DM Sans',Arial,sans-serif">
+  <defs>
+    <radialGradient id="glow" cx="50%" cy="0%" r="75%">
+      <stop offset="0%" stop-color="#00DFE8" stop-opacity="0.14"/>
+      <stop offset="70%" stop-color="#00DFE8" stop-opacity="0"/>
+    </radialGradient>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0 0 L10 5 L0 10 z" fill="#00DFE8"/>
+    </marker>
+  </defs>
+  <rect width="1000" height="460" fill="#020F19"/>
+  <rect width="1000" height="460" fill="url(#glow)"/>
+
+  <text x="32" y="42" font-size="22" font-weight="700" fill="#EEF7FA">Architektura — Kropi</text>
+  <text x="32" y="66" font-size="13" fill="#91A9B3">Wspólny design i treści; dwie niezależne powłoki renderujące ten sam widget</text>
+
+  <!-- shared core -->
+  <g transform="translate(370,100)">
+    <rect width="260" height="120" rx="20" fill="#071A27" stroke="#00DFE8" stroke-opacity="0.4"/>
+    <text x="130" y="30" text-anchor="middle" font-size="14" font-weight="700" fill="#00DFE8">Wspólny rdzeń</text>
+    <text x="130" y="54" text-anchor="middle" font-size="11" fill="#EEF7FA">hydration-content: fakty, self-care,</text>
+    <text x="130" y="70" text-anchor="middle" font-size="11" fill="#EEF7FA">kwestie maskotki, butelki (ml)</text>
+    <text x="130" y="94" text-anchor="middle" font-size="11" fill="#91A9B3">tokeny kolorów (oklch → aqua #00DFE8)</text>
+  </g>
+
+  <!-- web app -->
+  <g transform="translate(70,270)">
+    <rect width="380" height="160" rx="24" fill="#071A27"/>
+    <text x="24" y="36" font-size="15" font-weight="700" fill="#EEF7FA">Web · src/</text>
+    <text x="24" y="58" font-size="11" fill="#91A9B3">TanStack Start + React + Tailwind</text>
+    <text x="24" y="86" font-size="11" fill="#EEF7FA">HydrationWidget.tsx (sm / md / lg)</text>
+    <text x="24" y="106" font-size="11" fill="#EEF7FA">ProgressRing · BottlePicker · MascotDrop</text>
+    <text x="24" y="130" font-size="11" fill="#00DFE8">/, /widget, /insights</text>
+  </g>
+
+  <!-- android app -->
+  <g transform="translate(550,270)">
+    <rect width="380" height="160" rx="24" fill="#071A27"/>
+    <text x="24" y="36" font-size="15" font-weight="700" fill="#EEF7FA">Android · android/</text>
+    <text x="24" y="58" font-size="11" fill="#91A9B3">Kotlin + Jetpack Glance + DataStore</text>
+    <text x="24" y="86" font-size="11" fill="#EEF7FA">HydrationWidget.kt (GlanceAppWidget)</text>
+    <text x="24" y="106" font-size="11" fill="#EEF7FA">natywny widget na ekranie głównym</text>
+    <text x="24" y="130" font-size="11" fill="#00DFE8">SizeMode.Responsive: sm / md / lg</text>
+  </g>
+
+  <path d="M 440 220 L 300 270" stroke="#00DFE8" stroke-width="2" fill="none" marker-end="url(#arrow)" opacity="0.7"/>
+  <path d="M 560 220 L 700 270" stroke="#00DFE8" stroke-width="2" fill="none" marker-end="url(#arrow)" opacity="0.7"/>
+</svg>

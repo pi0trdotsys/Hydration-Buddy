@@ -1,0 +1,148 @@
+package com.kropi.hydration.data
+
+import android.content.Context
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.longPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
+import androidx.datastore.preferences.preferencesDataStore
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
+import java.time.LocalDate
+import java.time.LocalTime
+
+val Context.hydrationStore by preferencesDataStore(name = "hydration")
+
+data class Intake(val hour: Int, val minute: Int, val ml: Int)
+
+data class HydrationState(
+    val goal: Int,
+    val intakes: List<Intake>,
+    val streak: Int,
+    val pokeSeed: Int,
+) {
+    val total: Int get() = intakes.sumOf { it.ml }
+    val progress: Double get() = (total.toDouble() / goal).coerceIn(0.0, 1.0)
+    val remaining: Int get() = (goal - total).coerceAtLeast(0)
+    val level: Level get() = levelFor(total.toDouble() / goal)
+    val daypart: Daypart get() = daypartFor(LocalTime.now().hour)
+
+    private val seed: Int get() = intakes.size + Math.round(total / 100f)
+    val selfCare: String get() = pick(SELF_CARE.getValue(level), seed)
+    val fact: String get() = pick(FACTS, seed * 3 + 1)
+    val dayNote: String get() = pick(DAYPART_NOTES.getValue(daypart), seed)
+    val mascotLine: String get() = pick(MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
+}
+
+private object Keys {
+    val GOAL = intPreferencesKey("goal")
+    val INTAKES = stringPreferencesKey("intakes") // "h:m:ml,h:m:ml,..."
+    val STREAK = intPreferencesKey("streak")
+    val LAST_EPOCH_DAY = longPreferencesKey("last_epoch_day")
+    val LAST_GOAL_MET_EPOCH_DAY = longPreferencesKey("last_goal_met_epoch_day")
+    val POKE_SEED = intPreferencesKey("poke_seed")
+}
+
+private const val DEFAULT_GOAL = 2500
+
+private val SEED_INTAKES = listOf(
+    Intake(7, 20, 250),
+    Intake(9, 5, 330),
+    Intake(11, 40, 500),
+    Intake(13, 15, 250),
+    Intake(15, 0, 120),
+)
+
+private fun encodeIntakes(intakes: List<Intake>): String =
+    intakes.joinToString(",") { "${it.hour}:${it.minute}:${it.ml}" }
+
+private fun decodeIntakes(raw: String?): List<Intake> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return raw.split(",").mapNotNull { entry ->
+        val parts = entry.split(":")
+        if (parts.size != 3) return@mapNotNull null
+        val h = parts[0].toIntOrNull() ?: return@mapNotNull null
+        val m = parts[1].toIntOrNull() ?: return@mapNotNull null
+        val ml = parts[2].toIntOrNull() ?: return@mapNotNull null
+        Intake(h, m, ml)
+    }
+}
+
+/**
+ * DataStore-backed replacement for the mockup's useHydrationMock hook.
+ * Rolls the day over at midnight (archiving the streak) instead of the
+ * mockup's static in-memory state.
+ */
+class HydrationRepository(private val context: Context) {
+
+    val state: Flow<HydrationState> = context.hydrationStore.data.map { prefs ->
+        HydrationState(
+            goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
+            intakes = decodeIntakes(prefs[Keys.INTAKES]),
+            streak = prefs[Keys.STREAK] ?: 5,
+            pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
+        )
+    }
+
+    suspend fun current(): HydrationState = rollDayIfNeeded()
+
+    /** Archives yesterday's progress into the streak and resets today's intakes. */
+    private suspend fun rollDayIfNeeded(): HydrationState {
+        val today = LocalDate.now().toEpochDay()
+        context.hydrationStore.edit { prefs ->
+            val lastDay = prefs[Keys.LAST_EPOCH_DAY]
+            if (lastDay == null) {
+                prefs[Keys.LAST_EPOCH_DAY] = today
+                prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: DEFAULT_GOAL
+                prefs[Keys.INTAKES] = encodeIntakes(SEED_INTAKES)
+                prefs[Keys.STREAK] = prefs[Keys.STREAK] ?: 5
+                return@edit
+            }
+            if (lastDay == today) return@edit
+
+            val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
+            val total = decodeIntakes(prefs[Keys.INTAKES]).sumOf { it.ml }
+            val metGoal = total >= goal
+            val lastMetDay = prefs[Keys.LAST_GOAL_MET_EPOCH_DAY]
+            val streak = prefs[Keys.STREAK] ?: 0
+
+            if (metGoal) {
+                prefs[Keys.STREAK] = if (lastMetDay == lastDay - 1) streak + 1 else 1
+                prefs[Keys.LAST_GOAL_MET_EPOCH_DAY] = lastDay
+            } else {
+                prefs[Keys.STREAK] = 0
+            }
+
+            prefs[Keys.LAST_EPOCH_DAY] = today
+            prefs[Keys.INTAKES] = encodeIntakes(emptyList())
+        }
+        return state.first()
+    }
+
+    suspend fun addWater(ml: Int) {
+        rollDayIfNeeded()
+        context.hydrationStore.edit { prefs ->
+            val now = LocalTime.now()
+            val updated = decodeIntakes(prefs[Keys.INTAKES]) + Intake(now.hour, now.minute, ml)
+            prefs[Keys.INTAKES] = encodeIntakes(updated)
+        }
+    }
+
+    suspend fun undoLast() {
+        context.hydrationStore.edit { prefs ->
+            val updated = decodeIntakes(prefs[Keys.INTAKES]).dropLast(1)
+            prefs[Keys.INTAKES] = encodeIntakes(updated)
+        }
+    }
+
+    suspend fun poke() {
+        context.hydrationStore.edit { prefs ->
+            prefs[Keys.POKE_SEED] = (prefs[Keys.POKE_SEED] ?: 0) + 1
+        }
+    }
+
+    suspend fun setGoal(ml: Int) {
+        context.hydrationStore.edit { prefs -> prefs[Keys.GOAL] = ml }
+    }
+}

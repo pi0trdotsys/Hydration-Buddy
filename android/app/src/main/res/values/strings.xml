@@ -1,0 +1,5 @@
+<resources>
+    <string name="app_name">Kropi — Nawodnienie</string>
+    <string name="widget_label">Kropi — widget nawodnienia</string>
+    <string name="widget_description">Skalowalny widget nawodnienia: pierścień postępu, klikalne butelki i maskotka Kropi.</string>
+</resources>

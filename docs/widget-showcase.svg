@@ -1,0 +1,189 @@
+<svg viewBox="0 0 1260 550" xmlns="http://www.w3.org/2000/svg" font-family="'Space Grotesk','DM Sans',Arial,sans-serif">
+  <defs>
+    <radialGradient id="bgGlow" cx="50%" cy="0%" r="75%">
+      <stop offset="0%" stop-color="#00DFE8" stop-opacity="0.16"/>
+      <stop offset="70%" stop-color="#00DFE8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="ringGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#00DFE8"/>
+      <stop offset="100%" stop-color="#007BB2"/>
+    </linearGradient>
+    <linearGradient id="dropGrad" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00DFE8"/>
+      <stop offset="100%" stop-color="#007BB2"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="1260" height="550" fill="#020F19"/>
+  <rect width="1260" height="550" fill="url(#bgGlow)"/>
+
+  <text x="32" y="40" font-size="22" font-weight="700" fill="#EEF7FA">Kropi — widget nawodnienia</text>
+  <text x="32" y="66" font-size="13" fill="#91A9B3">Jeden komponent, trzy rozmiary — web (TanStack Start) i natywny widget na Androida (Glance)</text>
+
+  <!-- ============ SM card ============ -->
+  <g transform="translate(32,96)">
+    <rect width="220" height="416" rx="28" fill="#071A27"/>
+    <text x="188" y="26" text-anchor="end" font-size="11" fill="#00DFE8">Mały (1×1)</text>
+    <g transform="translate(110,96)" text-anchor="middle">
+      <circle r="64" fill="none" stroke="#132938" stroke-width="12"/>
+      <path d="M 0 -64 A 64 64 0 1 1 0 64 A 64 64 0 1 1 0 -64" fill="none" stroke="url(#ringGrad)" stroke-width="12" stroke-linecap="round"/>
+      <!-- mascot: celebrating (100%) -->
+      <g transform="scale(0.62)">
+        <circle cx="-38" cy="30" r="5" fill="#00DFE8" opacity="0.55"/>
+        <circle cx="-14" cy="42" r="4" fill="#00DFE8" opacity="0.5"/>
+        <circle cx="18" cy="40" r="4.5" fill="#00DFE8" opacity="0.5"/>
+        <circle cx="40" cy="28" r="4" fill="#00DFE8" opacity="0.55"/>
+        <path d="M 0 -52 C 22 -22 40 -6 40 12 A 40 40 0 1 1 -40 12 C -40 -6 -22 -22 0 -52 Z" fill="url(#dropGrad)"/>
+        <ellipse cx="-14" cy="-10" rx="8" ry="10" fill="#071A27" opacity="0.9"/>
+        <ellipse cx="14" cy="-10" rx="8" ry="10" fill="#071A27" opacity="0.9"/>
+        <circle cx="-12" cy="-8" r="4" fill="#0A1F2C"/>
+        <circle cx="16" cy="-8" r="4" fill="#0A1F2C"/>
+        <path d="M -9 15 Q 0 27 18 15" stroke="#071A27" stroke-width="4" stroke-linecap="round" fill="none"/>
+        <ellipse cx="-31" cy="6" rx="7" ry="4" fill="#071A27" opacity="0.25"/>
+        <ellipse cx="19" cy="6" rx="7" ry="4" fill="#071A27" opacity="0.25"/>
+      </g>
+      <text y="98" font-size="26" font-weight="700" fill="#EEF7FA">100%</text>
+    </g>
+    <text x="110" y="380" text-anchor="middle" font-size="13" fill="#91A9B3">3550 / 2500 ml</text>
+  </g>
+
+  <!-- ============ MD card ============ -->
+  <g transform="translate(276,96)">
+    <rect width="460" height="200" rx="28" fill="#071A27"/>
+    <text x="428" y="26" text-anchor="end" font-size="11" fill="#00DFE8">Średni (2×1)</text>
+    <g transform="translate(74,88)" text-anchor="middle">
+      <circle r="50" fill="none" stroke="#132938" stroke-width="10"/>
+      <path d="M 0.00 -50.00 A 50 50 0 1 1 -21.29 45.24" fill="none" stroke="url(#ringGrad)" stroke-width="10" stroke-linecap="round"/>
+      <text y="7" font-size="20" font-weight="700" fill="#EEF7FA">57%</text>
+    </g>
+    <g transform="translate(146,40)">
+      <text font-size="11" fill="#91A9B3">Nawodnienie • 5 dni</text>
+      <text y="26" font-size="22" font-weight="700" fill="#EEF7FA">1450 / 2500 ml</text>
+      <text y="46" font-size="11" fill="#00DFE8">Zostało 1050 ml</text>
+    </g>
+    <g transform="translate(32,140)">
+      <g transform="translate(0,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="40.7" width="18.4" height="5.3" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">100</text>
+      </g>
+      <g transform="translate(34,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="32.7" width="18.4" height="13.3" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">250</text>
+      </g>
+      <g transform="translate(68,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="28.4" width="18.4" height="17.6" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">330</text>
+      </g>
+      <g transform="translate(102,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="19.3" width="18.4" height="26.7" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">500</text>
+      </g>
+      <g transform="translate(136,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="6.0" width="18.4" height="40.0" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">750</text>
+      </g>
+      <g transform="translate(178,0)">
+        <rect x="0" y="6" width="28" height="40" rx="12" fill="#132938"/>
+        <text x="14" y="30" text-anchor="middle" font-size="16" fill="#91A9B3">↺</text>
+      </g>
+    </g>
+  </g>
+
+  <!-- ============ LG card ============ -->
+  <g transform="translate(760,96)">
+    <rect width="460" height="416" rx="28" fill="#071A27"/>
+    <text x="428" y="26" text-anchor="end" font-size="11" fill="#00DFE8">Duży (2×2)</text>
+    <g transform="translate(88,104)" text-anchor="middle">
+      <circle r="64" fill="none" stroke="#132938" stroke-width="12"/>
+      <path d="M 0.00 -64.00 A 64 64 0 1 1 -43.81 -46.65" fill="none" stroke="url(#ringGrad)" stroke-width="12" stroke-linecap="round"/>
+      <text y="7" font-size="22" font-weight="700" fill="#EEF7FA">88%</text>
+    </g>
+    <g transform="translate(176,54)">
+      <text font-size="11" fill="#91A9B3">Nawodnienie • 5 dni</text>
+      <text y="28" font-size="26" font-weight="700" fill="#EEF7FA">2200 / 2500 ml</text>
+      <text y="50" font-size="12" fill="#00DFE8">Zostało 300 ml</text>
+      <text y="76" font-size="12" fill="#EEF7FA">Prawie meta. Zrób głęboki wdech i</text>
+      <text y="94" font-size="12" fill="#EEF7FA">dokończ.</text>
+    </g>
+    <!-- mascot high/happy -->
+    <g transform="translate(400,90) scale(0.72)">
+      <path d="M 0 -52 C 22 -22 40 -6 40 12 A 40 40 0 1 1 -40 12 C -40 -6 -22 -22 0 -52 Z" fill="url(#dropGrad)"/>
+      <ellipse cx="-14" cy="-10" rx="8" ry="10" fill="#071A27" opacity="0.9"/>
+      <ellipse cx="14" cy="-10" rx="8" ry="10" fill="#071A27" opacity="0.9"/>
+      <circle cx="-12" cy="-8" r="4" fill="#0A1F2C"/>
+      <circle cx="16" cy="-8" r="4" fill="#0A1F2C"/>
+      <path d="M -8 16 Q 0 25 16 16" stroke="#071A27" stroke-width="4" stroke-linecap="round" fill="none"/>
+      <ellipse cx="-31" cy="6" rx="7" ry="4" fill="#071A27" opacity="0.25"/>
+      <ellipse cx="19" cy="6" rx="7" ry="4" fill="#071A27" opacity="0.25"/>
+    </g>
+    <g transform="translate(32,210)">
+      <g transform="translate(0,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="40.7" width="18.4" height="5.3" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">100</text>
+      </g>
+      <g transform="translate(34,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="32.7" width="18.4" height="13.3" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">250</text>
+      </g>
+      <g transform="translate(68,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="28.4" width="18.4" height="17.6" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">330</text>
+      </g>
+      <g transform="translate(102,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="19.3" width="18.4" height="26.7" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">500</text>
+      </g>
+      <g transform="translate(136,0)">
+        <rect x="6.0" y="0" width="10" height="6" rx="2" fill="#00DFE8" opacity="0.5"/>
+        <rect x="0" y="6" width="22" height="40" rx="9" fill="none" stroke="#00DFE8" stroke-opacity="0.5" stroke-width="1.6"/>
+        <rect x="1.8" y="6.0" width="18.4" height="40.0" rx="7" fill="#00DFE8" opacity="0.95"/>
+        <text x="11.0" y="60" text-anchor="middle" font-size="11" font-weight="700" fill="#EEF7FA">750</text>
+      </g>
+      <g transform="translate(178,0)">
+        <rect x="0" y="6" width="28" height="40" rx="12" fill="#132938"/>
+        <text x="14" y="30" text-anchor="middle" font-size="16" fill="#91A9B3">↺</text>
+      </g>
+    </g>
+    <!-- hourly bars -->
+    <g transform="translate(32,310)">
+      <g fill="#132938">
+        <rect x="0" y="20" width="22" height="10" rx="3"/>
+        <rect x="30" y="14" width="22" height="16" rx="3"/>
+        <rect x="60" y="6" width="22" height="24" rx="3" fill="#00DFE8" fill-opacity="0.85"/>
+        <rect x="90" y="18" width="22" height="12" rx="3"/>
+        <rect x="120" y="2" width="22" height="28" rx="3" fill="#00DFE8" fill-opacity="0.85"/>
+        <rect x="150" y="16" width="22" height="14" rx="3"/>
+        <rect x="180" y="8" width="22" height="22" rx="3" fill="#00DFE8" fill-opacity="0.85"/>
+        <rect x="210" y="22" width="22" height="8" rx="3"/>
+        <rect x="240" y="12" width="22" height="18" rx="3" fill="#00DFE8" fill-opacity="0.85"/>
+        <rect x="270" y="24" width="22" height="6" rx="3"/>
+        <rect x="300" y="4" width="22" height="26" rx="3" fill="#00DFE8" fill-opacity="0.85"/>
+        <rect x="330" y="20" width="22" height="10" rx="3"/>
+        <rect x="360" y="24" width="22" height="6" rx="3"/>
+        <rect x="390" y="24" width="22" height="6" rx="3"/>
+      </g>
+    </g>
+    <g transform="translate(32,352)">
+      <rect width="396" height="20" rx="10" fill="#132938"/>
+      <text x="12" y="14" font-size="10" fill="#91A9B3"><tspan fill="#00DFE8" font-weight="700">Czy wiesz, że… </tspan>Blisko celu. Ostatnie łyki są najłatwiejsze.</text>
+    </g>
+  </g>
+</svg>
