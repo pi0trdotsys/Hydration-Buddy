@@ -54,7 +54,7 @@ export function BottlePicker({
   };
 
   return (
-    <div className="flex flex-wrap items-stretch gap-2">
+    <div className="grid grid-cols-4 items-stretch gap-2 sm:flex sm:flex-wrap">
       {BOTTLES.map((b) => (
         <button
           key={b.ml}
