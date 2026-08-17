@@ -81,6 +81,21 @@ export function useHydrationMock() {
 
   const seed = intakes.length + Math.round(total / 100);
 
+  const history: HistoryDay[] = useMemo(
+    () => [
+      ...HISTORY,
+      {
+        day: "Nd",
+        date: "17.08",
+        ml: total,
+        goal,
+        pct: progress,
+        reached: progress >= 1,
+      },
+    ],
+    [total, goal, progress],
+  );
+
   return {
     goal,
     setGoal,
@@ -95,6 +110,7 @@ export function useHydrationMock() {
     remaining: Math.max(goal - total, 0),
     streak: 5,
     week: WEEK,
+    history,
     selfCare: pick(SELF_CARE[level], seed),
     selfCareAlt: pick(SELF_CARE[level], seed + 1),
     fact: pick(FACTS, seed * 3 + 1),
