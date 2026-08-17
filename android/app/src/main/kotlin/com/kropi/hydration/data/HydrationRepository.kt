@@ -48,9 +48,22 @@ data class HydrationState(
 
     private val seed: Int get() = intakes.size + Math.round(total / 100f)
     val selfCare: String get() = pick(SELF_CARE.getValue(level), seed)
+    val selfCareAlt: String get() = pick(SELF_CARE.getValue(level), seed + 1)
     val fact: String get() = pick(FACTS, seed * 3 + 1)
     val dayNote: String get() = pick(DAYPART_NOTES.getValue(daypart), seed)
     val mascotLine: String get() = pick(MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
+
+    /** Ported from `week`/`history` in use-hydration-mock.ts: static mock days + today appended live. */
+    val week: List<WeekDay> get() = WEEK
+    val history: List<HistoryDay>
+        get() = HISTORY + HistoryDay(
+            day = "Nd",
+            date = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM")),
+            ml = total,
+            goal = goal,
+            pct = progress.toFloat(),
+            reached = progress >= 1.0,
+        )
 }
 
 private object Keys {

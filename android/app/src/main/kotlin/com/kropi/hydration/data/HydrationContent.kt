@@ -141,6 +141,37 @@ val MASCOT_LINES: Map<Level, List<String>> = mapOf(
     ),
 )
 
+data class WeekDay(val day: String, val pct: Float)
+
+/** Ported from WEEK in src/hooks/use-hydration-mock.ts (static mock days Mon–Sat; today is appended live). */
+val WEEK = listOf(
+    WeekDay("Pn", 0.82f),
+    WeekDay("Wt", 1f),
+    WeekDay("Śr", 0.64f),
+    WeekDay("Cz", 0.95f),
+    WeekDay("Pt", 1f),
+    WeekDay("So", 0.48f),
+)
+
+data class HistoryDay(
+    val day: String,
+    val date: String,
+    val ml: Int,
+    val goal: Int,
+    val pct: Float,
+    val reached: Boolean,
+)
+
+/** Ported from HISTORY in src/hooks/use-hydration-mock.ts (today is appended live with real data). */
+val HISTORY = listOf(
+    HistoryDay("Pn", "11.08", 2050, 2500, 0.82f, false),
+    HistoryDay("Wt", "12.08", 2500, 2500, 1f, true),
+    HistoryDay("Śr", "13.08", 1600, 2500, 0.64f, false),
+    HistoryDay("Cz", "14.08", 2375, 2500, 0.95f, false),
+    HistoryDay("Pt", "15.08", 2500, 2500, 1f, true),
+    HistoryDay("So", "16.08", 1200, 2500, 0.48f, false),
+)
+
 fun levelFor(progress: Double): Level = when {
     progress >= 1.0 -> Level.DONE
     progress >= 0.61 -> Level.HIGH

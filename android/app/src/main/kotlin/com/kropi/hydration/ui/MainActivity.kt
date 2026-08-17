@@ -9,31 +9,13 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
-import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
-import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.NavigationBar
+import androidx.compose.material3.NavigationBarItem
+import androidx.compose.material3.NavigationBarItemDefaults
+import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,38 +25,20 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.glance.appwidget.updateAll
-import com.kropi.hydration.data.ActivityLevel
-import com.kropi.hydration.data.GoalCalculator
-import com.kropi.hydration.data.GoalMode
 import com.kropi.hydration.data.HydrationRepository
-import com.kropi.hydration.data.HydrationSettings
-import com.kropi.hydration.data.HydrationState
-import com.kropi.hydration.data.Intake
-import com.kropi.hydration.data.Level
-import com.kropi.hydration.data.Temperature
 import com.kropi.hydration.notifications.NotificationHelper
 import com.kropi.hydration.notifications.NotificationScheduler
 import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.launch
 
-/**
- * Host app screen. Mirrors src/routes/widget.tsx (three live-size previews sharing one
- * state) plus a way to actually pin HydrationWidget to the home screen, since that's
- * the real "native scalable widget" this app ships.
- */
+// Host app. Mirrors the whole Lovable web plan under src/routes: a bottom-nav
+// shell with the home dashboard, the widget size preview, history, and the
+// content browser -- plus a Settings tab the web mockup didn't need (goal
+// calculator, reminders), all sharing one HydrationRepository-backed state
+// like the web's single useHydrationMock() instance.
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -85,7 +49,7 @@ class MainActivity : ComponentActivity() {
         setContent {
             val notificationPermission = rememberLauncherForActivityResult(
                 ActivityResultContracts.RequestPermission(),
-            ) { /* no-op: reminders simply won't fire without it */ }
+            ) { /* no-op, reminders simply do not fire without the permission */ }
 
             LaunchedEffect(Unit) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -94,27 +58,66 @@ class MainActivity : ComponentActivity() {
             }
 
             MaterialTheme {
-                Surface(color = KropiColors.background) {
-                    val state by repo.state.collectAsState(initial = null)
-                    val scope = rememberCoroutineScope()
-                    LaunchedEffect(Unit) { repo.current() }
-                    val current = state
+                val state by repo.state.collectAsState(initial = null)
+                val scope = rememberCoroutineScope()
+                LaunchedEffect(Unit) { repo.current() }
+                var tab by remember { mutableStateOf(Tab.HOME) }
+
+                val current = state
+                Scaffold(
+                    containerColor = KropiColors.background,
+                    bottomBar = {
+                        NavigationBar(containerColor = KropiColors.card) {
+                            Tab.entries.forEach { t ->
+                                NavigationBarItem(
+                                    selected = tab == t,
+                                    onClick = { tab = t },
+                                    icon = { Text(t.emoji, fontSize = 18.sp) },
+                                    label = { Text(t.label, fontSize = 10.sp) },
+                                    colors = NavigationBarItemDefaults.colors(
+                                        selectedIconColor = KropiColors.aqua,
+                                        selectedTextColor = KropiColors.aqua,
+                                        unselectedIconColor = KropiColors.mutedForeground,
+                                        unselectedTextColor = KropiColors.mutedForeground,
+                                        indicatorColor = KropiColors.secondary,
+                                    ),
+                                )
+                            }
+                        }
+                    },
+                ) { padding ->
                     if (current != null) {
-                        HomeScreen(
-                            state = current,
-                            onAdd = { ml -> scope.launch { repo.addWater(ml); HydrationWidget().updateAll(applicationContext) } },
-                            onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
-                            onPoke = { scope.launch { repo.poke() } },
-                            onPin = { pinWidget() },
-                            onSaveSettings = { settings ->
-                                scope.launch {
-                                    repo.saveSettings(settings)
-                                    HydrationWidget().updateAll(applicationContext)
-                                    NotificationScheduler.schedule(applicationContext)
-                                }
-                            },
-                            onTestNotification = { NotificationScheduler.sendTestNotification(applicationContext) },
-                        )
+                        androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize().padding(padding)) {
+                            when (tab) {
+                                Tab.HOME -> HomeScreen(
+                                    state = current,
+                                    onAdd = { ml -> scope.launch { repo.addWater(ml); HydrationWidget().updateAll(applicationContext) } },
+                                    onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
+                                    onPoke = { scope.launch { repo.poke() } },
+                                    onSetGoal = { ml -> scope.launch { repo.setGoal(ml); HydrationWidget().updateAll(applicationContext) } },
+                                )
+                                Tab.WIDGET -> WidgetScreen(
+                                    state = current,
+                                    onAdd = { ml -> scope.launch { repo.addWater(ml); HydrationWidget().updateAll(applicationContext) } },
+                                    onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
+                                    onPoke = { scope.launch { repo.poke() } },
+                                    onPin = { pinWidget() },
+                                )
+                                Tab.HISTORY -> HistoryScreen(state = current)
+                                Tab.INSIGHTS -> InsightsScreen()
+                                Tab.SETTINGS -> SettingsScreen(
+                                    initial = current.settings,
+                                    onSave = { settings ->
+                                        scope.launch {
+                                            repo.saveSettings(settings)
+                                            HydrationWidget().updateAll(applicationContext)
+                                            NotificationScheduler.schedule(applicationContext)
+                                        }
+                                    },
+                                    onTestNotification = { NotificationScheduler.sendTestNotification(applicationContext) },
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -131,582 +134,10 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-@Composable
-private fun HomeScreen(
-    state: HydrationState,
-    onAdd: (Int) -> Unit,
-    onUndo: () -> Unit,
-    onPoke: () -> Unit,
-    onPin: () -> Unit,
-    onSaveSettings: (HydrationSettings) -> Unit,
-    onTestNotification: () -> Unit,
-) {
-    LazyColumn(
-        modifier = Modifier.fillMaxSize(),
-        contentPadding = androidx.compose.foundation.layout.PaddingValues(20.dp),
-        verticalArrangement = Arrangement.spacedBy(24.dp),
-    ) {
-        item {
-            Column {
-                Text(
-                    "Kropi — nawodnienie",
-                    color = KropiColors.foreground,
-                    fontSize = 26.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    "Natywny, skalowalny widget na ekran główny. Jeden komponent, trzy rozmiary — tak jak w makiecie /widget.",
-                    color = KropiColors.mutedForeground,
-                    fontSize = 13.sp,
-                    modifier = Modifier.padding(top = 4.dp),
-                )
-            }
-        }
-        item {
-            Button(
-                onClick = onPin,
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
-            ) {
-                Text("Dodaj widget do ekranu głównego", fontWeight = FontWeight.Bold)
-            }
-        }
-        item {
-            Text(
-                "Powinieneś/aś już wypić: ${state.targetSoFar} ml",
-                color = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.aqua,
-                fontSize = 13.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-        item { SizeLabel("Mały (1×1)") }
-        item { WidgetCard(state, WidgetVariant.SMALL, onAdd, onUndo, onPoke, Modifier.size(140.dp)) }
-        item { SizeLabel("Średni (2×1)") }
-        item { WidgetCard(state, WidgetVariant.MEDIUM, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(150.dp)) }
-        item { SizeLabel("Duży (2×2)") }
-        item { WidgetCard(state, WidgetVariant.LARGE, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(320.dp)) }
-
-        item { SizeLabel("Ustawienia i przypomnienia") }
-        item {
-            SettingsSection(
-                initial = state.settings,
-                onSave = onSaveSettings,
-                onTestNotification = onTestNotification,
-            )
-        }
-    }
-}
-
-@Composable
-private fun SettingsSection(
-    initial: HydrationSettings,
-    onSave: (HydrationSettings) -> Unit,
-    onTestNotification: () -> Unit,
-) {
-    var weightKg by remember { mutableStateOf(initial.weightKg) }
-    var temperature by remember { mutableStateOf(initial.temperature) }
-    var activity by remember { mutableStateOf(initial.activity) }
-    var goalMode by remember { mutableStateOf(initial.goalMode) }
-    var manualGoal by remember { mutableStateOf(initial.manualGoalMl.toFloat()) }
-    var startHour by remember { mutableStateOf(initial.activeStartHour) }
-    var endHour by remember { mutableStateOf(initial.activeEndHour) }
-    var glassMl by remember { mutableStateOf(initial.reminderGlassMl) }
-    var remindersEnabled by remember { mutableStateOf(initial.remindersEnabled) }
-
-    val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
-    val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
-
-    Column(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(28.dp))
-            .background(KropiColors.card)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-        // --- reminders toggle ---
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Column(modifier = Modifier.weight(1f)) {
-                Text("Przypomnienia", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text(
-                    "Fancy powiadomienie, gdy dawno nie piłeś/aś wody",
-                    color = KropiColors.mutedForeground,
-                    fontSize = 11.sp,
-                )
-            }
-            Switch(
-                checked = remindersEnabled,
-                onCheckedChange = { remindersEnabled = it },
-                colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
-            )
-        }
-
-        // --- goal mode ---
-        Text("Cel dzienny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChipButton("Automatyczny", goalMode == GoalMode.AUTO) { goalMode = GoalMode.AUTO }
-            ChipButton("Ręczny", goalMode == GoalMode.MANUAL) { goalMode = GoalMode.MANUAL }
-        }
-
-        if (goalMode == GoalMode.AUTO) {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Waga: ${weightKg.toInt()} kg", color = KropiColors.mutedForeground, fontSize = 12.sp)
-                Slider(
-                    value = weightKg,
-                    onValueChange = { weightKg = it },
-                    valueRange = 30f..150f,
-                    colors = SliderDefaults.colors(thumbColor = KropiColors.aqua, activeTrackColor = KropiColors.aqua),
-                )
-            }
-            Text("Temperatura otoczenia", color = KropiColors.mutedForeground, fontSize = 12.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Temperature.entries.forEach { t ->
-                    ChipButton("${t.emoji} ${t.label}", temperature == t) { temperature = t }
-                }
-            }
-            Text("Aktywność fizyczna", color = KropiColors.mutedForeground, fontSize = 12.sp)
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ActivityLevel.entries.forEach { a ->
-                    ChipButton("${a.emoji} ${a.label}", activity == a) { activity = a }
-                }
-            }
-        } else {
-            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Cel: ${manualGoal.toInt()} ml", color = KropiColors.mutedForeground, fontSize = 12.sp)
-                Slider(
-                    value = manualGoal,
-                    onValueChange = { manualGoal = it },
-                    valueRange = 1200f..5000f,
-                    colors = SliderDefaults.colors(thumbColor = KropiColors.aqua, activeTrackColor = KropiColors.aqua),
-                )
-            }
-        }
-
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(KropiColors.secondary)
-                .padding(10.dp),
-        ) {
-            Text(
-                "Dzienny cel: $effectiveGoal ml" + if (goalMode == GoalMode.AUTO) " (wyliczony)" else "",
-                color = KropiColors.aqua,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-            )
-        }
-
-        // --- active hours ---
-        Text("Aktywne godziny picia", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            HourStepper("Od", startHour) { startHour = it.coerceIn(0, endHour - 1) }
-            HourStepper("Do", endHour) { endHour = it.coerceIn(startHour + 1, 23) }
-        }
-
-        // --- reminder glass size ---
-        Text("Rozmiar szklanki w przypomnieniach", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(100, 250, 330, 500).forEach { ml ->
-                ChipButton("$ml ml", glassMl == ml) { glassMl = ml }
-            }
-        }
-
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    onSave(
-                        HydrationSettings(
-                            weightKg = weightKg,
-                            temperature = temperature,
-                            activity = activity,
-                            goalMode = goalMode,
-                            manualGoalMl = manualGoal.toInt(),
-                            activeStartHour = startHour,
-                            activeEndHour = endHour,
-                            reminderGlassMl = glassMl,
-                            remindersEnabled = remindersEnabled,
-                        ),
-                    )
-                },
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Zapisz", fontWeight = FontWeight.Bold)
-            }
-            Button(
-                onClick = onTestNotification,
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text("Testuj powiadomienie")
-            }
-        }
-    }
-}
-
-@Composable
-private fun ChipButton(label: String, selected: Boolean, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .clip(RoundedCornerShape(999.dp))
-            .background(if (selected) KropiColors.aqua else KropiColors.secondary)
-            .clickable { onClick() }
-            .padding(horizontal = 14.dp, vertical = 8.dp),
-    ) {
-        Text(
-            label,
-            color = if (selected) KropiColors.background else KropiColors.foreground,
-            fontSize = 12.sp,
-            fontWeight = FontWeight.Bold,
-        )
-    }
-}
-
-@Composable
-private fun HourStepper(label: String, hour: Int, onChange: (Int) -> Unit) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(label, color = KropiColors.mutedForeground, fontSize = 11.sp)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StepperButton("−") { onChange(hour - 1) }
-            Text(
-                String.format("%02d:00", hour),
-                color = KropiColors.foreground,
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Bold,
-                modifier = Modifier.width(56.dp),
-            )
-            StepperButton("+") { onChange(hour + 1) }
-        }
-    }
-}
-
-@Composable
-private fun StepperButton(symbol: String, onClick: () -> Unit) {
-    Box(
-        modifier = Modifier
-            .size(28.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(KropiColors.secondary)
-            .clickable { onClick() },
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(symbol, color = KropiColors.foreground, fontWeight = FontWeight.Bold)
-    }
-}
-
-@Composable
-private fun SizeLabel(text: String) {
-    Text(text, color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-}
-
-private enum class WidgetVariant { SMALL, MEDIUM, LARGE }
-
-@Composable
-private fun WidgetCard(
-    state: HydrationState,
-    variant: WidgetVariant,
-    onAdd: (Int) -> Unit,
-    onUndo: () -> Unit,
-    onPoke: () -> Unit,
-    modifier: Modifier,
-) {
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(28.dp))
-            .background(KropiColors.card)
-            .padding(if (variant == WidgetVariant.SMALL) 12.dp else 18.dp),
-    ) {
-        when (variant) {
-            WidgetVariant.SMALL -> SmallBody(state, onPoke)
-            WidgetVariant.MEDIUM -> MediumLargeBody(state, large = false, onAdd, onUndo, onPoke)
-            WidgetVariant.LARGE -> MediumLargeBody(state, large = true, onAdd, onUndo, onPoke)
-        }
-    }
-}
-
-@Composable
-private fun SmallBody(state: HydrationState, onPoke: () -> Unit) {
-    val pct = (state.progress * 100).toInt()
-    Column(
-        modifier = Modifier.fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.Center,
-    ) {
-        Box(contentAlignment = Alignment.Center, modifier = Modifier.size(84.dp)) {
-            ProgressRingCanvas(progress = state.progress.toFloat(), modifier = Modifier.fillMaxSize())
-            MascotCanvas(level = state.level, modifier = Modifier.size(38.dp).clickable { onPoke() })
-        }
-        Text("$pct%", color = KropiColors.foreground, fontSize = 17.sp, fontWeight = FontWeight.Bold)
-        Text("${state.total} / ${state.goal} ml", color = KropiColors.mutedForeground, fontSize = 10.sp)
-    }
-}
-
-@Composable
-private fun MediumLargeBody(
-    state: HydrationState,
-    large: Boolean,
-    onAdd: (Int) -> Unit,
-    onUndo: () -> Unit,
-    onPoke: () -> Unit,
-) {
-    Column(modifier = Modifier.fillMaxSize()) {
-        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (large) 88.dp else 68.dp)) {
-                ProgressRingCanvas(progress = state.progress.toFloat(), modifier = Modifier.fillMaxSize())
-                Text(
-                    "${(state.progress * 100).toInt()}%",
-                    color = KropiColors.foreground,
-                    fontSize = if (large) 18.sp else 15.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-            }
-            Spacer(Modifier.width(14.dp))
-            Column(modifier = Modifier.weight(1f)) {
-                Text(
-                    "Nawodnienie • ${state.streak} dni",
-                    color = KropiColors.mutedForeground,
-                    fontSize = 11.sp,
-                )
-                Text(
-                    "${state.total} / ${state.goal} ml",
-                    color = KropiColors.foreground,
-                    fontSize = if (large) 22.sp else 18.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    if (state.remaining > 0) "Zostało ${state.remaining} ml" else "Cel osiągnięty 🎉",
-                    color = KropiColors.aqua,
-                    fontSize = 11.sp,
-                )
-                if (large) {
-                    Text(
-                        state.selfCare,
-                        color = KropiColors.foreground,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
-            }
-            if (large) {
-                MascotCanvas(level = state.level, modifier = Modifier.size(72.dp).clickable { onPoke() })
-            }
-        }
-
-        Spacer(Modifier.height(if (large) 14.dp else 8.dp))
-        BottleRow(compact = !large, onAdd = onAdd, onUndo = onUndo)
-
-        if (large) {
-            Spacer(Modifier.height(14.dp))
-            HourlyBars(state.intakes, state.goal)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(KropiColors.secondary)
-                    .padding(10.dp),
-            ) {
-                Text("Czy wiesz, że… ${state.fact}", color = KropiColors.mutedForeground, fontSize = 11.sp)
-            }
-        }
-    }
-}
-
-private val WidgetBottles = listOf(100, 250, 330, 500, 750)
-
-@Composable
-private fun BottleRow(compact: Boolean, onAdd: (Int) -> Unit, onUndo: () -> Unit) {
-    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (ml in WidgetBottles) {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .height(if (compact) 56.dp else 64.dp)
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(KropiColors.secondary)
-                    .clickable { onAdd(ml) }
-                    .padding(vertical = 6.dp),
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                BottleGlyphCanvas(fill = (ml / 750f).coerceIn(0.15f, 1f), modifier = Modifier.width(16.dp).height(28.dp))
-                Text("$ml", color = KropiColors.foreground, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-        }
-        Box(
-            modifier = Modifier
-                .width(36.dp)
-                .height(if (compact) 56.dp else 64.dp)
-                .clip(RoundedCornerShape(16.dp))
-                .background(KropiColors.secondary)
-                .clickable { onUndo() },
-            contentAlignment = Alignment.Center,
-        ) {
-            Text("↺", color = KropiColors.mutedForeground, fontSize = 18.sp)
-        }
-    }
-}
-
-@Composable
-private fun HourlyBars(intakes: List<Intake>, goal: Int) {
-    val buckets = (0 until 16).map { i ->
-        val h = i + 6
-        intakes.filter { it.hour == h }.sumOf { it.ml }
-    }
-    val max = (goal / 4).coerceAtLeast(buckets.maxOrNull() ?: 1)
-    Row(modifier = Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        for (ml in buckets) {
-            val fraction = (ml.toFloat() / max).coerceIn(0.05f, 1f)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height((fraction * 36).dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(if (ml > 0) KropiColors.aqua.copy(alpha = 0.85f) else KropiColors.secondary),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun ProgressRingCanvas(progress: Float, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val stroke = size.minDimension * 0.09f
-        val d = size.minDimension - stroke
-        val topLeft = Offset((size.width - d) / 2f, (size.height - d) / 2f)
-        drawArc(
-            color = KropiColors.secondary,
-            startAngle = 0f,
-            sweepAngle = 360f,
-            useCenter = false,
-            topLeft = topLeft,
-            size = Size(d, d),
-            style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-        )
-        drawArc(
-            brush = Brush.linearGradient(listOf(KropiColors.aqua, KropiColors.aquaDeep)),
-            startAngle = -90f,
-            sweepAngle = 360f * progress.coerceIn(0f, 1f),
-            useCenter = false,
-            topLeft = topLeft,
-            size = Size(d, d),
-            style = Stroke(width = stroke, cap = androidx.compose.ui.graphics.StrokeCap.Round),
-        )
-    }
-}
-
-@Composable
-private fun MascotCanvas(level: Level, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val scale = kotlin.math.min(size.width, size.height) / 104f
-        val cx = size.width / 2f
-        val cy = size.height / 2f - 4f * scale
-
-        fun px(x: Float, y: Float) = Offset(cx + x * scale, cy + y * scale)
-
-        val alpha = when (level) {
-            Level.LOW -> 0.65f
-            Level.MID -> 0.85f
-            Level.HIGH, Level.DONE -> 1f
-        }
-
-        val body = Path().apply {
-            moveTo(px(0f, -48f).x, px(0f, -48f).y)
-            cubicTo(
-                px(22f, -18f).x, px(22f, -18f).y,
-                px(40f, -2f).x, px(40f, -2f).y,
-                px(40f, 16f).x, px(40f, 16f).y,
-            )
-            val arcTopLeft = px(-40f, -24f)
-            val arcSize = Size(80f * scale, 80f * scale)
-            arcTo(androidx.compose.ui.geometry.Rect(arcTopLeft, arcSize), 0f, 180f, false)
-            cubicTo(
-                px(-40f, -2f).x, px(-40f, -2f).y,
-                px(-22f, -18f).x, px(-22f, -18f).y,
-                px(0f, -48f).x, px(0f, -48f).y,
-            )
-            close()
-        }
-        drawPath(
-            body,
-            brush = Brush.linearGradient(
-                listOf(KropiColors.aqua, KropiColors.aquaDeep),
-                start = px(0f, -48f),
-                end = px(0f, 56f),
-            ),
-            alpha = alpha,
-        )
-
-        val eyeWhite = KropiColors.card.copy(alpha = 0.9f)
-        drawOvalAt(px(-22f, -16f), px(-6f, 4f), eyeWhite)
-        drawOvalAt(px(6f, -16f), px(22f, 4f), eyeWhite)
-
-        val pupil = Color(0xFF0A1F2C)
-        drawCircle(pupil, radius = 4f * scale, center = px(-12f, -4f))
-        drawCircle(pupil, radius = 4f * scale, center = px(16f, -4f))
-
-        val mouth = Path()
-        val start = when (level) {
-            Level.LOW -> Offset(-7f, 9f + 14f)
-            Level.MID -> Offset(-7f, 7f + 14f)
-            Level.HIGH -> Offset(-8f, 6f + 14f)
-            Level.DONE -> Offset(-9f, 5f + 14f)
-        }
-        val ctrl = when (level) {
-            Level.LOW -> Offset(7f, -5f) to Offset(14f, 0f)
-            Level.MID -> Offset(7f, 6f) to Offset(14f, 0f)
-            Level.HIGH -> Offset(8f, 9f) to Offset(16f, 0f)
-            Level.DONE -> Offset(9f, 12f) to Offset(18f, 0f)
-        }
-        val startPx = px(start.x, start.y)
-        mouth.moveTo(startPx.x, startPx.y)
-        val controlPx = px(start.x + ctrl.first.x, start.y + ctrl.first.y)
-        val endPx = px(start.x + ctrl.second.x, start.y + ctrl.second.y)
-        mouth.quadraticBezierTo(controlPx.x, controlPx.y, endPx.x, endPx.y)
-        drawPath(mouth, color = KropiColors.card, style = Stroke(width = 4f * scale, cap = androidx.compose.ui.graphics.StrokeCap.Round))
-
-        val cheek = KropiColors.card.copy(alpha = 0.25f)
-        drawOvalAt(px(-31f, 10f), px(-17f, 18f), cheek)
-        drawOvalAt(px(19f, 10f), px(33f, 18f), cheek)
-    }
-}
-
-private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawOvalAt(topLeft: Offset, bottomRight: Offset, color: Color) {
-    drawOval(color = color, topLeft = topLeft, size = Size(bottomRight.x - topLeft.x, bottomRight.y - topLeft.y))
-}
-
-@Composable
-private fun BottleGlyphCanvas(fill: Float, modifier: Modifier = Modifier) {
-    Canvas(modifier = modifier) {
-        val cap = Size(size.width * 0.3f, size.height * 0.08f)
-        drawRoundRect(
-            color = KropiColors.aqua.copy(alpha = 0.55f),
-            topLeft = Offset((size.width - cap.width) / 2f, 0f),
-            size = cap,
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(2f, 2f),
-        )
-        val bodyTop = cap.height + size.height * 0.06f
-        val bodySize = Size(size.width, size.height - bodyTop)
-        drawRoundRect(
-            color = KropiColors.aqua.copy(alpha = 0.35f),
-            topLeft = Offset(0f, bodyTop),
-            size = bodySize,
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.35f, size.width * 0.35f),
-        )
-        val fillHeight = bodySize.height * fill
-        drawRoundRect(
-            color = KropiColors.aqua,
-            topLeft = Offset(size.width * 0.08f, bodyTop + bodySize.height - fillHeight),
-            size = Size(size.width * 0.84f, fillHeight),
-            cornerRadius = androidx.compose.ui.geometry.CornerRadius(size.width * 0.3f, size.width * 0.3f),
-        )
-    }
+private enum class Tab(val label: String, val emoji: String) {
+    HOME("Główny", "🏠"),
+    WIDGET("Widget", "🔲"),
+    HISTORY("Historia", "📅"),
+    INSIGHTS("Treści", "💡"),
+    SETTINGS("Ustawienia", "⚙️"),
 }
