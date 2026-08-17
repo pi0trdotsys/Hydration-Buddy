@@ -28,6 +28,34 @@ export const WEEK = [
   { day: "So", pct: 0.48 },
 ];
 
+export type HistoryDay = {
+  day: string;
+  date: string;
+  ml: number;
+  goal: number;
+  pct: number;
+  reached: boolean;
+};
+
+export const HISTORY: HistoryDay[] = [
+  { day: "Pn", date: "11.08", ml: 2050, goal: 2500, pct: 0.82, reached: false },
+  { day: "Wt", date: "12.08", ml: 2500, goal: 2500, pct: 1, reached: true },
+  { day: "Śr", date: "13.08", ml: 1600, goal: 2500, pct: 0.64, reached: false },
+  { day: "Cz", date: "14.08", ml: 2375, goal: 2500, pct: 0.95, reached: false },
+  { day: "Pt", date: "15.08", ml: 2500, goal: 2500, pct: 1, reached: true },
+  { day: "So", date: "16.08", ml: 1200, goal: 2500, pct: 0.48, reached: false },
+];
+
+export const DAY_NAMES: Record<string, string> = {
+  Pn: "Poniedziałek",
+  Wt: "Wtorek",
+  Śr: "Środa",
+  Cz: "Czwartek",
+  Pt: "Piątek",
+  So: "Sobota",
+  Nd: "Niedziela",
+};
+
 export function useHydrationMock() {
   const [goal, setGoal] = useState(2500);
   const [intakes, setIntakes] = useState<Intake[]>(SEED_INTAKES);
