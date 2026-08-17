@@ -69,7 +69,7 @@ export function HydrationWidget({
         "glass relative isolate overflow-hidden rounded-3xl p-4",
         size === "sm" && "aspect-square max-w-44",
         size === "md" && "max-w-md",
-        size === "lg" && "max-w-2xl p-6",
+        size === "lg" && "max-w-2xl p-4 sm:p-6",
         className,
       )}
       aria-label="Widget nawodnienia"
@@ -90,8 +90,8 @@ export function HydrationWidget({
 
       {size !== "sm" && (
         <div className="relative flex flex-col gap-4">
-          <div className="flex items-center gap-5">
-            <ProgressRing progress={state.progress} size={size === "lg" ? 150 : 118}>
+          <div className="flex items-center gap-4 sm:gap-5">
+            <ProgressRing progress={state.progress} size={size === "lg" ? 128 : 108}>
               <span className="font-display text-2xl font-bold">{pct}%</span>
               <span className="text-[10px] tracking-wide text-muted-foreground uppercase">
                 dziś
@@ -106,7 +106,7 @@ export function HydrationWidget({
                   <Flame className="size-3.5" /> {state.streak} dni
                 </span>
               </div>
-              <p className="font-display mt-1 text-3xl font-bold">
+              <p className="font-display mt-1 text-2xl font-bold sm:text-3xl">
                 {state.total.toLocaleString("pl-PL")}
                 <span className="text-base font-medium text-muted-foreground">
                   {" "}
