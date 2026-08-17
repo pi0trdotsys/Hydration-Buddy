@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { CalendarDays, History } from "lucide-react";
+import { CalendarDays, History as HistoryIcon } from "lucide-react";
 import { useHydrationMock } from "@/hooks/use-hydration-mock";
 import { HistoryWeekChart } from "@/components/hydration/history-week-chart";
 import { MascotDrop } from "@/components/hydration/mascot-drop";
@@ -32,7 +32,7 @@ function History() {
           Tydzień 17.08 – 23.08
         </p>
         <h1 className="mt-1 flex items-center gap-2 text-2xl font-bold sm:text-3xl">
-          <History className="size-6 text-primary" />
+          <HistoryIcon className="size-6 text-primary" />
           Historia nawodnienia
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
