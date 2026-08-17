@@ -62,7 +62,7 @@ export function BottlePicker({
           onClick={() => tap(b.ml)}
           className={cn(
             "group glass flex flex-col items-center gap-1 rounded-2xl px-3 py-2 text-primary transition-all hover:-translate-y-0.5 hover:border-primary/50 active:scale-95",
-            compact ? "min-w-14" : "min-w-18",
+            compact ? "min-w-0 sm:min-w-14" : "min-w-0 sm:min-w-18",
             pulsed === b.ml && "animate-pulse-ring border-primary/70",
           )}
           aria-label={`Dodaj ${b.ml} ml (${b.label})`}
@@ -82,7 +82,7 @@ export function BottlePicker({
             step={50}
             value={customMl}
             onChange={(e) => setCustomMl(Number(e.target.value))}
-            className="w-24 accent-primary"
+            className="w-full max-w-24 accent-primary"
             aria-label="Własna pojemność w ml"
           />
           <button
@@ -99,7 +99,7 @@ export function BottlePicker({
           onClick={() => setCustom(true)}
           className={cn(
             "glass flex flex-col items-center justify-center gap-1 rounded-2xl border-dashed px-3 py-2 text-muted-foreground transition-colors hover:text-primary",
-            compact ? "min-w-14" : "min-w-18",
+            compact ? "min-w-0 sm:min-w-14" : "min-w-0 sm:min-w-18",
           )}
           aria-label="Własna pojemność"
         >

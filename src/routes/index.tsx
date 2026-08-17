@@ -58,7 +58,7 @@ function Index() {
       </div>
 
 
-      <section className="mt-6 grid gap-4 lg:grid-cols-[1.2fr_1fr]">
+      <section className="mt-4 grid gap-5 sm:mt-6 lg:grid-cols-[1.2fr_1fr]">
         <div>
           <h2 className="mb-3 flex items-center gap-2 text-lg font-semibold">
             <Droplets className="size-4 text-primary" /> Dzisiejsze łyki
