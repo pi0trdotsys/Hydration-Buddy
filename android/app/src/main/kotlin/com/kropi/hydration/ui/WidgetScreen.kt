@@ -69,8 +69,8 @@ fun WidgetScreen(
         item { SizeLabel("Mały (1×1)") }
         item { WidgetCard(state, WidgetVariant.SMALL, onAdd, onUndo, onPoke, Modifier.size(140.dp)) }
         item { SizeLabel("Średni (2×1)") }
-        item { WidgetCard(state, WidgetVariant.MEDIUM, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(150.dp)) }
+        item { WidgetCard(state, WidgetVariant.MEDIUM, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(192.dp)) }
         item { SizeLabel("Duży (2×2)") }
-        item { WidgetCard(state, WidgetVariant.LARGE, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(320.dp)) }
+        item { WidgetCard(state, WidgetVariant.LARGE, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(400.dp)) }
     }
 }

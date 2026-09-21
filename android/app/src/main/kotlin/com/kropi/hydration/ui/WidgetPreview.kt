@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -28,15 +27,21 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kropi.hydration.data.HydrationState
-import com.kropi.hydration.data.Intake
+import com.kropi.hydration.data.paceLine
+import com.kropi.hydration.data.plan
+import com.kropi.hydration.data.summaryLine
+import com.kropi.hydration.widget.IntakeChart
+import java.time.LocalTime
 import com.kropi.hydration.data.Level
 
 /**
@@ -94,6 +99,7 @@ private fun MediumLargeBody(
     onUndo: () -> Unit,
     onPoke: () -> Unit,
 ) {
+    val plan = state.plan()
     Column(modifier = Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (large) 88.dp else 68.dp)) {
@@ -115,13 +121,19 @@ private fun MediumLargeBody(
                 Text(
                     "${state.total} / ${state.goal} ml",
                     color = KropiColors.foreground,
-                    fontSize = if (large) 22.sp else 18.sp,
+                    fontSize = if (large) 20.sp else 18.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
                     if (state.remaining > 0) "Zostało ${state.remaining} ml" else "Cel osiągnięty 🎉",
                     color = KropiColors.aqua,
                     fontSize = 11.sp,
+                )
+                Text(
+                    state.paceLine(plan),
+                    color = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    fontWeight = if (state.isBehindSchedule) FontWeight.Bold else FontWeight.Normal,
                 )
                 if (large) {
                     Text(
@@ -142,18 +154,16 @@ private fun MediumLargeBody(
         BottleRow(compact = !large, onAdd = onAdd, onUndo = onUndo)
 
         if (large) {
-            Spacer(Modifier.height(14.dp))
-            HourlyBars(state.intakes, state.goal)
-            Spacer(Modifier.height(10.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(16.dp))
-                    .background(KropiColors.secondary)
-                    .padding(10.dp),
-            ) {
-                Text("Czy wiesz, że… ${state.fact}", color = KropiColors.mutedForeground, fontSize = 11.sp)
-            }
+            Spacer(Modifier.height(12.dp))
+            IntakeChartCanvas(state, modifier = Modifier.fillMaxWidth().height(76.dp))
+            Text("━ wypite   ┈ plan dnia", color = KropiColors.mutedForeground, fontSize = 10.sp)
+            Spacer(Modifier.height(8.dp))
+            Text(
+                plan.summaryLine(),
+                color = KropiColors.aqua,
+                fontSize = 12.sp,
+                fontWeight = FontWeight.Bold,
+            )
         }
     }
 }
@@ -193,30 +203,28 @@ fun BottleRow(compact: Boolean, onAdd: (Int) -> Unit, onUndo: () -> Unit) {
     }
 }
 
+/**
+ * Ten sam wykres, co na widgecie na ekranie głównym — rysowany tym samym kodem
+ * ([IntakeChart]), tylko po Canvasie Compose zamiast po bitmapie dla Glance.
+ * Zastąpił nieopisane słupki godzinowe: teraz widać schodek na każdy łyk (z jego
+ * objętością), linię planu dnia, oś godzin i znacznik "teraz".
+ */
 @Composable
-fun HourlyBars(intakes: List<Intake>, goal: Int) {
-    val buckets = (0 until 16).map { i ->
-        val h = i + 6
-        intakes.filter { it.hour == h }.sumOf { it.ml }
-    }
-    val max = (goal / 4).coerceAtLeast(buckets.maxOrNull() ?: 1)
-    Row(modifier = Modifier.fillMaxWidth().height(40.dp), horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-        for (ml in buckets) {
-            val fraction = (ml.toFloat() / max).coerceIn(0.05f, 1f)
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight(),
-                contentAlignment = Alignment.BottomCenter,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height((fraction * 36).dp)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(if (ml > 0) KropiColors.aqua.copy(alpha = 0.85f) else KropiColors.secondary),
-                )
-            }
+fun IntakeChartCanvas(state: HydrationState, modifier: Modifier = Modifier) {
+    val now = LocalTime.now()
+    Canvas(modifier = modifier) {
+        drawIntoCanvas { canvas ->
+            IntakeChart.draw(
+                canvas = canvas.nativeCanvas,
+                width = size.width,
+                height = size.height,
+                density = density,
+                intakes = state.intakes,
+                goalMl = state.goal,
+                startHour = state.settings.activeStartHour,
+                endHour = state.settings.activeEndHour,
+                nowMinutes = now.hour * 60 + now.minute,
+            )
         }
     }
 }

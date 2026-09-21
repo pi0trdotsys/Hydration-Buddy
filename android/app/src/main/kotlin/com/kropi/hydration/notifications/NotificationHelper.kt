@@ -11,7 +11,9 @@ import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import com.kropi.hydration.R
+import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationState
+import com.kropi.hydration.data.formatMl
 import com.kropi.hydration.ui.MainActivity
 
 object NotificationHelper {
@@ -46,17 +48,30 @@ object NotificationHelper {
 
     private fun longLongArrayOf(vararg v: Long) = v
 
-    fun buildReminderNotification(context: Context, state: HydrationState, title: String, body: String): Notification {
+    /**
+     * Powiadomienie liczone pod konkretnego użytkownika: przycisk dolewa dokładnie
+     * tyle, ile przewiduje najbliższa porcja z planu ([HydrationPlan]), pasek
+     * postępu pokazuje dzisiejszy bilans, a rozwinięta treść — cały rozkład
+     * godzin, po których cel dnia się domyka.
+     */
+    fun buildReminderNotification(
+        context: Context,
+        state: HydrationState,
+        plan: HydrationPlan,
+        title: String,
+        shortText: String,
+        fullText: String,
+    ): Notification {
         val openAppIntent = PendingIntent.getActivity(
             context, 0,
             Intent(context, MainActivity::class.java),
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
-        val glassMl = state.settings.reminderGlassMl
+        val portionMl = plan.next?.ml ?: state.settings.reminderGlassMl
         val drinkIntent = Intent(context, DrinkActionReceiver::class.java).apply {
             action = DrinkActionReceiver.ACTION_MARK_DRUNK
-            putExtra(DrinkActionReceiver.EXTRA_ML, glassMl)
+            putExtra(DrinkActionReceiver.EXTRA_ML, portionMl)
         }
         val drinkPendingIntent = PendingIntent.getBroadcast(
             context, 1, drinkIntent,
@@ -71,17 +86,25 @@ object NotificationHelper {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
 
+        val pct = (state.progress * 100).toInt()
+
         return NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(0xFF00DFE8.toInt())
             .setContentTitle(title)
-            .setContentText(body)
-            .setStyle(NotificationCompat.BigTextStyle().bigText(body))
+            .setContentText(shortText)
+            .setSubText("$pct% • cel ${formatMl(state.goal)}")
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .setBigContentTitle(title)
+                    .bigText(fullText),
+            )
+            .setProgress(state.goal.coerceAtLeast(1), state.total.coerceAtMost(state.goal), false)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(openAppIntent)
-            .addAction(0, "💧 Wypiłem/-am $glassMl ml", drinkPendingIntent)
+            .addAction(0, "💧 Wypiłem/-am ${formatMl(portionMl)}", drinkPendingIntent)
             .addAction(0, "Za 20 min", snoozePendingIntent)
             .build()
     }

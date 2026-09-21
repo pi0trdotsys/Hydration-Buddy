@@ -25,6 +25,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kropi.hydration.data.HydrationState
+import com.kropi.hydration.data.detailText
+import com.kropi.hydration.data.plan
 import com.kropi.hydration.data.WeekDay
 import java.time.LocalDate
 import java.time.format.TextStyle
@@ -54,8 +56,13 @@ fun HomeScreen(
                 onAdd = onAdd,
                 onUndo = onUndo,
                 onPoke = onPoke,
-                modifier = Modifier.fillMaxWidth().height(360.dp),
+                modifier = Modifier.fillMaxWidth().height(420.dp),
             )
+        }
+        item {
+            // Ta sama kalkulacja, którą dostajesz w powiadomieniu — żeby plan dnia
+            // dało się sprawdzić bez czekania na przypomnienie.
+            InsightCard(eyebrow = "Plan na resztę dnia", body = state.plan().detailText())
         }
         item { InsightCard(eyebrow = "Self-care na dziś", body = state.selfCareAlt) }
         item { InsightCard(eyebrow = "Ciekawostka", body = state.fact) }

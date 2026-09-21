@@ -1,6 +1,9 @@
 package com.kropi.hydration.widget
 
 import android.content.Context
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.unit.DpSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -21,6 +24,7 @@ import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
 import androidx.glance.layout.Column
+import androidx.glance.layout.ContentScale
 import androidx.glance.layout.Row
 import androidx.glance.layout.RowScope
 import androidx.glance.layout.Spacer
@@ -32,13 +36,15 @@ import androidx.glance.layout.size
 import androidx.glance.layout.width
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
-import androidx.glance.text.TextAlign
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
-import com.kropi.hydration.data.Intake
 import com.kropi.hydration.data.Level
+import com.kropi.hydration.data.paceLine
+import com.kropi.hydration.data.plan
+import com.kropi.hydration.data.summaryLine
+import java.time.LocalTime
 
 private val SizeSmall = DpSize(120.dp, 120.dp)
 private val SizeMedium = DpSize(250.dp, 130.dp)
@@ -57,8 +63,17 @@ class HydrationWidget : GlanceAppWidget() {
     override val sizeMode = SizeMode.Responsive(setOf(SizeSmall, SizeMedium, SizeLarge))
 
     override suspend fun provideGlance(context: Context, id: GlanceId) {
-        val state = HydrationRepository(context).current()
+        val repository = HydrationRepository(context)
+        // Przewinięcie doby (i zasiew przy pierwszym uruchomieniu) robimy raz,
+        // przed kompozycją — to jedyny zapis, jaki widget wykonuje sam z siebie.
+        val initial = repository.current()
         provideContent {
+            // Stan zbieramy jako Flow WEWNĄTRZ kompozycji. Wcześniej był czytany
+            // jednorazowo przed provideContent, więc kolejne update() trafiały na
+            // tę samą, zamrożoną wartość: drugie dolanie wody pod rząd nie
+            // zmieniało już nic na ekranie głównym. Teraz każdy zapis do
+            // DataStore odświeża widget sam z siebie.
+            val state by repository.state.collectAsState(initial = initial)
             HydrationWidgetContent(state)
         }
     }
@@ -82,7 +97,7 @@ private fun HydrationWidgetContent(state: HydrationState) {
             .fillMaxSize()
             .background(CardBg)
             .cornerRadius(28.dp)
-            .padding(if (variant == "sm") 10.dp else 16.dp),
+            .padding(if (variant == "sm") 10.dp else 14.dp),
         contentAlignment = Alignment.Center,
     ) {
         when (variant) {
@@ -110,10 +125,11 @@ private fun SmallContent(state: HydrationState) {
 @androidx.compose.runtime.Composable
 private fun MediumLargeContent(state: HydrationState, large: Boolean) {
     val pct = (state.progress * 100).toInt()
+    val plan = state.plan()
 
     Column(modifier = GlanceModifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth()) {
-            RingWithPercent(progress = state.progress.toFloat(), pct = pct, ringSize = if (large) 74.dp else 58.dp)
+            RingWithPercent(progress = state.progress.toFloat(), pct = pct, ringSize = if (large) 70.dp else 58.dp)
             Spacer(GlanceModifier.width(12.dp))
             Column(modifier = GlanceModifier.defaultWeight()) {
                 Text(
@@ -132,7 +148,7 @@ private fun MediumLargeContent(state: HydrationState, large: Boolean) {
                     maxLines = 1,
                 )
                 Text(
-                    "Do teraz: ${state.targetSoFar} ml",
+                    state.paceLine(plan),
                     style = TextStyle(
                         color = if (state.isBehindSchedule) Warn else Muted,
                         fontSize = 9.sp,
@@ -141,40 +157,36 @@ private fun MediumLargeContent(state: HydrationState, large: Boolean) {
                     maxLines = 1,
                 )
                 if (large) {
-                    Spacer(GlanceModifier.height(4.dp))
                     Text(
                         state.selfCare,
-                        style = TextStyle(color = Foreground, fontSize = 10.sp),
+                        style = TextStyle(color = Muted, fontSize = 9.sp),
                         maxLines = 2,
                     )
                 }
             }
             if (large) {
                 Spacer(GlanceModifier.width(8.dp))
-                MascotImage(level = state.level, sizeDp = 56.dp)
+                MascotImage(level = state.level, sizeDp = 52.dp)
             }
         }
 
-        Spacer(GlanceModifier.height(if (large) 10.dp else 6.dp))
+        Spacer(GlanceModifier.height(if (large) 8.dp else 6.dp))
         BottleRow(compact = !large)
 
         if (large) {
-            Spacer(GlanceModifier.height(10.dp))
-            HourlyChart(state.intakes, state.goal)
             Spacer(GlanceModifier.height(8.dp))
-            Box(
-                modifier = GlanceModifier
-                    .fillMaxWidth()
-                    .background(Secondary)
-                    .cornerRadius(14.dp)
-                    .padding(8.dp),
-            ) {
-                Text(
-                    "Czy wiesz, że… ${state.fact}",
-                    style = TextStyle(color = Muted, fontSize = 9.sp),
-                    maxLines = 3,
-                )
-            }
+            IntakeChartImage(state, heightDp = 56.dp)
+            Text(
+                "━ wypite   ┈ plan dnia",
+                style = TextStyle(color = Muted, fontSize = 8.sp),
+                maxLines = 1,
+            )
+            Spacer(GlanceModifier.height(4.dp))
+            Text(
+                plan.summaryLine(),
+                style = TextStyle(color = Aqua, fontSize = 9.sp, fontWeight = FontWeight.Bold),
+                maxLines = 2,
+            )
         }
     }
 }
@@ -187,17 +199,49 @@ private fun dpToPx(dp: androidx.compose.ui.unit.Dp): Int {
 }
 
 @androidx.compose.runtime.Composable
+private fun IntakeChartImage(state: HydrationState, heightDp: androidx.compose.ui.unit.Dp) {
+    val density = androidx.glance.LocalContext.current.resources.displayMetrics.density
+    // LocalSize w trybie Responsive zwraca rozmiar kubełka, nie fizyczną
+    // szerokość — bitmapa jest potem dociągana do boksu przez FillBounds.
+    val widthPx = ((LocalSize.current.width - 28.dp).value * density).toInt()
+    val heightPx = (heightDp.value * density).toInt()
+    val now = LocalTime.now()
+    val nowMinutes = now.hour * 60 + now.minute
+
+    val bitmap = remember(state.intakes, state.goal, widthPx, nowMinutes) {
+        intakeChartBitmap(
+            widthPx = widthPx,
+            heightPx = heightPx,
+            density = density,
+            intakes = state.intakes,
+            goalMl = state.goal,
+            startHour = state.settings.activeStartHour,
+            endHour = state.settings.activeEndHour,
+            nowMinutes = nowMinutes,
+        )
+    }
+    Image(
+        provider = ImageProvider(bitmap),
+        contentDescription = "Wypita woda w czasie: ${state.total} ml z ${state.goal} ml",
+        contentScale = ContentScale.FillBounds,
+        modifier = GlanceModifier.fillMaxWidth().height(heightDp),
+    )
+}
+
+@androidx.compose.runtime.Composable
 private fun RingWithMascot(progress: Float, level: Level, ringSize: androidx.compose.ui.unit.Dp, mascotSize: androidx.compose.ui.unit.Dp) {
     val ringPx = dpToPx(ringSize)
     val mascotPx = dpToPx(mascotSize)
     Box(modifier = GlanceModifier.size(ringSize), contentAlignment = Alignment.Center) {
         Image(
-            provider = ImageProvider(WidgetGraphics.progressRing(ringPx, ringPx * 0.09f, progress)),
+            provider = ImageProvider(
+                remember(ringPx, progress) { WidgetGraphics.progressRing(ringPx, ringPx * 0.09f, progress) },
+            ),
             contentDescription = null,
             modifier = GlanceModifier.size(ringSize),
         )
         Image(
-            provider = ImageProvider(WidgetGraphics.mascot(mascotPx, level)),
+            provider = ImageProvider(remember(mascotPx, level) { WidgetGraphics.mascot(mascotPx, level) }),
             contentDescription = "Kropi",
             modifier = GlanceModifier.size(mascotSize).clickable(actionRunCallback<PokeMascotAction>()),
         )
@@ -209,7 +253,9 @@ private fun RingWithPercent(progress: Float, pct: Int, ringSize: androidx.compos
     val ringPx = dpToPx(ringSize)
     Box(modifier = GlanceModifier.size(ringSize), contentAlignment = Alignment.Center) {
         Image(
-            provider = ImageProvider(WidgetGraphics.progressRing(ringPx, ringPx * 0.1f, progress)),
+            provider = ImageProvider(
+                remember(ringPx, progress) { WidgetGraphics.progressRing(ringPx, ringPx * 0.1f, progress) },
+            ),
             contentDescription = null,
             modifier = GlanceModifier.size(ringSize),
         )
@@ -223,7 +269,7 @@ private fun RingWithPercent(progress: Float, pct: Int, ringSize: androidx.compos
 private fun MascotImage(level: Level, sizeDp: androidx.compose.ui.unit.Dp) {
     val px = dpToPx(sizeDp)
     Image(
-        provider = ImageProvider(WidgetGraphics.mascot(px, level)),
+        provider = ImageProvider(remember(px, level) { WidgetGraphics.mascot(px, level) }),
         contentDescription = "Kropi",
         modifier = GlanceModifier.size(sizeDp).clickable(actionRunCallback<PokeMascotAction>()),
     )
@@ -238,7 +284,7 @@ private fun BottleRow(compact: Boolean) {
             BottleChip(ml, compact)
             Spacer(GlanceModifier.width(4.dp))
         }
-        UndoChip()
+        UndoChip(compact)
     }
 }
 
@@ -248,7 +294,7 @@ private fun RowScope.BottleChip(ml: Int, compact: Boolean) {
     Box(
         modifier = GlanceModifier
             .defaultWeight()
-            .height(if (compact) 52.dp else 58.dp)
+            .height(if (compact) 52.dp else 54.dp)
             .background(Secondary)
             .cornerRadius(14.dp)
             .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to ml)))
@@ -284,40 +330,16 @@ private fun BottleGlyph(fill: Float) {
 }
 
 @androidx.compose.runtime.Composable
-private fun UndoChip() {
+private fun UndoChip(compact: Boolean) {
     Box(
         modifier = GlanceModifier
             .width(32.dp)
-            .height(58.dp)
+            .height(if (compact) 52.dp else 54.dp)
             .background(Secondary)
             .cornerRadius(14.dp)
             .clickable(actionRunCallback<UndoWaterAction>()),
         contentAlignment = Alignment.Center,
     ) {
         Text("↺", style = TextStyle(color = Muted, fontSize = 16.sp))
-    }
-}
-
-@androidx.compose.runtime.Composable
-private fun HourlyChart(intakes: List<Intake>, goal: Int) {
-    val buckets = (0 until 8).map { i ->
-        val hStart = 6 + i * 2
-        val hEnd = hStart + 1
-        intakes.filter { it.hour == hStart || it.hour == hEnd }.sumOf { it.ml }
-    }
-    val max = (goal / 4).coerceAtLeast(buckets.maxOrNull() ?: 1)
-    Row(modifier = GlanceModifier.fillMaxWidth().height(34.dp), verticalAlignment = Alignment.Bottom) {
-        for (ml in buckets) {
-            val h = ((ml.toFloat() / max) * 30f).coerceIn(2f, 30f)
-            Box(modifier = GlanceModifier.defaultWeight().padding(horizontal = 1.dp), contentAlignment = Alignment.BottomCenter) {
-                Box(
-                    modifier = GlanceModifier
-                        .fillMaxWidth()
-                        .height(h.dp)
-                        .background(if (ml > 0) Aqua else Secondary)
-                        .cornerRadius(3.dp),
-                ) {}
-            }
-        }
     }
 }
