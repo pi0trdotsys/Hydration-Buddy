@@ -12,6 +12,15 @@ import com.kropi.hydration.data.Daypart
 import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
+import com.kropi.hydration.data.Level
+import com.kropi.hydration.data.NotificationTone
+import com.kropi.hydration.data.SNARK_CLOSERS
+import com.kropi.hydration.data.SNARK_JABS
+import com.kropi.hydration.data.SNARK_TITLES
+import com.kropi.hydration.data.SNARK_TITLES_AFTER_HOURS
+import com.kropi.hydration.data.SNARK_TITLES_BEHIND
+import com.kropi.hydration.data.pick
+import com.kropi.hydration.data.snarkGapJab
 import com.kropi.hydration.data.PlanStatus
 import com.kropi.hydration.data.daypartFor
 import com.kropi.hydration.data.formatMl
@@ -93,21 +102,36 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val daypart = daypartFor(LocalTime.now().hour)
         val gap = (state.targetSoFar - state.total).coerceAtLeast(0)
         val pct = (state.progress * 100).toInt()
+        val snarky = state.settings.notificationTone == NotificationTone.SNARKY
+        val seed = state.intakes.size * 7 + LocalTime.now().hour + state.total / 100
 
-        val title = when {
-            plan.status == PlanStatus.DONE -> "💧 Cel na dziś zrobiony"
-            plan.status == PlanStatus.AFTER_HOURS -> "💧 Dzień się kończy"
-            state.progress >= 0.99 -> "💧 Ostatni akord"
-            gap >= state.settings.reminderGlassMl * 2 -> "💧 Kropi się martwi"
-            daypart == Daypart.MORNING -> "💧 Dzień dobry, czas na wodę"
-            daypart == Daypart.EVENING -> "💧 Wieczorne przypomnienie"
-            else -> "💧 Czas na łyk wody"
+        val title = if (snarky) {
+            when {
+                plan.status == PlanStatus.DONE -> pick(SNARK_TITLES.getValue(Level.DONE), seed)
+                plan.status == PlanStatus.AFTER_HOURS -> pick(SNARK_TITLES_AFTER_HOURS, seed)
+                gap >= state.settings.reminderGlassMl * 2 -> pick(SNARK_TITLES_BEHIND, seed)
+                else -> pick(SNARK_TITLES.getValue(state.level), seed)
+            }
+        } else {
+            when {
+                plan.status == PlanStatus.DONE -> "💧 Cel na dziś zrobiony"
+                plan.status == PlanStatus.AFTER_HOURS -> "💧 Dzień się kończy"
+                state.progress >= 0.99 -> "💧 Ostatni akord"
+                gap >= state.settings.reminderGlassMl * 2 -> "💧 Kropi się martwi"
+                daypart == Daypart.MORNING -> "💧 Dzień dobry, czas na wodę"
+                daypart == Daypart.EVENING -> "💧 Wieczorne przypomnienie"
+                else -> "💧 Czas na łyk wody"
+            }
         }
 
         val next = plan.next
         val short = when {
             plan.status == PlanStatus.DONE ->
-                "Wypite ${formatMl(state.total)} z ${formatMl(state.goal)}. Piękna robota."
+                if (snarky) {
+                    "Wypite ${formatMl(state.total)} z ${formatMl(state.goal)}. Nie mdlej z dumy."
+                } else {
+                    "Wypite ${formatMl(state.total)} z ${formatMl(state.goal)}. Piękna robota."
+                }
             next == null ->
                 "Okno picia zamknięte, a brakuje ${formatMl(plan.remainingMl)}. Dopij, ile dasz radę."
             plan.status == PlanStatus.AFTER_HOURS ->
@@ -161,7 +185,14 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             }
 
             appendLine()
-            append(state.selfCare)
+            if (snarky) {
+                snarkGapJab(sinceLastMinutes, seed)?.let { appendLine(it) }
+                append(pick(SNARK_JABS.getValue(state.level), seed))
+                append(" ")
+                append(pick(SNARK_CLOSERS, seed * 3))
+            } else {
+                append(state.selfCare)
+            }
         }.trim()
 
         return ReminderMessage(title, short, full)

@@ -26,6 +26,7 @@ data class HydrationSettings(
     val activeEndHour: Int = 22,
     val reminderGlassMl: Int = 250,
     val remindersEnabled: Boolean = true,
+    val notificationTone: NotificationTone = NotificationTone.SNARKY,
 ) {
     val calculatedGoalMl: Int get() = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoalMl: Int get() = if (goalMode == GoalMode.AUTO) calculatedGoalMl else manualGoalMl

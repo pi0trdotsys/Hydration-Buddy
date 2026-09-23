@@ -38,6 +38,7 @@ import com.kropi.hydration.data.ActivityLevel
 import com.kropi.hydration.data.GoalCalculator
 import com.kropi.hydration.data.GoalMode
 import com.kropi.hydration.data.HydrationSettings
+import com.kropi.hydration.data.NotificationTone
 import com.kropi.hydration.data.Temperature
 
 @Composable
@@ -183,6 +184,7 @@ private fun SettingsSection(
     var endHour by remember { mutableStateOf(initial.activeEndHour) }
     var glassMl by remember { mutableStateOf(initial.reminderGlassMl) }
     var remindersEnabled by remember { mutableStateOf(initial.remindersEnabled) }
+    var tone by remember { mutableStateOf(initial.notificationTone) }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -211,6 +213,22 @@ private fun SettingsSection(
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
             )
         }
+
+        // --- ton powiadomień ---
+        Text("Ton powiadomień", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            NotificationTone.entries.forEach { t ->
+                ChipButton("${t.emoji} ${t.label}", tone == t) { tone = t }
+            }
+        }
+        Text(
+            when (tone) {
+                NotificationTone.CARING -> "Kropi przypomina spokojnie, ze zdaniem self-care."
+                NotificationTone.SNARKY -> "Kropi dogryza i nie owija w bawełnę. Liczby i plan są te same."
+            },
+            color = KropiColors.mutedForeground,
+            fontSize = 11.sp,
+        )
 
         // --- goal mode ---
         Text("Cel dzienny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -297,6 +315,7 @@ private fun SettingsSection(
                             activeEndHour = endHour,
                             reminderGlassMl = glassMl,
                             remindersEnabled = remindersEnabled,
+                            notificationTone = tone,
                         ),
                     )
                 },

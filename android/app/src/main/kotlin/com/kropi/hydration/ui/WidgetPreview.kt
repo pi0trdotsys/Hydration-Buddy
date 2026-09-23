@@ -36,10 +36,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationState
-import com.kropi.hydration.data.paceLine
+import com.kropi.hydration.data.PlanStatus
+import com.kropi.hydration.data.formatMl
+import com.kropi.hydration.data.hhmm
 import com.kropi.hydration.data.plan
-import com.kropi.hydration.data.summaryLine
 import com.kropi.hydration.widget.IntakeChart
 import java.time.LocalTime
 import com.kropi.hydration.data.Level
@@ -129,42 +131,91 @@ private fun MediumLargeBody(
                     color = KropiColors.aqua,
                     fontSize = 11.sp,
                 )
-                Text(
-                    state.paceLine(plan),
-                    color = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.mutedForeground,
-                    fontSize = 11.sp,
-                    fontWeight = if (state.isBehindSchedule) FontWeight.Bold else FontWeight.Normal,
-                )
-                if (large) {
-                    Text(
-                        state.selfCare,
-                        color = KropiColors.foreground,
-                        fontSize = 12.sp,
-                        maxLines = 2,
-                        modifier = Modifier.padding(top = 4.dp),
-                    )
-                }
             }
             if (large) {
                 MascotCanvas(level = state.level, modifier = Modifier.size(72.dp).clickable { onPoke() })
             }
         }
 
-        Spacer(Modifier.height(if (large) 14.dp else 8.dp))
+        Spacer(Modifier.height(8.dp))
+        StatusPills(state, plan)
+        Spacer(Modifier.height(8.dp))
         BottleRow(compact = !large, onAdd = onAdd, onUndo = onUndo)
 
         if (large) {
-            Spacer(Modifier.height(12.dp))
-            IntakeChartCanvas(state, modifier = Modifier.fillMaxWidth().height(76.dp))
-            Text("━ wypite   ┈ plan dnia", color = KropiColors.mutedForeground, fontSize = 10.sp)
+            Spacer(Modifier.height(10.dp))
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(KropiColors.background)
+                    .padding(horizontal = 8.dp, vertical = 6.dp),
+            ) {
+                IntakeChartCanvas(state, modifier = Modifier.fillMaxSize())
+            }
             Spacer(Modifier.height(8.dp))
-            Text(
-                plan.summaryLine(),
-                color = KropiColors.aqua,
-                fontSize = 12.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            WidgetFooter(state, plan)
         }
+    }
+}
+
+/** Te same dwie pigułki, co na kafelku: plan na teraz i najbliższa porcja. */
+@Composable
+private fun StatusPills(state: HydrationState, plan: HydrationPlan) {
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        PreviewPill(
+            label = if (state.isBehindSchedule) "PONIŻEJ PLANU" else "PLAN NA TERAZ",
+            value = formatMl(state.targetSoFar),
+            accent = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.mutedForeground,
+            modifier = Modifier.weight(1f),
+        )
+        PreviewPill(
+            label = when (plan.status) {
+                PlanStatus.DONE -> "DZIŚ"
+                PlanStatus.AFTER_HOURS -> "PO GODZINACH"
+                else -> "NASTĘPNE"
+            },
+            value = when (plan.status) {
+                PlanStatus.DONE -> "Cel zrobiony 🎉"
+                else -> plan.next?.let { "${it.ml} ml o ${it.time.hhmm()}" } ?: "—"
+            },
+            accent = KropiColors.aqua,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun PreviewPill(label: String, value: String, accent: Color, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(KropiColors.secondary)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Text(label, color = KropiColors.mutedForeground, fontSize = 8.sp, fontWeight = FontWeight.Medium)
+        Text(value, color = accent, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    }
+}
+
+@Composable
+private fun WidgetFooter(state: HydrationState, plan: HydrationPlan) {
+    val last = state.intakes.lastOrNull()
+    val lastText = last?.let { String.format("%02d:%02d · %d ml", it.hour, it.minute, it.ml) } ?: "brak wpisów"
+    val planText = when (plan.status) {
+        PlanStatus.DONE -> "plan dnia wykonany"
+        PlanStatus.AFTER_HOURS -> "brakuje ${formatMl(plan.remainingMl)}"
+        else -> "jeszcze ${plan.sips.size} × ${plan.portionMl} ml do ${plan.windowEnd.hhmm()}"
+    }
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            "🔥 ${state.streak} dni  ·  ostatnio $lastText",
+            color = KropiColors.mutedForeground,
+            fontSize = 10.sp,
+            modifier = Modifier.weight(1f),
+        )
+        Text(planText, color = KropiColors.mutedForeground, fontSize = 10.sp)
     }
 }
 

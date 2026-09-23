@@ -85,6 +85,7 @@ private object Keys {
     val ACTIVE_END_HOUR = intPreferencesKey("active_end_hour")
     val REMINDER_GLASS_ML = intPreferencesKey("reminder_glass_ml")
     val REMINDERS_ENABLED = booleanPreferencesKey("reminders_enabled")
+    val NOTIFICATION_TONE = stringPreferencesKey("notification_tone")
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -102,6 +103,8 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
         activeEndHour = prefs[Keys.ACTIVE_END_HOUR] ?: defaults.activeEndHour,
         reminderGlassMl = prefs[Keys.REMINDER_GLASS_ML] ?: defaults.reminderGlassMl,
         remindersEnabled = prefs[Keys.REMINDERS_ENABLED] ?: defaults.remindersEnabled,
+        notificationTone = prefs[Keys.NOTIFICATION_TONE]?.let { runCatching { NotificationTone.valueOf(it) }.getOrNull() }
+            ?: defaults.notificationTone,
     )
 }
 
@@ -227,6 +230,7 @@ class HydrationRepository(private val context: Context) {
             prefs[Keys.ACTIVE_END_HOUR] = settings.activeEndHour
             prefs[Keys.REMINDER_GLASS_ML] = settings.reminderGlassMl
             prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
+            prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
             prefs[Keys.GOAL] = settings.effectiveGoalMl
         }
     }

@@ -145,7 +145,8 @@ object WidgetGraphics {
 object IntakeChart {
 
     private const val AQUA = 0xFF00DFE8.toInt()
-    private const val AQUA_SOFT = 0x3300DFE8
+    private const val AQUA_SOFT = 0x4D00DFE8
+    private const val AQUA_FADE = 0x0800DFE8
     private const val TRACK = 0xFF132938.toInt()
     private const val MUTED = 0xFF91A9B3.toInt()
     private const val FOREGROUND = 0xFFEEF7FA.toInt()
@@ -163,12 +164,15 @@ object IntakeChart {
     ) {
         if (width <= 0f || height <= 0f) return
 
-        val labelSize = 8.5f * density
-        val valueSize = 8f * density
+        // Im wyższy panel, tym większe podpisy — na kafelku 4×4 wykres dostaje
+        // ~190 dp i przy stałych 8 sp wyglądałby jak znaczek na tle pustki.
+        val scale = (height / (72f * density)).coerceIn(1f, 1.45f)
+        val labelSize = 8.5f * density * scale
+        val valueSize = 8f * density * scale
         val left = 1f * density
         val right = width - 1f * density
-        val top = 11f * density
-        val bottom = height - 12f * density
+        val top = 11f * density * scale
+        val bottom = height - 13f * density * scale
         if (right - left < 8f * density || bottom - top < 8f * density) return
 
         val sorted = intakes.sortedBy { it.hour * 60 + it.minute }
@@ -194,12 +198,25 @@ object IntakeChart {
         val linePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE }
         val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER }
 
-        // --- oś i linia celu ---
+        // --- oś, siatka i linia celu ---
         linePaint.apply { color = TRACK; strokeWidth = 1f * density; pathEffect = null }
         canvas.drawLine(left, bottom, right, bottom, linePaint)
+        if (bottom - top > 60f * density) {
+            linePaint.alpha = 110
+            for (fraction in listOf(0.25f, 0.5f, 0.75f)) {
+                val gridY = y((scaleMax * fraction).toInt())
+                canvas.drawLine(left, gridY, right, gridY, linePaint)
+            }
+            linePaint.alpha = 255
+        }
         linePaint.apply { color = MUTED; alpha = 60 }
         canvas.drawLine(left, y(goalMl), right, y(goalMl), linePaint)
         linePaint.alpha = 255
+        if (bottom - top > 70f * density) {
+            textPaint.apply { color = MUTED; textSize = labelSize * 0.85f; textAlign = Paint.Align.RIGHT }
+            canvas.drawText("cel ${goalMl} ml", right, y(goalMl) - 3f * density, textPaint)
+            textPaint.textAlign = Paint.Align.CENTER
+        }
 
         // --- linia planu: od zera na starcie okna do celu na jego końcu ---
         linePaint.apply {
@@ -232,8 +249,11 @@ object IntakeChart {
             lineTo(x(startMinute), bottom)
             close()
         }
-        canvas.drawPath(fillPath, Paint(Paint.ANTI_ALIAS_FLAG).apply { color = AQUA_SOFT })
-        linePaint.apply { color = AQUA; strokeWidth = 2f * density; strokeCap = Paint.Cap.ROUND }
+        val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            shader = LinearGradient(0f, top, 0f, bottom, AQUA_SOFT, AQUA_FADE, Shader.TileMode.CLAMP)
+        }
+        canvas.drawPath(fillPath, fillPaint)
+        linePaint.apply { color = AQUA; strokeWidth = 2f * density * scale; strokeCap = Paint.Cap.ROUND }
         canvas.drawPath(stepPath, linePaint)
 
         // --- kropka + objętość przy każdym łyku (etykiety kolidujące pomijamy) ---
@@ -241,7 +261,7 @@ object IntakeChart {
         textPaint.apply { color = FOREGROUND; textSize = valueSize }
         var occupiedUntil = Float.NEGATIVE_INFINITY
         for (dot in dots) {
-            canvas.drawCircle(dot[0], dot[1], 2.2f * density, dotPaint)
+            canvas.drawCircle(dot[0], dot[1], 2.4f * density * scale, dotPaint)
             val label = dot[2].toInt().toString()
             val halfWidth = textPaint.measureText(label) / 2f
             val cx = clampLabel(dot[0], halfWidth)
