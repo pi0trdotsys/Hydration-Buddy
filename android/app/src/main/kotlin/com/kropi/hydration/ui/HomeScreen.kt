@@ -1,6 +1,7 @@
 package com.kropi.hydration.ui
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -42,6 +43,7 @@ fun HomeScreen(
     onUndo: () -> Unit,
     onPoke: () -> Unit,
     onSetGoal: (Int) -> Unit,
+    onDeleteIntake: (Int) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -74,7 +76,7 @@ fun HomeScreen(
                     fontSize = 17.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                IntakeTimeline(state)
+                IntakeTimeline(state, onDeleteIntake)
             }
         }
         item {
@@ -136,7 +138,7 @@ private fun HomeHeader(goal: Int, onSetGoal: (Int) -> Unit) {
 }
 
 @Composable
-private fun IntakeTimeline(state: HydrationState) {
+private fun IntakeTimeline(state: HydrationState, onDelete: (Int) -> Unit) {
     if (state.intakes.isEmpty()) {
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -148,7 +150,7 @@ private fun IntakeTimeline(state: HydrationState) {
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.intakes.asReversed().forEach { intake ->
+        state.intakes.withIndex().reversed().forEach { (index, intake) ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
@@ -184,6 +186,16 @@ private fun IntakeTimeline(state: HydrationState) {
                     fontSize = 13.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(start = 12.dp),
+                )
+                Text(
+                    "✕",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 15.sp,
+                    modifier = Modifier
+                        .padding(start = 10.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .clickable { onDelete(index) }
+                        .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }
         }

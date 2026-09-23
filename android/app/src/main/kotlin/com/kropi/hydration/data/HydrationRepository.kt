@@ -12,6 +12,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import java.time.LocalDate
+import java.time.format.DateTimeFormatter
 import java.time.LocalTime
 import kotlin.math.roundToInt
 
@@ -19,10 +20,17 @@ val Context.hydrationStore by preferencesDataStore(name = "hydration")
 
 data class Intake(val hour: Int, val minute: Int, val ml: Int)
 
+/** Zamknięty dzień: ile wyszło i jaki cel wtedy obowiązywał. */
+data class DayRecord(val epochDay: Long, val ml: Int, val goal: Int) {
+    val reached: Boolean get() = goal > 0 && ml >= goal
+    val pct: Float get() = if (goal > 0) (ml.toFloat() / goal).coerceIn(0f, 1f) else 0f
+    val date: LocalDate get() = LocalDate.ofEpochDay(epochDay)
+}
+
 data class HydrationState(
     val goal: Int,
     val intakes: List<Intake>,
-    val streak: Int,
+    val records: List<DayRecord>,
     val pokeSeed: Int,
     val settings: HydrationSettings,
 ) {
@@ -53,25 +61,80 @@ data class HydrationState(
     val dayNote: String get() = pick(DAYPART_NOTES.getValue(daypart), seed)
     val mascotLine: String get() = pick(MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
 
-    /** Ported from `week`/`history` in use-hydration-mock.ts: static mock days + today appended live. */
-    val week: List<WeekDay> get() = WEEK
+    /** Dzisiaj jako rekord — dzień jeszcze się nie zamknął, więc liczymy go w locie. */
+    val today: DayRecord get() = DayRecord(LocalDate.now().toEpochDay(), total, goal)
+
+    /**
+     * Ostatnie [days] dni, od najstarszego do dziś, z zerami w dniach bez
+     * żadnego wpisu. Zastąpiło statyczny mock z `use-hydration-mock.ts`.
+     */
+    fun lastDays(days: Int): List<DayRecord> {
+        val todayEpoch = LocalDate.now().toEpochDay()
+        val byDay = records.associateBy { it.epochDay }
+        return (days - 1 downTo 0).map { back ->
+            val epochDay = todayEpoch - back
+            when {
+                epochDay == todayEpoch -> today
+                else -> byDay[epochDay] ?: DayRecord(epochDay, 0, goal)
+            }
+        }
+    }
+
+    val week: List<WeekDay>
+        get() = lastDays(7).map { WeekDay(dayInitials(it.date), it.pct) }
+
     val history: List<HistoryDay>
-        get() = HISTORY + HistoryDay(
-            day = "Nd",
-            date = java.time.LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("dd.MM")),
-            ml = total,
-            goal = goal,
-            pct = progress.toFloat(),
-            reached = progress >= 1.0,
-        )
+        get() = lastDays(7).map { record ->
+            HistoryDay(
+                day = dayInitials(record.date),
+                date = record.date.format(DateTimeFormatter.ofPattern("dd.MM")),
+                ml = record.ml,
+                goal = record.goal,
+                pct = record.pct,
+                reached = record.reached,
+            )
+        }
+
+    /**
+     * Seria liczona z realnej historii, a nie z osobnego licznika: idziemy
+     * wstecz dopóki dni mają zaliczony cel. Dzisiaj wlicza się dopiero po jego
+     * osiągnięciu, żeby seria nie migała w trakcie dnia.
+     */
+    val streak: Int
+        get() {
+            val byDay = records.associateBy { it.epochDay }
+            val todayEpoch = LocalDate.now().toEpochDay()
+            var count = 0
+            var day = todayEpoch
+            if (today.reached) {
+                count = 1
+                day -= 1
+            } else {
+                day -= 1
+            }
+            while (true) {
+                val record = byDay[day] ?: break
+                if (!record.reached) break
+                count++
+                day--
+            }
+            return count
+        }
 }
+
+private val POLISH = java.util.Locale.forLanguageTag("pl-PL")
+
+/** „Pn", „Wt", … — dwuliterowy skrót dnia, jak w makiecie. */
+private fun dayInitials(date: LocalDate): String =
+    date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, POLISH)
+        .replaceFirstChar { it.uppercase(POLISH) }
+        .take(2)
 
 private object Keys {
     val GOAL = intPreferencesKey("goal")
     val INTAKES = stringPreferencesKey("intakes") // "h:m:ml,h:m:ml,..."
-    val STREAK = intPreferencesKey("streak")
+    val HISTORY = stringPreferencesKey("history") // "epochDay:ml:goal,..."
     val LAST_EPOCH_DAY = longPreferencesKey("last_epoch_day")
-    val LAST_GOAL_MET_EPOCH_DAY = longPreferencesKey("last_goal_met_epoch_day")
     val POKE_SEED = intPreferencesKey("poke_seed")
     val LAST_INTAKE_EPOCH_MINUTE = longPreferencesKey("last_intake_epoch_minute")
     val SNOOZE_UNTIL_EPOCH_MINUTE = longPreferencesKey("snooze_until_epoch_minute")
@@ -110,13 +173,23 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
 
 private const val DEFAULT_GOAL = 2500
 
-private val SEED_INTAKES = listOf(
-    Intake(7, 20, 250),
-    Intake(9, 5, 330),
-    Intake(11, 40, 500),
-    Intake(13, 15, 250),
-    Intake(15, 0, 120),
-)
+/** Ile zamkniętych dni trzymamy — rok z zapasem, a to i tak kilka kB tekstu. */
+private const val HISTORY_LIMIT_DAYS = 400
+
+private fun encodeRecords(records: List<DayRecord>): String =
+    records.joinToString(",") { "${it.epochDay}:${it.ml}:${it.goal}" }
+
+private fun decodeRecords(raw: String?): List<DayRecord> {
+    if (raw.isNullOrBlank()) return emptyList()
+    return raw.split(",").mapNotNull { entry ->
+        val parts = entry.split(":")
+        if (parts.size != 3) return@mapNotNull null
+        val epochDay = parts[0].toLongOrNull() ?: return@mapNotNull null
+        val ml = parts[1].toIntOrNull() ?: return@mapNotNull null
+        val goal = parts[2].toIntOrNull() ?: return@mapNotNull null
+        DayRecord(epochDay, ml, goal)
+    }.sortedBy { it.epochDay }
+}
 
 private fun encodeIntakes(intakes: List<Intake>): String =
     intakes.joinToString(",") { "${it.hour}:${it.minute}:${it.ml}" }
@@ -144,7 +217,7 @@ class HydrationRepository(private val context: Context) {
         HydrationState(
             goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
             intakes = decodeIntakes(prefs[Keys.INTAKES]),
-            streak = prefs[Keys.STREAK] ?: 5,
+            records = decodeRecords(prefs[Keys.HISTORY]),
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
             settings = readSettings(prefs),
         )
@@ -152,7 +225,12 @@ class HydrationRepository(private val context: Context) {
 
     suspend fun current(): HydrationState = rollDayIfNeeded()
 
-    /** Archives yesterday's progress into the streak and resets today's intakes. */
+    /**
+     * Zamyka poprzedni dzień: dopisuje go do historii (to z niej liczą się
+     * potem statystyki i seria) i zeruje dzisiejsze łyki. Dni, w których
+     * aplikacja w ogóle nie działała, zapisujemy jako zerowe — inaczej luka
+     * udawałaby, że tamtego dnia cel został zaliczony.
+     */
     private suspend fun rollDayIfNeeded(): HydrationState {
         val today = LocalDate.now().toEpochDay()
         context.hydrationStore.edit { prefs ->
@@ -160,24 +238,21 @@ class HydrationRepository(private val context: Context) {
             if (lastDay == null) {
                 prefs[Keys.LAST_EPOCH_DAY] = today
                 prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: readSettings(prefs).effectiveGoalMl
-                prefs[Keys.INTAKES] = encodeIntakes(SEED_INTAKES)
-                prefs[Keys.STREAK] = prefs[Keys.STREAK] ?: 5
                 return@edit
             }
             if (lastDay == today) return@edit
 
             val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
             val total = decodeIntakes(prefs[Keys.INTAKES]).sumOf { it.ml }
-            val metGoal = total >= goal
-            val lastMetDay = prefs[Keys.LAST_GOAL_MET_EPOCH_DAY]
-            val streak = prefs[Keys.STREAK] ?: 0
 
-            if (metGoal) {
-                prefs[Keys.STREAK] = if (lastMetDay == lastDay - 1) streak + 1 else 1
-                prefs[Keys.LAST_GOAL_MET_EPOCH_DAY] = lastDay
-            } else {
-                prefs[Keys.STREAK] = 0
+            val closedDays = buildList {
+                add(DayRecord(lastDay, total, goal))
+                // Przerwa w używaniu aplikacji: dni pomiędzy też się zamknęły, tyle że pusto.
+                for (day in (lastDay + 1) until today) add(DayRecord(day, 0, goal))
             }
+            val merged = (decodeRecords(prefs[Keys.HISTORY]).filter { it.epochDay < lastDay } + closedDays)
+                .takeLast(HISTORY_LIMIT_DAYS)
+            prefs[Keys.HISTORY] = encodeRecords(merged)
 
             prefs[Keys.LAST_EPOCH_DAY] = today
             prefs[Keys.INTAKES] = encodeIntakes(emptyList())
@@ -232,6 +307,15 @@ class HydrationRepository(private val context: Context) {
             prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
             prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
             prefs[Keys.GOAL] = settings.effectiveGoalMl
+        }
+    }
+
+    /** Usuwa jeden konkretny wpis — pomyłkowe dolanie nie wymaga cofania całej reszty. */
+    suspend fun removeIntakeAt(index: Int) {
+        context.hydrationStore.edit { prefs ->
+            val current = decodeIntakes(prefs[Keys.INTAKES])
+            if (index !in current.indices) return@edit
+            prefs[Keys.INTAKES] = encodeIntakes(current.filterIndexed { i, _ -> i != index })
         }
     }
 

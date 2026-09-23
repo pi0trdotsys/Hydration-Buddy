@@ -21,7 +21,17 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.ui.platform.LocalContext
 import com.kropi.hydration.data.HistoryDay
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import java.time.LocalDate
 import com.kropi.hydration.data.HydrationState
 
 /** Mirrors src/routes/history.tsx. */
@@ -32,7 +42,23 @@ fun HistoryScreen(state: HydrationState) {
     val avg = total / history.size
     val reachedDays = history.count { it.reached }
     val best = history.maxBy { it.ml }
-    val max = (history.maxOfOrNull { it.ml } ?: 1).coerceAtLeast(1)
+    // Skala do celu, nie do maksimum tygodnia: inaczej 250 ml w pustym tygodniu
+    // rysowałoby się jako pełny słupek i wyglądało na dzień wzorowy.
+    val max = maxOf(history.maxOfOrNull { it.ml } ?: 0, history.first().goal, 1)
+    val range = "${history.first().date} – ${history.last().date}"
+
+    // Miesiąc liczymy tylko z dni, które aplikacja faktycznie widziała — inaczej
+    // świeża instalacja pokazywałaby 29 dni „zerowych" i średnią bliską zeru.
+    val month = state.lastDays(30).filter { it.ml > 0 || it.epochDay == state.today.epochDay }
+    val monthReached = month.count { it.reached }
+
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val exportLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri != null) scope.launch { writeCsv(context, uri, state) }
+    }
 
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -42,7 +68,7 @@ fun HistoryScreen(state: HydrationState) {
         item {
             Column {
                 Text(
-                    "Tydzień 11.08 – 17.08",
+                    "Tydzień $range",
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     letterSpacing = 2.sp,
@@ -82,6 +108,46 @@ fun HistoryScreen(state: HydrationState) {
         }
 
         item { WeekHistoryChart(history, max) }
+
+        item {
+            GlassCard(modifier = Modifier.fillMaxWidth()) {
+                Text("Ostatnie 30 dni", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                if (month.size <= 1) {
+                    Text(
+                        "Kropi zbiera dane od dziś — za kilka dni pojawi się tu realna średnia i seria.",
+                        color = KropiColors.mutedForeground,
+                        fontSize = 12.sp,
+                    )
+                } else {
+                    Text(
+                        "Średnio ${month.sumOf { it.ml } / month.size} ml dziennie przez ${month.size} dni z zapisami. " +
+                            "Cel zaliczony $monthReached razy.",
+                        color = KropiColors.mutedForeground,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                    )
+                }
+                Text(
+                    "Seria: ${state.streak} dni z rzędu z osiągniętym celem.",
+                    color = if (state.streak > 0) KropiColors.aqua else KropiColors.mutedForeground,
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+
+        item {
+            Button(
+                onClick = { exportLauncher.launch("kropi-nawodnienie-${LocalDate.now()}.csv") },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KropiColors.secondary,
+                    contentColor = KropiColors.foreground,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Eksportuj historię do CSV")
+            }
+        }
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -220,6 +286,27 @@ private fun DayRow(d: HistoryDay) {
             Text("${(d.pct * 100).toInt()}%", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             if (d.reached) {
                 Text("Cel osiągnięty", color = KropiColors.aqua, fontSize = 10.sp)
+            }
+        }
+    }
+}
+
+/**
+ * Eksport przez SAF: użytkownik sam wybiera miejsce zapisu, więc nie trzeba
+ * ani uprawnień do pamięci, ani FileProvidera. Separator średnikowy, bo
+ * polski Excel tak otwiera CSV bez kreatora importu.
+ */
+private suspend fun writeCsv(context: android.content.Context, uri: android.net.Uri, state: HydrationState) {
+    withContext(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
+                writer.appendLine("data;wypite_ml;cel_ml;procent;cel_osiagniety")
+                (state.records + state.today).sortedBy { it.epochDay }.forEach { record ->
+                    writer.appendLine(
+                        "${record.date};${record.ml};${record.goal};" +
+                            "${(record.pct * 100).toInt()};${if (record.reached) "tak" else "nie"}",
+                    )
+                }
             }
         }
     }

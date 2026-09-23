@@ -95,6 +95,7 @@ class MainActivity : ComponentActivity() {
                                     onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
                                     onSetGoal = { ml -> scope.launch { repo.setGoal(ml); HydrationWidget().updateAll(applicationContext) } },
+                                    onDeleteIntake = { index -> scope.launch { repo.removeIntakeAt(index); HydrationWidget().updateAll(applicationContext) } },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
                                     state = current,
