@@ -140,7 +140,7 @@ private fun MediumLargeBody(
         Spacer(Modifier.height(8.dp))
         StatusPills(state, plan)
         Spacer(Modifier.height(8.dp))
-        BottleRow(compact = !large, onAdd = onAdd, onUndo = onUndo)
+        BottleRow(compact = !large, bottles = state.settings.bottlesMl, onAdd = onAdd, onUndo = onUndo)
 
         if (large) {
             Spacer(Modifier.height(10.dp))
@@ -219,12 +219,12 @@ private fun WidgetFooter(state: HydrationState, plan: HydrationPlan) {
     }
 }
 
-private val WidgetBottles = listOf(100, 250, 330, 500, 750)
+
 
 @Composable
-fun BottleRow(compact: Boolean, onAdd: (Int) -> Unit, onUndo: () -> Unit) {
+fun BottleRow(compact: Boolean, bottles: List<Int>, onAdd: (Int) -> Unit, onUndo: () -> Unit) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        for (ml in WidgetBottles) {
+        for (ml in bottles) {
             Column(
                 modifier = Modifier
                     .weight(1f)

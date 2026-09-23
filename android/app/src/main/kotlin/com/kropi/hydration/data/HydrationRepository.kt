@@ -149,6 +149,7 @@ private object Keys {
     val REMINDER_GLASS_ML = intPreferencesKey("reminder_glass_ml")
     val REMINDERS_ENABLED = booleanPreferencesKey("reminders_enabled")
     val NOTIFICATION_TONE = stringPreferencesKey("notification_tone")
+    val BOTTLES_ML = stringPreferencesKey("bottles_ml")
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -168,6 +169,8 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
         remindersEnabled = prefs[Keys.REMINDERS_ENABLED] ?: defaults.remindersEnabled,
         notificationTone = prefs[Keys.NOTIFICATION_TONE]?.let { runCatching { NotificationTone.valueOf(it) }.getOrNull() }
             ?: defaults.notificationTone,
+        bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
+            ?: defaults.bottlesMl,
     )
 }
 
@@ -306,6 +309,7 @@ class HydrationRepository(private val context: Context) {
             prefs[Keys.REMINDER_GLASS_ML] = settings.reminderGlassMl
             prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
             prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
+            prefs[Keys.BOTTLES_ML] = settings.bottlesMl.joinToString(",")
             prefs[Keys.GOAL] = settings.effectiveGoalMl
         }
     }

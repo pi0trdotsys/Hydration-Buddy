@@ -59,7 +59,7 @@ private val CardBg = ColorProvider(com.kropi.hydration.ui.KropiColors.card)
 private val ScreenBg = ColorProvider(com.kropi.hydration.ui.KropiColors.background)
 private val Warn = ColorProvider(androidx.compose.ui.graphics.Color(0xFFFF8A65))
 
-private enum class Variant { TINY, COMPACT, FULL }
+private enum class Variant { TINY, BAR, COMPACT, FULL }
 
 class HydrationWidget : GlanceAppWidget() {
 
@@ -97,7 +97,8 @@ class HydrationWidgetReceiver : GlanceAppWidgetReceiver() {
 private fun HydrationWidgetContent(state: HydrationState) {
     val size = LocalSize.current
     val variant = when {
-        size.width < 180.dp || size.height < 150.dp -> Variant.TINY
+        size.height < 120.dp && size.width < 180.dp -> Variant.TINY
+        size.height < 150.dp -> Variant.BAR
         size.height < 250.dp -> Variant.COMPACT
         else -> Variant.FULL
     }
@@ -113,6 +114,7 @@ private fun HydrationWidgetContent(state: HydrationState) {
     ) {
         when (variant) {
             Variant.TINY -> TinyContent(state)
+            Variant.BAR -> BarContent(state)
             Variant.COMPACT -> CompactContent(state)
             Variant.FULL -> FullContent(state, size.width, size.height, pad)
         }
@@ -130,6 +132,54 @@ private fun TinyContent(state: HydrationState) {
     }
 }
 
+/**
+ * Kafelek 2×1 / 4×1 — niski i szeroki. Nie mieści wykresu ani pigułek, więc
+ * zostaje to, co realnie potrzebne pod ręką: postęp, najbliższa porcja i dwa
+ * najczęstsze przyciski dolewania.
+ */
+@androidx.compose.runtime.Composable
+private fun BarContent(state: HydrationState) {
+    val plan = state.plan()
+    val bottles = state.settings.bottlesMl
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxSize()) {
+        RingWithPercent(progress = state.progress.toFloat(), pct = (state.progress * 100).toInt(), ringSize = 46.dp)
+        Spacer(GlanceModifier.width(10.dp))
+        Column(modifier = GlanceModifier.defaultWeight()) {
+            Text(
+                "${state.total} / ${state.goal} ml",
+                style = TextStyle(color = Foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold),
+                maxLines = 1,
+            )
+            Text(
+                when (plan.status) {
+                    PlanStatus.DONE -> "Cel zrobiony 🎉"
+                    else -> plan.next?.let { "nast. ${it.ml} ml o ${it.time.hhmm()}" } ?: "—"
+                },
+                style = TextStyle(color = if (state.isBehindSchedule) Warn else Muted, fontSize = 9.sp),
+                maxLines = 1,
+            )
+        }
+        FixedBottleChip(bottles[1], 46.dp)
+        Spacer(GlanceModifier.width(6.dp))
+        FixedBottleChip(bottles[2], 46.dp)
+    }
+}
+
+@androidx.compose.runtime.Composable
+private fun FixedBottleChip(ml: Int, size: Dp) {
+    Box(
+        modifier = GlanceModifier
+            .width(size)
+            .height(size)
+            .background(Secondary)
+            .cornerRadius(14.dp)
+            .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to ml))),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text("+$ml", style = TextStyle(color = Foreground, fontSize = 11.sp, fontWeight = FontWeight.Bold))
+    }
+}
+
 @androidx.compose.runtime.Composable
 private fun CompactContent(state: HydrationState) {
     val plan = state.plan()
@@ -138,7 +188,7 @@ private fun CompactContent(state: HydrationState) {
         Spacer(GlanceModifier.height(6.dp))
         StatusRow(state, plan)
         Spacer(GlanceModifier.defaultWeight())
-        BottleRow(height = 50.dp)
+        BottleRow(height = 50.dp, bottles = state.settings.bottlesMl)
     }
 }
 
@@ -164,7 +214,7 @@ private fun FullContent(state: HydrationState, width: Dp, height: Dp, pad: Dp) {
         Spacer(GlanceModifier.height(8.dp))
         StatusRow(state, plan)
         Spacer(GlanceModifier.height(8.dp))
-        BottleRow(height = bottlesHeight)
+        BottleRow(height = bottlesHeight, bottles = state.settings.bottlesMl)
         Spacer(GlanceModifier.height(8.dp))
         ChartPanel(state, width = width - pad * 2, height = chartHeight)
         Spacer(GlanceModifier.height(8.dp))
@@ -370,12 +420,10 @@ private fun MascotImage(level: Level, sizeDp: Dp) {
     )
 }
 
-private val WidgetBottles = listOf(100, 250, 500, 750)
-
 @androidx.compose.runtime.Composable
-private fun BottleRow(height: Dp) {
+private fun BottleRow(height: Dp, bottles: List<Int>) {
     Row(modifier = GlanceModifier.fillMaxWidth().height(height), horizontalAlignment = Alignment.Start) {
-        for (ml in WidgetBottles) {
+        for (ml in bottles) {
             BottleChip(ml, height)
             Spacer(GlanceModifier.width(6.dp))
         }

@@ -27,6 +27,8 @@ data class HydrationSettings(
     val reminderGlassMl: Int = 250,
     val remindersEnabled: Boolean = true,
     val notificationTone: NotificationTone = NotificationTone.SNARKY,
+    /** Cztery pojemności na kafelkach widgetu i w aplikacji — do przestawienia w Ustawieniach. */
+    val bottlesMl: List<Int> = listOf(100, 250, 500, 750),
 ) {
     val calculatedGoalMl: Int get() = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoalMl: Int get() = if (goalMode == GoalMode.AUTO) calculatedGoalMl else manualGoalMl

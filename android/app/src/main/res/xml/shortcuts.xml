@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Skróty spod długiego przytrzymania ikony. Kierują do QuickAddActivity,
+  która dolewa i natychmiast się zamyka. Ilość jedzie w URI, bo statyczne
+  skróty nie przenoszą dodatkowych extras.
+-->
+<shortcuts xmlns:android="http://schemas.android.com/apk/res/android">
+    <shortcut
+        android:shortcutId="add_glass"
+        android:enabled="true"
+        android:icon="@drawable/ic_notification"
+        android:shortcutShortLabel="@string/shortcut_glass_short"
+        android:shortcutLongLabel="@string/shortcut_glass_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="kropi://add/glass"
+            android:targetPackage="com.kropi.hydration"
+            android:targetClass="com.kropi.hydration.ui.QuickAddActivity" />
+    </shortcut>
+    <shortcut
+        android:shortcutId="add_500"
+        android:enabled="true"
+        android:icon="@drawable/ic_notification"
+        android:shortcutShortLabel="@string/shortcut_bottle_short"
+        android:shortcutLongLabel="@string/shortcut_bottle_long">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="kropi://add/500"
+            android:targetPackage="com.kropi.hydration"
+            android:targetClass="com.kropi.hydration.ui.QuickAddActivity" />
+    </shortcut>
+</shortcuts>

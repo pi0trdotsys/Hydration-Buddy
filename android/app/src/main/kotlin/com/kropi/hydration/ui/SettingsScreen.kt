@@ -185,6 +185,7 @@ private fun SettingsSection(
     var glassMl by remember { mutableStateOf(initial.reminderGlassMl) }
     var remindersEnabled by remember { mutableStateOf(initial.remindersEnabled) }
     var tone by remember { mutableStateOf(initial.notificationTone) }
+    var bottles by remember { mutableStateOf(initial.bottlesMl) }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -293,6 +294,32 @@ private fun SettingsSection(
             HourStepper("Do", endHour) { endHour = it.coerceIn(startHour + 1, 23) }
         }
 
+        // --- pojemności na kafelkach ---
+        Text("Pojemności na widgecie", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(
+            "Cztery przyciski dolewania — na widgecie, w podglądzie i na ekranie głównym.",
+            color = KropiColors.mutedForeground,
+            fontSize = 11.sp,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+            bottles.forEachIndexed { index, ml ->
+                Column(
+                    modifier = Modifier.weight(1f),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text("$ml ml", color = KropiColors.foreground, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
+                        StepperButton("−") {
+                            bottles = bottles.toMutableList().also { it[index] = (ml - 50).coerceAtLeast(50) }
+                        }
+                        StepperButton("+") {
+                            bottles = bottles.toMutableList().also { it[index] = (ml + 50).coerceAtMost(2000) }
+                        }
+                    }
+                }
+            }
+        }
+
         // --- reminder glass size ---
         Text("Rozmiar szklanki w przypomnieniach", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -316,6 +343,7 @@ private fun SettingsSection(
                             reminderGlassMl = glassMl,
                             remindersEnabled = remindersEnabled,
                             notificationTone = tone,
+                            bottlesMl = bottles,
                         ),
                     )
                 },
