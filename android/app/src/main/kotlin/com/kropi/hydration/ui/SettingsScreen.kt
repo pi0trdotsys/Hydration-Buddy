@@ -39,6 +39,7 @@ import com.kropi.hydration.data.GoalCalculator
 import com.kropi.hydration.data.GoalMode
 import com.kropi.hydration.data.HydrationSettings
 import com.kropi.hydration.data.NotificationTone
+import com.kropi.hydration.data.SnarkIntensity
 import com.kropi.hydration.data.Temperature
 
 @Composable
@@ -186,6 +187,7 @@ private fun SettingsSection(
     var remindersEnabled by remember { mutableStateOf(initial.remindersEnabled) }
     var tone by remember { mutableStateOf(initial.notificationTone) }
     var bottles by remember { mutableStateOf(initial.bottlesMl) }
+    var intensity by remember { mutableStateOf(initial.snarkIntensity) }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -230,6 +232,16 @@ private fun SettingsSection(
             color = KropiColors.mutedForeground,
             fontSize = 11.sp,
         )
+
+        if (tone == NotificationTone.SNARKY) {
+            Text("Ostrość docinków", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SnarkIntensity.entries.forEach { level ->
+                    ChipButton("${level.emoji} ${level.label}", intensity == level) { intensity = level }
+                }
+            }
+            Text(intensity.hint, color = KropiColors.mutedForeground, fontSize = 11.sp)
+        }
 
         // --- goal mode ---
         Text("Cel dzienny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -344,6 +356,7 @@ private fun SettingsSection(
                             remindersEnabled = remindersEnabled,
                             notificationTone = tone,
                             bottlesMl = bottles,
+                            snarkIntensity = intensity,
                         ),
                     )
                 },

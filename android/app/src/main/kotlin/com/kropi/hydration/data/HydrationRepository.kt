@@ -59,7 +59,13 @@ data class HydrationState(
     val selfCareAlt: String get() = pick(SELF_CARE.getValue(level), seed + 1)
     val fact: String get() = pick(FACTS, seed * 3 + 1)
     val dayNote: String get() = pick(DAYPART_NOTES.getValue(daypart), seed)
-    val mascotLine: String get() = pick(MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
+    /** Maskotka mówi w tym samym tonie, co powiadomienia. */
+    val mascotLine: String
+        get() = if (settings.notificationTone == NotificationTone.SNARKY) {
+            pick(SNARK_MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
+        } else {
+            pick(MASCOT_LINES.getValue(level), seed * 5 + pokeSeed)
+        }
 
     /** Dzisiaj jako rekord — dzień jeszcze się nie zamknął, więc liczymy go w locie. */
     val today: DayRecord get() = DayRecord(LocalDate.now().toEpochDay(), total, goal)
@@ -150,6 +156,8 @@ private object Keys {
     val REMINDERS_ENABLED = booleanPreferencesKey("reminders_enabled")
     val NOTIFICATION_TONE = stringPreferencesKey("notification_tone")
     val BOTTLES_ML = stringPreferencesKey("bottles_ml")
+    val SNARK_INTENSITY = stringPreferencesKey("snark_intensity")
+    val LAST_SUMMARY_EPOCH_DAY = longPreferencesKey("last_summary_epoch_day")
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -169,6 +177,8 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
         remindersEnabled = prefs[Keys.REMINDERS_ENABLED] ?: defaults.remindersEnabled,
         notificationTone = prefs[Keys.NOTIFICATION_TONE]?.let { runCatching { NotificationTone.valueOf(it) }.getOrNull() }
             ?: defaults.notificationTone,
+        snarkIntensity = prefs[Keys.SNARK_INTENSITY]?.let { runCatching { SnarkIntensity.valueOf(it) }.getOrNull() }
+            ?: defaults.snarkIntensity,
         bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
             ?: defaults.bottlesMl,
     )
@@ -286,6 +296,14 @@ class HydrationRepository(private val context: Context) {
     private fun nowEpochMinute(): Long =
         java.time.LocalDateTime.now().atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
 
+    /** Wieczorne podsumowanie wysyłamy raz na dobę — tu pilnujemy, że już poszło. */
+    suspend fun summarySentDay(): Long? =
+        context.hydrationStore.data.first()[Keys.LAST_SUMMARY_EPOCH_DAY]
+
+    suspend fun markSummarySent(epochDay: Long) {
+        context.hydrationStore.edit { prefs -> prefs[Keys.LAST_SUMMARY_EPOCH_DAY] = epochDay }
+    }
+
     suspend fun snoozeFor(minutes: Long) {
         context.hydrationStore.edit { prefs ->
             prefs[Keys.SNOOZE_UNTIL_EPOCH_MINUTE] = nowEpochMinute() + minutes
@@ -310,6 +328,7 @@ class HydrationRepository(private val context: Context) {
             prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
             prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
             prefs[Keys.BOTTLES_ML] = settings.bottlesMl.joinToString(",")
+            prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
             prefs[Keys.GOAL] = settings.effectiveGoalMl
         }
     }

@@ -19,6 +19,7 @@ import com.kropi.hydration.ui.MainActivity
 object NotificationHelper {
     const val CHANNEL_ID = "hydration_reminders"
     const val REMINDER_NOTIFICATION_ID = 1001
+    const val SUMMARY_NOTIFICATION_ID = 1002
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -47,6 +48,29 @@ object NotificationHelper {
     }
 
     private fun longLongArrayOf(vararg v: Long) = v
+
+    /**
+     * Wieczorne podsumowanie — bez przycisków dolewania, bo okno picia już się
+     * zamknęło. Jego rolą jest domknąć dzień, a nie wyciągać jeszcze jedną szklankę.
+     */
+    fun buildSummaryNotification(context: Context, title: String, shortText: String, fullText: String): Notification {
+        val openAppIntent = PendingIntent.getActivity(
+            context, 3,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(0xFF00DFE8.toInt())
+            .setContentTitle(title)
+            .setContentText(shortText)
+            .setStyle(NotificationCompat.BigTextStyle().setBigContentTitle(title).bigText(fullText))
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(openAppIntent)
+            .build()
+    }
 
     /**
      * Powiadomienie liczone pod konkretnego użytkownika: przycisk dolewa dokładnie

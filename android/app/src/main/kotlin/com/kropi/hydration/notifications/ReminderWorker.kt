@@ -15,7 +15,9 @@ import com.kropi.hydration.data.HydrationState
 import com.kropi.hydration.data.Level
 import com.kropi.hydration.data.NotificationTone
 import com.kropi.hydration.data.SNARK_CLOSERS
-import com.kropi.hydration.data.SNARK_JABS
+import com.kropi.hydration.data.SNARK_TITLES_SAVAGE
+import com.kropi.hydration.data.SnarkIntensity
+import com.kropi.hydration.data.snarkJab
 import com.kropi.hydration.data.SNARK_TITLES
 import com.kropi.hydration.data.SNARK_TITLES_AFTER_HOURS
 import com.kropi.hydration.data.SNARK_TITLES_BEHIND
@@ -51,7 +53,58 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         val force = inputData.getBoolean(INPUT_FORCE, false)
         maybeNotify(repo, state, force)
+        maybeDailySummary(repo, state)
         return Result.success()
+    }
+
+    /**
+     * Po zamknięciu okna picia Kropi podsumowuje dzień — raz na dobę, bo
+     * przypomnienia już wtedy nie mają sensu, a bilans jeszcze tak.
+     */
+    private suspend fun maybeDailySummary(repo: HydrationRepository, state: HydrationState) {
+        if (!state.settings.remindersEnabled) return
+        val now = LocalTime.now()
+        if (now.hour * 60 + now.minute < state.settings.activeEndHour * 60) return
+
+        val today = java.time.LocalDate.now().toEpochDay()
+        if (repo.summarySentDay() == today) return
+        if (!hasNotificationPermission()) return
+
+        val snarky = state.settings.notificationTone == NotificationTone.SNARKY
+        val seed = state.intakes.size * 3 + state.total / 100
+        val pct = (state.progress * 100).toInt()
+        val reached = state.remaining <= 0
+
+        val title = when {
+            reached && snarky -> "🌙 Dzień zamknięty. Bez wpadki"
+            reached -> "🌙 Dzień zamknięty — cel zrobiony"
+            snarky -> "🌙 Podsumujmy ten dzień"
+            else -> "🌙 Podsumowanie dnia"
+        }
+        val short = "${formatMl(state.total)} z ${formatMl(state.goal)} ($pct%), ${state.intakes.size} łyków."
+        val full = buildString {
+            appendLine(short)
+            if (reached) {
+                appendLine("Seria: ${state.streak} dni z rzędu.")
+            } else {
+                appendLine("Zabrakło ${formatMl(state.remaining)}. Seria: ${state.streak} dni z rzędu.")
+            }
+            appendLine()
+            append(
+                if (snarky) {
+                    snarkJab(state.level, state.settings.snarkIntensity, seed)
+                } else {
+                    state.selfCare
+                },
+            )
+        }.trim()
+
+        NotificationHelper.ensureChannel(applicationContext)
+        NotificationManagerCompat.from(applicationContext).notify(
+            NotificationHelper.SUMMARY_NOTIFICATION_ID,
+            NotificationHelper.buildSummaryNotification(applicationContext, title, short, full),
+        )
+        repo.markSummarySent(today)
     }
 
     private suspend fun maybeNotify(repo: HydrationRepository, state: HydrationState, force: Boolean) {
@@ -103,12 +156,14 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val gap = (state.targetSoFar - state.total).coerceAtLeast(0)
         val pct = (state.progress * 100).toInt()
         val snarky = state.settings.notificationTone == NotificationTone.SNARKY
+        val intensity = state.settings.snarkIntensity
         val seed = state.intakes.size * 7 + LocalTime.now().hour + state.total / 100
 
         val title = if (snarky) {
             when {
                 plan.status == PlanStatus.DONE -> pick(SNARK_TITLES.getValue(Level.DONE), seed)
                 plan.status == PlanStatus.AFTER_HOURS -> pick(SNARK_TITLES_AFTER_HOURS, seed)
+                intensity == SnarkIntensity.SAVAGE && gap > 0 -> pick(SNARK_TITLES_SAVAGE, seed)
                 gap >= state.settings.reminderGlassMl * 2 -> pick(SNARK_TITLES_BEHIND, seed)
                 else -> pick(SNARK_TITLES.getValue(state.level), seed)
             }
@@ -187,7 +242,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             appendLine()
             if (snarky) {
                 snarkGapJab(sinceLastMinutes, seed)?.let { appendLine(it) }
-                append(pick(SNARK_JABS.getValue(state.level), seed))
+                append(snarkJab(state.level, intensity, seed))
                 append(" ")
                 append(pick(SNARK_CLOSERS, seed * 3))
             } else {

@@ -124,3 +124,77 @@ fun snarkGapJab(minutesSinceLast: Long, seed: Int): String? = when {
     minutesSinceLast >= 75 -> pick(SNARK_GAP_JABS.drop(3), seed)
     else -> null
 }
+
+/** Jak mocno Kropi ma przyciskać. Widoczne tylko przy tonie zaczepnym. */
+enum class SnarkIntensity(val label: String, val emoji: String, val hint: String) {
+    MILD("Delikatnie", "🙂", "Przytyk, ale bez ostrych słów"),
+    NORMAL("Normalnie", "😏", "Dogryza i nie owija w bawełnę"),
+    SAVAGE("Bezlitośnie", "🔥", "Bez taryfy ulgowej i bez cenzury"),
+}
+
+/** Łagodniejszy rejestr: zaczepka zamiast obelgi. */
+val SNARK_JABS_MILD: List<String> = listOf(
+    "Wiem, że dasz radę. Po prostu na razie tego nie robisz.",
+    "Butelka stoi obok. Sama się nie wypije, sprawdzałem.",
+    "Twoje nerki przesyłają delikatne, ale stanowcze pozdrowienia.",
+    "Kawa to nie woda — wiesz o tym równie dobrze jak ja.",
+    "Nie musisz nadrabiać wszystkiego naraz. Ale zacząć by wypadało.",
+    "Jeszcze chwila i zacznę marudzić na poważnie.",
+    "Roślinki podlewasz regularniej niż siebie. Trochę niesprawiedliwie.",
+)
+
+/** Bez taryfy ulgowej — świadomy wybór użytkownika w Ustawieniach. */
+val SNARK_JABS_SAVAGE: List<String> = listOf(
+    "Kurwa, to jest woda, a nie egzamin z fizyki kwantowej. Nalej i wypij.",
+    "Twoje ciało wysyła sygnał SOS, a ty stwierdzasz, że później. Genialnie.",
+    "Gdyby lenistwo nawadniało, byłbyś oceanem. Niestety nie nawadnia.",
+    "Serio zamierzasz przegrać z zadaniem, które umie wykonać dwulatek?",
+    "Suchy jak pieprz w młynku. I równie interesujący dla własnych nerek.",
+    "Masz jedno ciało i traktujesz je jak wypożyczone auto przed oddaniem.",
+    "Pij, do cholery, bo zaraz zacznę wysyłać to samo co pięć minut.",
+    "Ten wynik to żenada i oboje o tym wiemy.",
+)
+
+/** Ostrzejsze tytuły dla trybu bezlitosnego. */
+val SNARK_TITLES_SAVAGE: List<String> = listOf(
+    "💧 Żenada, nie nawodnienie",
+    "💧 Serio, ile można?",
+    "💧 Twoje nerki mają dość",
+    "💧 Kropi już nie prosi",
+    "💧 Weź się w garść",
+)
+
+/**
+ * Docinek dobrany do poziomu nawodnienia i ustawionej ostrości. Tryb łagodny
+ * i bezlitosny mają własne, płaskie zestawy — poziom nawodnienia dobiera już
+ * tytuł, więc rozbijanie ich jeszcze na cztery warianty niczego by nie wniosło.
+ */
+fun snarkJab(level: Level, intensity: SnarkIntensity, seed: Int): String = when (intensity) {
+    SnarkIntensity.MILD -> pick(SNARK_JABS_MILD, seed)
+    SnarkIntensity.NORMAL -> pick(SNARK_JABS.getValue(level), seed)
+    SnarkIntensity.SAVAGE -> pick(SNARK_JABS_SAVAGE, seed)
+}
+
+/** Kwestie maskotki w aplikacji, gdy Kropi jest w trybie zaczepnym. */
+val SNARK_MASCOT_LINES: Map<Level, List<String>> = mapOf(
+    Level.LOW to listOf(
+        "Patrzę na ten licznik i mam ochotę wyparować.",
+        "Jestem kroplą wody. Ty jesteś kroplą rozczarowania.",
+        "Zero postępu. Ale przynajmniej konsekwentnie.",
+    ),
+    Level.MID to listOf(
+        "Połowa. Mógłbym być dumny, gdybym się nie znał na twoich popołudniach.",
+        "Idzie ci. Nie psuj tego drzemką zamiast picia.",
+        "Dobrze, dobrze. Nie rozpychaj się jeszcze tym sukcesem.",
+    ),
+    Level.HIGH to listOf(
+        "Prawie. I to bez mojego krzyku — postęp.",
+        "Widzisz? Da się. Szkoda, że dopiero po dziesięciu przypomnieniach.",
+        "Jeszcze parę łyków i przestanę cię śledzić. Na dziś.",
+    ),
+    Level.DONE to listOf(
+        "Zrobione. Nie przyzwyczajaj mnie do dobrych wiadomości.",
+        "Cel zamknięty. Jutro pewnie znowu będę musiał być wredny.",
+        "Brawo. Powiedziałem to raz, nie licz na powtórkę.",
+    ),
+)

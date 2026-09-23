@@ -27,6 +27,7 @@ data class HydrationSettings(
     val reminderGlassMl: Int = 250,
     val remindersEnabled: Boolean = true,
     val notificationTone: NotificationTone = NotificationTone.SNARKY,
+    val snarkIntensity: SnarkIntensity = SnarkIntensity.NORMAL,
     /** Cztery pojemności na kafelkach widgetu i w aplikacji — do przestawienia w Ustawieniach. */
     val bottlesMl: List<Int> = listOf(100, 250, 500, 750),
 ) {
