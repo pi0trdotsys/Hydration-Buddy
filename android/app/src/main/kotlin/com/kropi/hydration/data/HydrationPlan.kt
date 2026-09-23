@@ -93,10 +93,16 @@ fun HydrationState.plan(now: LocalTime = LocalTime.now()): HydrationPlan {
     } else {
         roundUpTo(ceil(remaining.toDouble() / sipCount).toInt(), 50)
     }
-    val step = if (sipCount == 1) 0 else span / (sipCount - 1)
+    val useProfile = settings.adaptivePlan && sipCount > 1 && hourlyProfile.sum() > 0
+    val rawMinutes = if (useProfile) {
+        adaptiveMinutes(hourlyProfile, firstMinute, lastMinute, sipCount)
+    } else {
+        val step = if (sipCount == 1) 0 else span / (sipCount - 1)
+        (0 until sipCount).map { firstMinute + step * it }
+    }
+    val minutes = enforceSpacing(rawMinutes.map { roundUpTo(it, 5) })
 
-    val sips = (0 until sipCount).map { index ->
-        val minute = roundUpTo(firstMinute + step * index, 5).coerceAtMost(LAST_PLANNABLE_MINUTE)
+    val sips = minutes.map { minute ->
         PlannedSip(LocalTime.of(minute / 60, minute % 60), portionMl)
     }
 
@@ -168,4 +174,56 @@ fun HydrationPlan.detailText(): String = when (status) {
         "Brakuje ${formatMl(remainingMl)}. Wypij ${sips.size} × ${formatMl(portionMl)} " +
             "o ${timesText()} — ostatnia porcja o ${finishAt?.hhmm()} domyka cel ${formatMl(goalMl)} " +
             "przed ${windowEnd.hhmm()}."
+}
+
+/**
+ * Rozkłada porcje tam, gdzie faktycznie pijesz.
+ *
+ * Profil godzinowy ([HydrationState.hourlyProfile]) traktujemy jak rozkład
+ * prawdopodobieństwa i tniemy go na równe części — i-ta porcja ląduje w
+ * kwantylu (i+0.5)/n. Dzięki temu przypomnienia trafiają w Twoje realne okna
+ * (np. tuż po wejściu do biura), zamiast co równe 90 minut licząc od teraz.
+ *
+ * Każdy kwadrans dostaje wagę powiększoną o 1, więc godziny, w których nigdy
+ * nie pijesz, tracą priorytet, ale nie znikają całkiem — inaczej plan
+ * skleiłby wszystkie porcje w dwóch ulubionych godzinach.
+ */
+private fun adaptiveMinutes(profile: List<Int>, firstMinute: Int, lastMinute: Int, count: Int): List<Int> {
+    val slotMinutes = 15
+    val slots = ((lastMinute - firstMinute) / slotMinutes).coerceAtLeast(1)
+    val weights = FloatArray(slots) { index ->
+        val minute = firstMinute + index * slotMinutes
+        profile.getOrElse((minute / 60).coerceIn(0, 23)) { 0 }.toFloat() + 1f
+    }
+    val total = weights.sum()
+
+    val result = ArrayList<Int>(count)
+    var slotIndex = 0
+    var accumulated = 0f
+    for (i in 0 until count) {
+        val target = total * (i + 0.5f) / count
+        while (slotIndex < slots - 1 && accumulated + weights[slotIndex] < target) {
+            accumulated += weights[slotIndex]
+            slotIndex++
+        }
+        result.add(firstMinute + slotIndex * slotMinutes)
+    }
+
+    // Pierwsza porcja nie może wypaść później, niż wynikałoby z równego
+    // rozkładu: kto pije dopiero wieczorem, dostałby inaczej plan bez ani
+    // jednego przypomnienia przed 16:00 — czyli utrwalenie nawyku zamiast
+    // jego poprawy.
+    val evenStep = (lastMinute - firstMinute) / count
+    result[0] = minOf(result[0], firstMinute + evenStep)
+    return result
+}
+
+/** Pilnuje, żeby dwie porcje nie wypadły zaraz po sobie, gdy profil je skleił. */
+private fun enforceSpacing(minutes: List<Int>): List<Int> {
+    var previous = Int.MIN_VALUE
+    return minutes.map { minute ->
+        val spaced = if (previous == Int.MIN_VALUE) minute else maxOf(minute, previous + MIN_SPACING_MINUTES)
+        previous = spaced.coerceAtMost(LAST_PLANNABLE_MINUTE)
+        previous
+    }
 }

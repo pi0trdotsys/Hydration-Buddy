@@ -31,6 +31,7 @@ data class HydrationState(
     val goal: Int,
     val intakes: List<Intake>,
     val records: List<DayRecord>,
+    val hourlyProfile: List<Int>,
     val pokeSeed: Int,
     val settings: HydrationSettings,
 ) {
@@ -158,6 +159,8 @@ private object Keys {
     val BOTTLES_ML = stringPreferencesKey("bottles_ml")
     val SNARK_INTENSITY = stringPreferencesKey("snark_intensity")
     val LAST_SUMMARY_EPOCH_DAY = longPreferencesKey("last_summary_epoch_day")
+    val ADAPTIVE_PLAN = booleanPreferencesKey("adaptive_plan")
+    val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -177,6 +180,7 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
         remindersEnabled = prefs[Keys.REMINDERS_ENABLED] ?: defaults.remindersEnabled,
         notificationTone = prefs[Keys.NOTIFICATION_TONE]?.let { runCatching { NotificationTone.valueOf(it) }.getOrNull() }
             ?: defaults.notificationTone,
+        adaptivePlan = prefs[Keys.ADAPTIVE_PLAN] ?: defaults.adaptivePlan,
         snarkIntensity = prefs[Keys.SNARK_INTENSITY]?.let { runCatching { SnarkIntensity.valueOf(it) }.getOrNull() }
             ?: defaults.snarkIntensity,
         bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
@@ -188,6 +192,18 @@ private const val DEFAULT_GOAL = 2500
 
 /** Ile zamkniętych dni trzymamy — rok z zapasem, a to i tak kilka kB tekstu. */
 private const val HISTORY_LIMIT_DAYS = 400
+
+/**
+ * Jak mocno stary profil godzinowy ustępuje nowym dniom. 0.85 daje pamięć
+ * rzędu dwóch tygodni: zmiana rytmu dnia przebija się w kilka dni, ale jeden
+ * nietypowy dzień nie wywraca planu.
+ */
+private const val PROFILE_DECAY = 0.85f
+
+private fun decodeProfile(raw: String?): List<Int> {
+    val parsed = raw?.split(",")?.mapNotNull { it.toIntOrNull() }
+    return if (parsed != null && parsed.size == 24) parsed else List(24) { 0 }
+}
 
 private fun encodeRecords(records: List<DayRecord>): String =
     records.joinToString(",") { "${it.epochDay}:${it.ml}:${it.goal}" }
@@ -231,6 +247,7 @@ class HydrationRepository(private val context: Context) {
             goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
             intakes = decodeIntakes(prefs[Keys.INTAKES]),
             records = decodeRecords(prefs[Keys.HISTORY]),
+            hourlyProfile = decodeProfile(prefs[Keys.HOURLY_PROFILE]),
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
             settings = readSettings(prefs),
         )
@@ -256,7 +273,15 @@ class HydrationRepository(private val context: Context) {
             if (lastDay == today) return@edit
 
             val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
-            val total = decodeIntakes(prefs[Keys.INTAKES]).sumOf { it.ml }
+            val closingIntakes = decodeIntakes(prefs[Keys.INTAKES])
+            val total = closingIntakes.sumOf { it.ml }
+
+            // Profil „o której zwykle pijesz" — z niego plan dnia dobiera godziny.
+            val profile = decodeProfile(prefs[Keys.HOURLY_PROFILE])
+                .map { (it * PROFILE_DECAY).toInt() }
+                .toIntArray()
+            closingIntakes.forEach { profile[it.hour.coerceIn(0, 23)] += it.ml }
+            prefs[Keys.HOURLY_PROFILE] = profile.joinToString(",")
 
             val closedDays = buildList {
                 add(DayRecord(lastDay, total, goal))
@@ -329,6 +354,7 @@ class HydrationRepository(private val context: Context) {
             prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
             prefs[Keys.BOTTLES_ML] = settings.bottlesMl.joinToString(",")
             prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
+            prefs[Keys.ADAPTIVE_PLAN] = settings.adaptivePlan
             prefs[Keys.GOAL] = settings.effectiveGoalMl
         }
     }

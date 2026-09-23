@@ -188,6 +188,7 @@ private fun SettingsSection(
     var tone by remember { mutableStateOf(initial.notificationTone) }
     var bottles by remember { mutableStateOf(initial.bottlesMl) }
     var intensity by remember { mutableStateOf(initial.snarkIntensity) }
+    var adaptivePlan by remember { mutableStateOf(initial.adaptivePlan) }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -241,6 +242,25 @@ private fun SettingsSection(
                 }
             }
             Text(intensity.hint, color = KropiColors.mutedForeground, fontSize = 11.sp)
+        }
+
+        // --- plan dopasowany do nawyków ---
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Plan pod Twoje godziny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Kropi uczy się, o której naprawdę pijesz, i tam przesuwa porcje. " +
+                        "Wyłączone — rozkłada je równo co tyle samo.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Switch(
+                checked = adaptivePlan,
+                onCheckedChange = { adaptivePlan = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+            )
         }
 
         // --- goal mode ---
@@ -357,6 +377,7 @@ private fun SettingsSection(
                             notificationTone = tone,
                             bottlesMl = bottles,
                             snarkIntensity = intensity,
+                            adaptivePlan = adaptivePlan,
                         ),
                     )
                 },

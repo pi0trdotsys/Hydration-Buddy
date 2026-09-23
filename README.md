@@ -2,7 +2,7 @@
 
 [![Pobierz APK](https://img.shields.io/github/v/release/pi0trdotsys/hydration-buddy?label=Pobierz%20APK&style=for-the-badge&color=00DFE8&logoColor=white)](https://github.com/pi0trdotsys/hydration-buddy/releases/latest)
 
-Najnowsza wersja natywnej aplikacji na Androida: [Releases → v1.4.0](https://github.com/pi0trdotsys/hydration-buddy/releases/tag/v1.4.0) (plik `kropi-hydration-v1.4.0.apk`).
+Najnowsza wersja natywnej aplikacji na Androida: [Releases → v1.5.0](https://github.com/pi0trdotsys/hydration-buddy/releases/tag/v1.5.0) (plik `kropi-hydration-v1.5.0.apk`).
 
 ![Widget w trzech rozmiarach](docs/widget-showcase.svg)
 
@@ -42,7 +42,8 @@ Wspólne elementy widgetu (`WidgetPreview.kt`: pierścień, maskotka, butelki ry
 - `data/SnarkContent.kt` — druga osobowość Kropi: baza zaczepnych tytułów, docinków i zamknięć, przełączana w Ustawieniach (`NotificationTone`).
 - `widget/WidgetGraphics.kt` — `IntakeChart`: wykres „ile i o której” (schodek na każdy łyk z podpisaną objętością, przerywana linia planu dnia, oś godzin, znacznik „teraz”), rysowany tym samym kodem na bitmapie dla widgetu i na `Canvas` w aplikacji.
 - `data/HydrationPlan.kt` — kalkulacja planu: ile porcji, po ile i o której wypaść, żeby domknąć dzienny cel przed końcem okna picia. Zasila powiadomienia, kartę „Plan na resztę dnia” i podpis pod wykresem.
-- `data/HydrationRepository.kt` — stan (cel, łyki, streak, historia) trzymany w Jetpack DataStore, z rolowaniem dnia o północy — odpowiednik `useHydrationMock`, ale z realnym zapisem między sesjami.
+- `data/HydrationRepository.kt` — stan (cel, łyki, historia dni, profil godzinowy) trzymany w Jetpack DataStore, z rolowaniem dnia o północy. Zamykany dzień trafia do historii (400 dni), a seria liczy się wstecz po rekordach zamiast osobnego licznika.
+- `ui/QuickAddActivity.kt` + `quicksettings/HydrationTileService.kt` — dolewanie bez wchodzenia do aplikacji: skróty spod ikony (`kropi://add/500`) i kafelek w Szybkich ustawieniach.
 - `data/HydrationContent.kt` — 1:1 port `src/data/hydration-content.ts` i `src/hooks/use-hydration-mock.ts` (ciekawostki, self-care, kwestie maskotki, dane historii/tygodnia).
 - `ui/MainActivity.kt` — dolna nawigacja (`NavigationBar`) spinająca powyższe 5 ekranów, każdy czytający ten sam `HydrationRepository`.
 
@@ -59,10 +60,24 @@ Kropi sam pilnuje, żebyś nie zapomniał/a o wodzie:
 - **Fancy powiadomienia z konkretnym planem** — jeśli nie zanotujesz łyka wody przez zbyt długi czas (interwał wyliczony z Twojego celu i aktywnych godzin picia), Kropi wysyła powiadomienie z własnym, zsyntezowanym dźwiękiem („plusk" — `res/raw/water_notification.wav`) i wyliczeniem pod Ciebie: *„Wypij 250 ml o 15:10 — i jeszcze 4× do 22:00, a cel 2 500 ml będzie zrobiony"*. Po rozwinięciu widać cały rozkład godzin, bilans względem planu na tę porę, czas od ostatniego łyka i zdanie self-care; pasek postępu pokazuje dzisiejsze nawodnienie. Przycisk **„💧 Wypiłem/-am X ml"** dolewa dokładnie tyle, ile przewiduje najbliższa porcja planu, i odświeża widget bez otwierania aplikacji (plus „Za 20 min" do odłożenia przypomnienia).
 - **Cel automatyczny** — na podstawie wagi, temperatury otoczenia i poziomu aktywności (`GoalCalculator.kt`: ~33 ml/kg + bonus za aktywność/upał) albo cel ręczny — do wyboru w ustawieniach w aplikacji.
 - **Aktywne godziny picia** (np. 8–22) — przypomnienia i wyliczenie tempa działają tylko w tym oknie.
-- **Ton powiadomień** — do wyboru 🤍 **Wspierający** (self-care) albo 😈 **Zaczepny**, który dogryza i nie owija w bawełnę: *„Cztery godziny bez wody. Twoje nerki wypełniły właśnie wniosek o urlop bezpłatny"*. Docinek dobiera się do poziomu nawodnienia i długości przerwy — liczby i plan pozostają te same.
+- **Ton powiadomień** — do wyboru 🤍 **Wspierający** (self-care) albo 😈 **Zaczepny**, który dogryza i nie owija w bawełnę: *„Cztery godziny bez wody. Twoje nerki wypełniły właśnie wniosek o urlop bezpłatny"*. Ton zaczepny ma trzy poziomy ostrości (🙂 delikatnie / 😏 normalnie / 🔥 bezlitośnie — ten ostatni bez cenzury). Docinek dobiera się do poziomu nawodnienia i długości przerwy; liczby i plan pozostają te same, a maskotka w aplikacji mówi w tym samym tonie.
+- **Plan pod Twoje godziny** — Kropi zapamiętuje, o której naprawdę pijesz (profil godzinowy z pamięcią ok. dwóch tygodni) i przesuwa tam porcje zamiast rozkładać je równo co tyle samo. Pierwsza porcja nigdy nie wypada później, niż wynikałoby z równego rozkładu, żeby adaptacja nie utrwalała nawyku „piję dopiero wieczorem". Do wyłączenia w Ustawieniach.
+- **Wieczorne podsumowanie** — po zamknięciu okna picia raz na dobę: bilans, liczba łyków, seria i komentarz w wybranym tonie.
+- **Dolewanie bez aplikacji** — kafelek w Szybkich ustawieniach (dodaj go sobie w panelu) oraz skróty pod długim przytrzymaniem ikony: „Szklanka" i „500 ml".
 - **Dwie pigułki statusu na widgecie** — `PONIŻEJ PLANU / 1 339 ml` (pomarańczowa, gdy jesteś w tyle) oraz `NASTĘPNE / 250 ml o 15:40`. Widget odświeża się automatycznie co ok. 15 minut (`ReminderWorker`, WorkManager) niezależnie od tego, czy dotkniesz go ręcznie.
 - **Wykres dnia zamiast anonimowych słupków** — duży widget (i jego podgląd w aplikacji) pokazuje schodkową linię nawodnienia: każdy skok to jeden łyk, podpisany objętością, na osi z godzinami, poziomą siatką, podpisaną linią celu i znacznikiem „teraz". Przerywana linia obok to plan dnia — od razu widać, czy jesteś nad nią, czy pod.
 - **Stopka widgetu** — seria dni, ostatni zapisany łyk i ile porcji zostało do końca okna picia.
+
+### Historia i dane
+
+Do wersji 1.4.0 zakładka Historia pokazywała dane przykładowe zaszyte w kodzie. Od 1.5.0 wszystko liczy się z realnych zapisów:
+
+- **Historia dni** — każdy zamykany dzień (ile wypite, jaki cel) ląduje w DataStore; trzymane jest 400 ostatnich. Dni, w których aplikacja nie działała, zapisują się jako zerowe, żeby luka nie udawała dnia z zaliczonym celem.
+- **Statystyki** — tydzień, karta „Ostatnie 30 dni" i „najlepszy dzień" liczone z rekordów. Seria to liczba kolejnych dni z osiągniętym celem (dzisiaj wlicza się dopiero po jego zaliczeniu).
+- **Eksport CSV** — przycisk w Historii, zapis przez systemowy wybór pliku (bez uprawnień do pamięci). Separator średnikowy, więc polski Excel otwiera go bez kreatora.
+- **Poprawianie wpisów** — pojedynczy łyk można usunąć krzyżykiem na osi czasu, gdy dolanie było pomyłką.
+
+Świeża instalacja zaczyna od zera — nie ma już zasiewu pięciu przykładowych łyków.
 
 Uruchomienie lokalnie (wymaga Android SDK):
 

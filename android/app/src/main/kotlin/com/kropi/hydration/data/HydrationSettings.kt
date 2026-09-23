@@ -28,6 +28,8 @@ data class HydrationSettings(
     val remindersEnabled: Boolean = true,
     val notificationTone: NotificationTone = NotificationTone.SNARKY,
     val snarkIntensity: SnarkIntensity = SnarkIntensity.NORMAL,
+    /** Rozkładaj porcje w godzinach, w których naprawdę pijesz, zamiast równo co tyle samo. */
+    val adaptivePlan: Boolean = true,
     /** Cztery pojemności na kafelkach widgetu i w aplikacji — do przestawienia w Ustawieniach. */
     val bottlesMl: List<Int> = listOf(100, 250, 500, 750),
 ) {
