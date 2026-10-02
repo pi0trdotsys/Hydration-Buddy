@@ -7,4 +7,6 @@
     <string name="shortcut_glass_long">Dolej szklankę wody</string>
     <string name="shortcut_bottle_short">500 ml</string>
     <string name="shortcut_bottle_long">Dolej 500 ml wody</string>
+    <string name="permission_read_hydration_label">Odczyt nawodnienia z Kropi</string>
+    <string name="permission_read_hydration_desc">Pozwala odczytać dzisiejszą ilość wypitej wody i cel z aplikacji Kropi.</string>
 </resources>

@@ -12,8 +12,8 @@ android {
         applicationId = "com.kropi.hydration"
         minSdk = 26
         targetSdk = 36
-        versionCode = 6
-        versionName = "1.5.0"
+        versionCode = 7
+        versionName = "1.6.0"
     }
 
     buildTypes {
@@ -42,6 +42,9 @@ android {
         getByName("main") {
             kotlin.srcDirs("src/main/kotlin")
         }
+        getByName("test") {
+            kotlin.srcDirs("src/test/kotlin")
+        }
     }
 }
 
@@ -63,4 +66,6 @@ dependencies {
     implementation("androidx.work:work-runtime-ktx:2.9.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+
+    testImplementation("junit:junit:4.13.2")
 }

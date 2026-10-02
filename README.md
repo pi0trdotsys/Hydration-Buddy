@@ -79,6 +79,14 @@ Do wersji 1.4.0 zakładka Historia pokazywała dane przykładowe zaszyte w kodzi
 
 Świeża instalacja zaczyna od zera — nie ma już zasiewu pięciu przykładowych łyków.
 
+### Woda trafia sama do Szpili
+
+Od 1.6.0 Kropi udostępnia swoje dni aplikacji [Szpila](https://github.com/pi0trdotsys/Glow-Habit-Widget) (tracker nawyków), więc wodę logujesz tylko w Kropi:
+
+- **Tylko dla zaufanej aplikacji** — dane czyta wyłącznie aplikacja podpisana tym samym kluczem (uprawnienie `com.kropi.hydration.permission.READ_HYDRATION`, poziom `signature`). Dostawca `content://com.kropi.hydration.export/today` i `/days` (dzisiaj + do 60 dni historii) jest tylko do odczytu.
+- **Od razu po wpisie** — każda zmiana (dolanie z aplikacji, widgetu, kafelka, skrótu czy powiadomienia, cofnięcie, nowy cel) wysyła do Szpili powiadomienie, więc jej zadanie i widżety odświeżają się nawet przy zamkniętej Szpili.
+- **Bez podwójnego logowania** — przytrzymanie wody w Szpili otwiera szybkie dolewanie Kropi (`kropi://add`).
+
 Uruchomienie lokalnie (wymaga Android SDK):
 
 ```sh

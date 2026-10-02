@@ -2,12 +2,16 @@ package com.kropi.hydration.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
+import androidx.datastore.preferences.core.MutablePreferences
+import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
 import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kropi.hydration.export.ExportToday
+import com.kropi.hydration.export.HydrationExport
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
@@ -34,6 +38,8 @@ data class HydrationState(
     val hourlyProfile: List<Int>,
     val pokeSeed: Int,
     val settings: HydrationSettings,
+    /** Epoch ms ostatniej zmiany dzisiejszej sumy/celu (0 = nieznane, sprzed eksportu). */
+    val lastChangeEpochMs: Long = 0L,
 ) {
     val total: Int get() = intakes.sumOf { it.ml }
     val progress: Double get() = (total.toDouble() / goal).coerceIn(0.0, 1.0)
@@ -161,6 +167,7 @@ private object Keys {
     val LAST_SUMMARY_EPOCH_DAY = longPreferencesKey("last_summary_epoch_day")
     val ADAPTIVE_PLAN = booleanPreferencesKey("adaptive_plan")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
+    val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -250,7 +257,59 @@ class HydrationRepository(private val context: Context) {
             hourlyProfile = decodeProfile(prefs[Keys.HOURLY_PROFILE]),
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
             settings = readSettings(prefs),
+            lastChangeEpochMs = prefs[Keys.LAST_CHANGE_EPOCH_MS] ?: 0L,
         )
+    }
+
+    companion object {
+        /** Dzisiejszy stan w kształcie eksportu (provider dla Szpili). */
+        fun exportToday(state: HydrationState): ExportToday = ExportToday(
+            epochDay = state.today.epochDay,
+            ml = state.total,
+            goal = state.goal,
+            intakes = state.intakes.size,
+            updatedEpochMs = state.lastChangeEpochMs,
+        )
+    }
+
+    /** To, co widzi eksport — porównujemy przed i po edycji, żeby wiedzieć, czy ogłosić zmianę. */
+    private data class ExportSnapshot(val epochDay: Long?, val ml: Int, val goal: Int, val intakes: Int)
+
+    private fun snapshotOf(prefs: Preferences): ExportSnapshot {
+        val intakes = decodeIntakes(prefs[Keys.INTAKES])
+        return ExportSnapshot(
+            epochDay = prefs[Keys.LAST_EPOCH_DAY],
+            ml = intakes.sumOf { it.ml },
+            goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
+            intakes = intakes.size,
+        )
+    }
+
+    /**
+     * Edycja DataStore, po której — jeśli zmieniła się dzisiejsza suma, cel,
+     * liczba łyków albo dzień — zapisujemy znacznik czasu i ogłaszamy zmianę
+     * Szpili. Wszystkie mutacje dnia idą tędy, więc widget, kafelek, szybkie
+     * dolewanie, akcje powiadomień i UI są objęte automatycznie.
+     */
+    private suspend fun editAndExport(transform: (MutablePreferences) -> Unit) {
+        var changed: ExportToday? = null
+        context.hydrationStore.edit { prefs ->
+            val before = snapshotOf(prefs)
+            transform(prefs)
+            val after = snapshotOf(prefs)
+            if (after != before) {
+                val now = System.currentTimeMillis()
+                prefs[Keys.LAST_CHANGE_EPOCH_MS] = now
+                changed = ExportToday(
+                    epochDay = after.epochDay ?: LocalDate.now().toEpochDay(),
+                    ml = after.ml,
+                    goal = after.goal,
+                    intakes = after.intakes,
+                    updatedEpochMs = now,
+                )
+            }
+        }
+        changed?.let { HydrationExport.notifyChanged(context, it) }
     }
 
     suspend fun current(): HydrationState = rollDayIfNeeded()
@@ -263,14 +322,14 @@ class HydrationRepository(private val context: Context) {
      */
     private suspend fun rollDayIfNeeded(): HydrationState {
         val today = LocalDate.now().toEpochDay()
-        context.hydrationStore.edit { prefs ->
+        editAndExport { prefs ->
             val lastDay = prefs[Keys.LAST_EPOCH_DAY]
             if (lastDay == null) {
                 prefs[Keys.LAST_EPOCH_DAY] = today
                 prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: readSettings(prefs).effectiveGoalMl
-                return@edit
+                return@editAndExport
             }
-            if (lastDay == today) return@edit
+            if (lastDay == today) return@editAndExport
 
             val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
             val closingIntakes = decodeIntakes(prefs[Keys.INTAKES])
@@ -300,7 +359,7 @@ class HydrationRepository(private val context: Context) {
 
     suspend fun addWater(ml: Int) {
         rollDayIfNeeded()
-        context.hydrationStore.edit { prefs ->
+        editAndExport { prefs ->
             val now = LocalTime.now()
             val updated = decodeIntakes(prefs[Keys.INTAKES]) + Intake(now.hour, now.minute, ml)
             prefs[Keys.INTAKES] = encodeIntakes(updated)
@@ -341,7 +400,7 @@ class HydrationRepository(private val context: Context) {
     }
 
     suspend fun saveSettings(settings: HydrationSettings) {
-        context.hydrationStore.edit { prefs ->
+        editAndExport { prefs ->
             prefs[Keys.WEIGHT_KG] = settings.weightKg
             prefs[Keys.TEMPERATURE] = settings.temperature.name
             prefs[Keys.ACTIVITY] = settings.activity.name
@@ -361,15 +420,15 @@ class HydrationRepository(private val context: Context) {
 
     /** Usuwa jeden konkretny wpis — pomyłkowe dolanie nie wymaga cofania całej reszty. */
     suspend fun removeIntakeAt(index: Int) {
-        context.hydrationStore.edit { prefs ->
+        editAndExport { prefs ->
             val current = decodeIntakes(prefs[Keys.INTAKES])
-            if (index !in current.indices) return@edit
+            if (index !in current.indices) return@editAndExport
             prefs[Keys.INTAKES] = encodeIntakes(current.filterIndexed { i, _ -> i != index })
         }
     }
 
     suspend fun undoLast() {
-        context.hydrationStore.edit { prefs ->
+        editAndExport { prefs ->
             val updated = decodeIntakes(prefs[Keys.INTAKES]).dropLast(1)
             prefs[Keys.INTAKES] = encodeIntakes(updated)
         }
@@ -382,6 +441,6 @@ class HydrationRepository(private val context: Context) {
     }
 
     suspend fun setGoal(ml: Int) {
-        context.hydrationStore.edit { prefs -> prefs[Keys.GOAL] = ml }
+        editAndExport { prefs -> prefs[Keys.GOAL] = ml }
     }
 }

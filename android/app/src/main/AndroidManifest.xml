@@ -4,6 +4,15 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
 
+    <!-- Odczyt dzisiejszego nawodnienia przez aplikacje podpisane tym samym kluczem (Szpila). -->
+    <permission
+        android:name="com.kropi.hydration.permission.READ_HYDRATION"
+        android:description="@string/permission_read_hydration_desc"
+        android:label="@string/permission_read_hydration_label"
+        android:protectionLevel="signature" />
+    <!-- Kropi sam wysyła broadcasty wymagające tego uprawnienia. -->
+    <uses-permission android:name="com.kropi.hydration.permission.READ_HYDRATION" />
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -65,5 +74,12 @@
         <receiver
             android:name=".notifications.DrinkActionReceiver"
             android:exported="false" />
+
+        <!-- Tylko do odczytu: dzisiejsze nawodnienie i ostatnie 60 dni dla Szpili. -->
+        <provider
+            android:name=".export.HydrationExportProvider"
+            android:authorities="com.kropi.hydration.export"
+            android:exported="true"
+            android:readPermission="com.kropi.hydration.permission.READ_HYDRATION" />
     </application>
 </manifest>

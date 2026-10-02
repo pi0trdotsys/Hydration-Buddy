@@ -1,6 +1,7 @@
 package com.kropi.hydration.notifications
 
 import android.Manifest
+import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
@@ -61,6 +62,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
      * Po zamknięciu okna picia Kropi podsumowuje dzień — raz na dobę, bo
      * przypomnienia już wtedy nie mają sensu, a bilans jeszcze tak.
      */
+    // Uprawnienie sprawdza hasNotificationPermission() przed notify() — lint nie widzi tego przez helper.
+    @SuppressLint("MissingPermission")
     private suspend fun maybeDailySummary(repo: HydrationRepository, state: HydrationState) {
         if (!state.settings.remindersEnabled) return
         val now = LocalTime.now()
@@ -107,6 +110,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         repo.markSummarySent(today)
     }
 
+    // Uprawnienie sprawdza hasNotificationPermission() przed notify() — lint nie widzi tego przez helper.
+    @SuppressLint("MissingPermission")
     private suspend fun maybeNotify(repo: HydrationRepository, state: HydrationState, force: Boolean) {
         val settings = state.settings
         if (!force) {
