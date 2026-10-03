@@ -1,96 +1,219 @@
-# Hydration Buddy — Kropi
+<div align="center">
 
-[![Pobierz APK](https://img.shields.io/github/v/release/pi0trdotsys/hydration-buddy?label=Pobierz%20APK&style=for-the-badge&color=00DFE8&logoColor=white)](https://github.com/pi0trdotsys/hydration-buddy/releases/latest)
+<img src="docs/kropi.svg" width="104" alt="Kropi" />
 
-Najnowsza wersja natywnej aplikacji na Androida: [Releases → v1.5.0](https://github.com/pi0trdotsys/hydration-buddy/releases/tag/v1.5.0) (plik `kropi-hydration-v1.5.0.apk`).
+# Kropi
 
-![Widget w trzech rozmiarach](docs/widget-showcase.svg)
+**Woda z planem.**
+Nie „pamiętaj o piciu". Konkret: wypij 250 ml o 15:10, i jeszcze 4× do 22:00 — wtedy cel będzie zrobiony.
 
-Jeden design, jeden komponent — renderowany na dwóch platformach:
+**Polski** · [English](README.en.md)
 
-- **Web** (`src/`) — makiety TanStack Start/React: dashboard, podgląd widgetu w 3 rozmiarach (`/widget`) i pełna lista ciekawostek (`/insights`).
-- **Android** (`android/`) — natywna aplikacja z takimi samymi zakładkami jak makiety webowe (Główny / Widget / Historia / Treści), plus własna zakładka Ustawień, zbudowana w Kotlinie/Compose + skalowalny widget na ekran główny w Jetpack Glance, z prawdziwą interakcją (dolewanie wody, licznik dnia, maskotka), zapisem stanu w DataStore i inteligentnymi powiadomieniami przypominającymi o piciu wody.
+<br />
 
-![Architektura](docs/architecture.svg)
+[![Pobierz APK](https://img.shields.io/github/v/release/pi0trdotsys/Hydration-Buddy?label=Pobierz%20APK&style=for-the-badge&color=00DFE8&labelColor=020F19)](https://github.com/pi0trdotsys/Hydration-Buddy/releases/latest)
+&nbsp;
+![Android](https://img.shields.io/badge/Android-8%2B-00DFE8?style=for-the-badge&labelColor=020F19)
+&nbsp;
+![Offline](https://img.shields.io/badge/100%25-offline-00DFE8?style=for-the-badge&labelColor=020F19)
 
-## Development
+<br />
 
-Prefer working locally? You need Node.js and npm — [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating).
+<img src="docs/screenshots/app-today.png" width="240" alt="Ekran główny: pierścień postępu, plan na teraz i wykres dnia" />
+&nbsp;&nbsp;
+<img src="docs/screenshots/app-plan.png" width="240" alt="Plan na resztę dnia z konkretnymi godzinami" />
+&nbsp;&nbsp;
+<img src="docs/screenshots/app-settings.png" width="240" alt="Ton powiadomień i ostrość docinków" />
 
-```sh
-git clone <this-repository-url>
-cd <repository-name>
-npm i
-npm run dev
+</div>
+
+<br />
+
+## ◉ Plan zamiast przypomnień
+
+Każda apka do wody umie napisać „napij się". Kropi liczy, **ile i o której**,
+żeby dzień się domknął:
+
+> **💧 Serio, tak trudno?** · 10% • cel 2 500 ml
+> Wypij 250 ml o 15:40 — i jeszcze 8× do 22:00, a cel 2 500 ml będzie zrobiony.
+
+Plan bierze Twój cel, okno picia i rozmiar szklanki, rozkłada brakujące
+mililitry na równe porcje i podaje godziny. Gdy do końca dnia zostało mało
+czasu, sam zwiększa porcje, zamiast obiecywać cel nie do zrobienia. Po
+rozwinięciu powiadomienia widzisz cały rozkład, bilans względem planu na tę
+porę i czas od ostatniego łyka.
+
+Przycisk w powiadomieniu dolewa **dokładnie tyle, ile przewiduje najbliższa
+porcja** — jedno dotknięcie i wracasz do swoich spraw.
+
+## ◉ Widget, który naprawdę coś mówi
+
+<div align="center">
+<img src="docs/screenshots/widget-bar.png" width="430" alt="Widget 4×1: postęp, najbliższa porcja i dwa przyciski dolewania" />
+</div>
+
+Nie sam procent i nie anonimowe słupki. Duży kafelek pokazuje **schodkową
+linię nawodnienia**: każdy skok to jeden łyk, podpisany objętością, na osi z
+godzinami i znacznikiem „teraz". Obok biegnie przerywana **linia planu** — od
+razu widać, czy jesteś nad nią, czy pod.
+
+Do tego dwie pigułki stanu: `PONIŻEJ PLANU / 507 ml` (na pomarańczowo, gdy
+odstajesz) i `NASTĘPNE / 250 ml o 12:30`. Na dole seria, ostatni zapisany łyk i
+ile porcji zostało do końca dnia.
+
+Cztery przyciski dolewania są na kafelku, więc **woda loguje się bez
+otwierania aplikacji**. Pomyłkę cofasz strzałką obok. Widget ma trzy układy:
+pasek 4×1, kafelek 2×1 i duży 2×2 — każdy pokazuje tyle, ile się mieści.
+
+<div align="center">
+<img src="docs/screenshots/widget-large.png" width="330" alt="Duży widget 2×2 z wykresem dnia" />
+</div>
+
+## ◉ Kropi dogryza. Albo nie — Ty decydujesz
+
+Maskotka ma dwa charaktery. **Wspierający** mówi jak przyjaciel po treningu.
+**Zaczepny** nie owija w bawełnę:
+
+> Cztery godziny bez wody. Twoje nerki wypełniły właśnie wniosek o urlop
+> bezpłatny. Nawet zupka chińska dostaje więcej wody niż ty. Wstawaj i pij.
+> Nie będę powtarzał.
+
+Ton zaczepny ma trzy poziomy: 🙂 **delikatnie** (przytyk bez ostrych słów),
+😏 **normalnie** i 🔥 **ostro** — ten ostatni bez cenzury, więc włączasz go
+świadomie. Docinek dobiera się do tego, jak daleko jesteś od celu i jak długo
+nie piłeś. Liczby i plan zostają te same, zmienia się tylko ton — także
+maskotki w aplikacji.
+
+Wieczorem, po zamknięciu okna picia, przychodzi **podsumowanie dnia**: bilans,
+liczba łyków, seria i komentarz w wybranym tonie.
+
+## ◉ Uczy się Twoich godzin
+
+Kropi zapamiętuje, o której **naprawdę** pijesz, i tam przesuwa porcje —
+zamiast rozkładać je równo co tyle samo. Ten sam cel, dwie różne osoby:
+
+```text
+ranny ptaszek   08:00  08:30  09:00  12:00  13:00  17:30
+wieczorny       09:20  16:30  18:30  19:00  19:30  20:15
 ```
 
-## Natywna aplikacja na Androida
+Pierwsza porcja nigdy nie wypada później, niż wynikałoby z równego rozkładu —
+żeby „piję dopiero wieczorem" nie utrwaliło się na stałe. Nie podoba Ci się?
+Jeden przełącznik w Ustawieniach i wracasz do równego rytmu.
 
-Kod w [`android/`](android/) to osobny projekt Gradle/Kotlin (Jetpack Compose + Glance + DataStore), niezależny od aplikacji webowej powyżej, ale renderujący ten sam design — łącznie z tymi samymi zakładkami, jakie zaplanowano dla makiet w `src/routes/`:
+## ◉ Woda bez otwierania aplikacji
 
-| Zakładka | Web (makieta) | Android (`ui/`) |
-| --- | --- | --- |
-| 🏠 Główny | `src/routes/index.tsx` | `HomeScreen.kt` — nagłówek z realną datą, suwak celu, duży widget, karty self-care/ciekawostka, oś czasu łyków, pasek tygodnia, maskotka |
-| 🔲 Widget | `src/routes/widget.tsx` | `WidgetScreen.kt` — podgląd 3 rozmiarów + przycisk przypinający widget na ekran główny |
-| 📅 Historia | `src/routes/history.tsx` | `HistoryScreen.kt` — statystyki tygodnia, wykres słupkowy, szczegóły dni, najlepszy dzień |
-| 💡 Treści | `src/routes/insights.tsx` | `InsightsScreen.kt` — cała baza treści (self-care, pory dnia, ciekawostki, kwestie maskotki) |
-| ⚙️ Ustawienia | *(bez odpowiednika — makieta nie miała ustawień)* | `SettingsScreen.kt` — kalkulator celu, aktywne godziny, przypomnienia |
+- **Widget** — cztery przyciski na ekranie głównym, pojemności ustawiasz sam.
+- **Kafelek w Szybkich ustawieniach** — jedno dotknięcie z rozwijanego paska,
+  bilans dnia w podtytule.
+- **Skróty spod ikony** — przytrzymaj ikonę i wybierz „Szklanka" albo „500 ml".
+- **Powiadomienie** — przycisk dolewa zaplanowaną porcję, drugi odkłada
+  przypomnienie o 20 minut.
 
-Wspólne elementy widgetu (`WidgetPreview.kt`: pierścień, maskotka, butelki rysowane na `Canvas`) są dzielone między zakładkę Główny i Widget, tak jak w web makiecie jeden komponent `HydrationWidget` renderuje się na `/` i `/widget`.
+## ◉ Cel policzony pod Ciebie
 
-- `widget/HydrationWidget.kt` — prawdziwy `GlanceAppWidget` na ekranie głównym telefonu, z `SizeMode.Exact` (pierścień, maskotka i wykres dnia renderowane na bitmapie, bo Glance nie ma dostępu do dowolnego Canvasu). Stan zbierany jest jako `Flow` **wewnątrz** `provideContent`, więc każdy zapis (także kilka łyków pod rząd) odświeża kafelek natychmiast. Sekcje mają stałe wysokości, a wykres dostaje całą resztę — na kafelku 4×4 rośnie z 56 do ~140 dp zamiast zostawiać pas pustki.
-- `data/SnarkContent.kt` — druga osobowość Kropi: baza zaczepnych tytułów, docinków i zamknięć, przełączana w Ustawieniach (`NotificationTone`).
-- `widget/WidgetGraphics.kt` — `IntakeChart`: wykres „ile i o której” (schodek na każdy łyk z podpisaną objętością, przerywana linia planu dnia, oś godzin, znacznik „teraz”), rysowany tym samym kodem na bitmapie dla widgetu i na `Canvas` w aplikacji.
-- `data/HydrationPlan.kt` — kalkulacja planu: ile porcji, po ile i o której wypaść, żeby domknąć dzienny cel przed końcem okna picia. Zasila powiadomienia, kartę „Plan na resztę dnia” i podpis pod wykresem.
-- `data/HydrationRepository.kt` — stan (cel, łyki, historia dni, profil godzinowy) trzymany w Jetpack DataStore, z rolowaniem dnia o północy. Zamykany dzień trafia do historii (400 dni), a seria liczy się wstecz po rekordach zamiast osobnego licznika.
-- `ui/QuickAddActivity.kt` + `quicksettings/HydrationTileService.kt` — dolewanie bez wchodzenia do aplikacji: skróty spod ikony (`kropi://add/500`) i kafelek w Szybkich ustawieniach.
-- `data/HydrationContent.kt` — 1:1 port `src/data/hydration-content.ts` i `src/hooks/use-hydration-mock.ts` (ciekawostki, self-care, kwestie maskotki, dane historii/tygodnia).
-- `ui/MainActivity.kt` — dolna nawigacja (`NavigationBar`) spinająca powyższe 5 ekranów, każdy czytający ten sam `HydrationRepository`.
+Podajesz wagę, temperaturę otoczenia i poziom aktywności — Kropi liczy cel
+(ok. 33 ml na kilogram, plus bonus za upał i wysiłek). Wolisz własną liczbę?
+Tryb ręczny i suwak. Do tego **aktywne godziny picia**, np. 8–22: w tym oknie
+działają przypomnienia i liczy się tempo, poza nim Kropi daje spokój.
 
-### Widget nie odświeżył się od razu po dotknięciu?
+## ◉ Historia, która nie kłamie
 
-Do wersji 1.2.0 widget potrafił „zaciąć się” po drugim dolaniu wody pod rząd: kompozycja czytała stan jednorazowo, **przed** `provideContent`, więc kolejne `update()` trafiały na tę samą, zamrożoną wartość i kafelek pokazywał starą liczbę. Od 1.3.0 stan jest zbierany jako `Flow` wewnątrz kompozycji, a akcje odświeżają wszystkie instancje widgetu (`updateAll`) — każdy kolejny łyk widać od razu.
+Każdy zamknięty dzień ląduje w historii: ile wypite, jaki był cel, czy się
+udało. Tydzień, **ostatnie 30 dni**, najlepszy dzień i **seria** — liczone z
+prawdziwych zapisów, nie z przykładowych danych. Pomyłkę kasujesz krzyżykiem
+na osi czasu dnia, a całość wyeksportujesz do **CSV** jednym dotknięciem, bez
+żadnych uprawnień do pamięci.
 
-Jeśli mimo to odświeżenie się spóźnia: na telefonach z MIUI/HyperOS (Xiaomi, Redmi, POCO) i podobnie agresywnym zarządzaniem baterią system potrafi usypiać (`Freezer`) proces aplikacji w tle. Dotknięcie butelki na widgecie **zapisuje łyk od razu** (to działa niezależnie od tego usypiania), ale samo przerysowanie kafelka czeka, aż system obudzi proces. W zakładce **Ustawienia** jest karta „Szybsze powiadomienia i widget” z przełącznikiem wyłączającym optymalizację baterii dla Kropi oraz (na MIUI) skrótem do ustawień autostartu.
+## ◉ Działa ze Szpilą
 
-### Przypomnienia i cel dzienny
+Masz [Szpilę](https://github.com/pi0trdotsys/Glow-Habit-Widget)? Woda logowana
+w Kropi **trafia do niej sama** — koniec z wpisywaniem tego samego dwa razy.
+Każde dolanie odświeża zadanie i widżety Szpili od razu, nawet gdy jest
+zamknięta. Dane przechodzą lokalnie, przez dostawcę chronionego podpisem
+aplikacji: czyta je wyłącznie Szpila, nic nie wychodzi z telefonu.
 
-Kropi sam pilnuje, żebyś nie zapomniał/a o wodzie:
+<br />
 
-- **Fancy powiadomienia z konkretnym planem** — jeśli nie zanotujesz łyka wody przez zbyt długi czas (interwał wyliczony z Twojego celu i aktywnych godzin picia), Kropi wysyła powiadomienie z własnym, zsyntezowanym dźwiękiem („plusk" — `res/raw/water_notification.wav`) i wyliczeniem pod Ciebie: *„Wypij 250 ml o 15:10 — i jeszcze 4× do 22:00, a cel 2 500 ml będzie zrobiony"*. Po rozwinięciu widać cały rozkład godzin, bilans względem planu na tę porę, czas od ostatniego łyka i zdanie self-care; pasek postępu pokazuje dzisiejsze nawodnienie. Przycisk **„💧 Wypiłem/-am X ml"** dolewa dokładnie tyle, ile przewiduje najbliższa porcja planu, i odświeża widget bez otwierania aplikacji (plus „Za 20 min" do odłożenia przypomnienia).
-- **Cel automatyczny** — na podstawie wagi, temperatury otoczenia i poziomu aktywności (`GoalCalculator.kt`: ~33 ml/kg + bonus za aktywność/upał) albo cel ręczny — do wyboru w ustawieniach w aplikacji.
-- **Aktywne godziny picia** (np. 8–22) — przypomnienia i wyliczenie tempa działają tylko w tym oknie.
-- **Ton powiadomień** — do wyboru 🤍 **Wspierający** (self-care) albo 😈 **Zaczepny**, który dogryza i nie owija w bawełnę: *„Cztery godziny bez wody. Twoje nerki wypełniły właśnie wniosek o urlop bezpłatny"*. Ton zaczepny ma trzy poziomy ostrości (🙂 delikatnie / 😏 normalnie / 🔥 bezlitośnie — ten ostatni bez cenzury). Docinek dobiera się do poziomu nawodnienia i długości przerwy; liczby i plan pozostają te same, a maskotka w aplikacji mówi w tym samym tonie.
-- **Plan pod Twoje godziny** — Kropi zapamiętuje, o której naprawdę pijesz (profil godzinowy z pamięcią ok. dwóch tygodni) i przesuwa tam porcje zamiast rozkładać je równo co tyle samo. Pierwsza porcja nigdy nie wypada później, niż wynikałoby z równego rozkładu, żeby adaptacja nie utrwalała nawyku „piję dopiero wieczorem". Do wyłączenia w Ustawieniach.
-- **Wieczorne podsumowanie** — po zamknięciu okna picia raz na dobę: bilans, liczba łyków, seria i komentarz w wybranym tonie.
-- **Dolewanie bez aplikacji** — kafelek w Szybkich ustawieniach (dodaj go sobie w panelu) oraz skróty pod długim przytrzymaniem ikony: „Szklanka" i „500 ml".
-- **Dwie pigułki statusu na widgecie** — `PONIŻEJ PLANU / 1 339 ml` (pomarańczowa, gdy jesteś w tyle) oraz `NASTĘPNE / 250 ml o 15:40`. Widget odświeża się automatycznie co ok. 15 minut (`ReminderWorker`, WorkManager) niezależnie od tego, czy dotkniesz go ręcznie.
-- **Wykres dnia zamiast anonimowych słupków** — duży widget (i jego podgląd w aplikacji) pokazuje schodkową linię nawodnienia: każdy skok to jeden łyk, podpisany objętością, na osi z godzinami, poziomą siatką, podpisaną linią celu i znacznikiem „teraz". Przerywana linia obok to plan dnia — od razu widać, czy jesteś nad nią, czy pod.
-- **Stopka widgetu** — seria dni, ostatni zapisany łyk i ile porcji zostało do końca okna picia.
+---
 
-### Historia i dane
+<br />
 
-Do wersji 1.4.0 zakładka Historia pokazywała dane przykładowe zaszyte w kodzie. Od 1.5.0 wszystko liczy się z realnych zapisów:
+## ▸ Instalacja
 
-- **Historia dni** — każdy zamykany dzień (ile wypite, jaki cel) ląduje w DataStore; trzymane jest 400 ostatnich. Dni, w których aplikacja nie działała, zapisują się jako zerowe, żeby luka nie udawała dnia z zaliczonym celem.
-- **Statystyki** — tydzień, karta „Ostatnie 30 dni" i „najlepszy dzień" liczone z rekordów. Seria to liczba kolejnych dni z osiągniętym celem (dzisiaj wlicza się dopiero po jego zaliczeniu).
-- **Eksport CSV** — przycisk w Historii, zapis przez systemowy wybór pliku (bez uprawnień do pamięci). Separator średnikowy, więc polski Excel otwiera go bez kreatora.
-- **Poprawianie wpisów** — pojedynczy łyk można usunąć krzyżykiem na osi czasu, gdy dolanie było pomyłką.
+1. Pobierz plik **`kropi-hydration-….apk`** z
+   [Releases](https://github.com/pi0trdotsys/Hydration-Buddy/releases/latest).
+2. Otwórz go na telefonie i zezwól na instalację z tego źródła.
+3. Uruchom Kropi, zgódź się na powiadomienia i wejdź w Ustawienia.
 
-Świeża instalacja zaczyna od zera — nie ma już zasiewu pięciu przykładowych łyków.
+Wymagany Android 8.0 lub nowszy. Aktualizacje instalują się przez nadpisanie —
+dane zostają.
 
-### Woda trafia sama do Szpili
+## ▸ Pierwsze 2 minuty, które robią różnicę
 
-Od 1.6.0 Kropi udostępnia swoje dni aplikacji [Szpila](https://github.com/pi0trdotsys/Glow-Habit-Widget) (tracker nawyków), więc wodę logujesz tylko w Kropi:
+|     | Gdzie                                                        | Po co                                                 |
+| --- | ------------------------------------------------------------ | ----------------------------------------------------- |
+| 🔔  | Zgoda na powiadomienia                                       | Przypomnienia z planem i podsumowanie dnia            |
+| ⚖️  | Ustawienia → waga, temperatura, aktywność                    | Cel policzony pod Ciebie                              |
+| 🕗  | Ustawienia → **Aktywne godziny picia**                       | Przypomnienia tylko wtedy, kiedy chcesz               |
+| 😈  | Ustawienia → **Ton powiadomień**                             | Wspierający albo zaczepny, w trzech poziomach         |
+| ➕  | Przytrzymaj ekran główny → **Widżety** → Kropi               | Dolewanie jednym dotknięciem                          |
+| ⚡  | Szybkie ustawienia → edytuj kafelki → **Kropi**              | Woda z rozwijanego paska                              |
+| 🔋  | Ustawienia systemu → Bateria → Kropi → **Bez ograniczeń**    | Przypomnienia punktualnie (Xiaomi, POCO, Samsung)     |
 
-- **Tylko dla zaufanej aplikacji** — dane czyta wyłącznie aplikacja podpisana tym samym kluczem (uprawnienie `com.kropi.hydration.permission.READ_HYDRATION`, poziom `signature`). Dostawca `content://com.kropi.hydration.export/today` i `/days` (dzisiaj + do 60 dni historii) jest tylko do odczytu.
-- **Od razu po wpisie** — każda zmiana (dolanie z aplikacji, widgetu, kafelka, skrótu czy powiadomienia, cofnięcie, nowy cel) wysyła do Szpili powiadomienie, więc jej zadanie i widżety odświeżają się nawet przy zamkniętej Szpili.
-- **Bez podwójnego logowania** — przytrzymanie wody w Szpili otwiera szybkie dolewanie Kropi (`kropi://add`).
+## ▸ Twoje dane są twoje
 
-Uruchomienie lokalnie (wymaga Android SDK):
+Wszystko zostaje na telefonie. **Bez konta, bez chmury, bez reklam, bez
+śledzenia** — aplikacja nie potrzebuje nawet internetu. Historię wyeksportujesz
+do CSV, kiedy chcesz. Jedyne, co wychodzi poza Kropi, to woda przekazywana
+lokalnie do Szpili, jeśli ją masz.
 
-```sh
+<br />
+
+<div align="center">
+
+**Kropi** · woda z planem
+
+<img src="docs/kropi.svg" width="64" alt="Kropi" />
+
+</div>
+
+<br />
+
+<details>
+<summary><b>Dla programistów</b></summary>
+
+<br />
+
+Repozytorium trzyma dwie rzeczy renderujące ten sam design:
+
+- **`android/`** — właściwa aplikacja: Kotlin, Jetpack Compose, widget w
+  Glance, stan w DataStore, przypomnienia na WorkManagerze. Zero zależności
+  sieciowych.
+- **`src/`** — makieta webowa (TanStack Start + React), z której wziął się
+  design systemu: paleta, pierścień postępu, maskotka i układ kafelków.
+
+Wybrane miejsca w kodzie:
+
+| Plik | Za co odpowiada |
+| --- | --- |
+| [`data/HydrationPlan.kt`](android/app/src/main/kotlin/com/kropi/hydration/data/HydrationPlan.kt) | Rozkład porcji na godziny, w tym tryb adaptacyjny (kwantyle profilu godzinowego) |
+| [`data/HydrationRepository.kt`](android/app/src/main/kotlin/com/kropi/hydration/data/HydrationRepository.kt) | Stan dnia, historia 400 dni, seria, profil godzinowy |
+| [`data/SnarkContent.kt`](android/app/src/main/kotlin/com/kropi/hydration/data/SnarkContent.kt) | Druga osobowość Kropi: tytuły, docinki i zamknięcia w trzech poziomach ostrości |
+| [`widget/HydrationWidget.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/HydrationWidget.kt) | Widget Glance w `SizeMode.Exact`; stan zbierany jako `Flow` **wewnątrz** `provideContent` |
+| [`widget/WidgetGraphics.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/WidgetGraphics.kt) | `IntakeChart` — wykres dnia rysowany tym samym kodem na bitmapie (widget) i na `Canvas` (aplikacja) |
+| [`export/HydrationExportProvider.kt`](android/app/src/main/kotlin/com/kropi/hydration/export/HydrationExportProvider.kt) | Dostawca tylko do odczytu dla Szpili, chroniony uprawnieniem na poziomie podpisu |
+
+```bash
 cd android
-./gradlew :app:assembleDebug
-adb install -r app/build/outputs/apk/debug/app-debug.apk
+./gradlew :app:assembleRelease
+./gradlew :app:testReleaseUnitTest
+adb install -r app/build/outputs/apk/release/app-release.apk
 ```
+
+Wymagany JDK 21 i Android SDK 36. Wydania podpisywane jednym kluczem, więc
+aktualizacje instalują się bez odinstalowywania.
+
+Makieta webowa: `bun install && bun run dev`.
+
+</details>

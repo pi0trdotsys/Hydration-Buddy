@@ -1,0 +1,19 @@
+<svg viewBox="-52 -57 104 114" width="208" height="228" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="drop" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#00DFE8" />
+      <stop offset="100%" stop-color="#007BB2" />
+    </linearGradient>
+  </defs>
+  <path
+    d="M0 -48 C 22 -18, 40 -2, 40 16 A 40 40 0 1 1 -40 16 C -40 -2, -22 -18, 0 -48 Z"
+    fill="url(#drop)" />
+  <ellipse cx="-14" cy="-6" rx="8" ry="10" fill="#020F19" opacity="0.9" />
+  <ellipse cx="14" cy="-6" rx="8" ry="10" fill="#020F19" opacity="0.9" />
+  <circle cx="-12" cy="-4" r="4" fill="#EEF7FA" />
+  <circle cx="16" cy="-4" r="4" fill="#EEF7FA" />
+  <path d="M -9 5 q 9 12 18 0" transform="translate(0 14)" stroke="#020F19" stroke-width="4"
+    stroke-linecap="round" fill="none" />
+  <ellipse cx="-24" cy="14" rx="7" ry="4" fill="#020F19" opacity="0.25" />
+  <ellipse cx="26" cy="14" rx="7" ry="4" fill="#020F19" opacity="0.25" />
+</svg>
