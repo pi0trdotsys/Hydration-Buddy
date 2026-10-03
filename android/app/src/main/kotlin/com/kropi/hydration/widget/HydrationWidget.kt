@@ -324,7 +324,7 @@ private fun Footer(state: HydrationState, plan: HydrationPlan) {
     }
     Row(modifier = GlanceModifier.fillMaxWidth().height(18.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "🔥 ${state.streak} dni  ·  ostatnio $lastText",
+            "🔥 ${state.streak} dni  ·  $lastText",
             style = TextStyle(color = Muted, fontSize = 9.sp),
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight(),

@@ -33,6 +33,7 @@ import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -208,14 +209,25 @@ private fun WidgetFooter(state: HydrationState, plan: HydrationPlan) {
         PlanStatus.AFTER_HOURS -> "brakuje ${formatMl(plan.remainingMl)}"
         else -> "jeszcze ${plan.sips.size} × ${plan.portionMl} ml do ${plan.windowEnd.hhmm()}"
     }
+    // maxLines = 1 + Ellipsis: bez tego dłuższa stopka zawijała ostatnie „ml"
+    // do drugiej linii i rozpychała kartę.
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "🔥 ${state.streak} dni  ·  ostatnio $lastText",
+            "🔥 ${state.streak} dni  ·  $lastText",
             color = KropiColors.mutedForeground,
             fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f),
         )
-        Text(planText, color = KropiColors.mutedForeground, fontSize = 10.sp)
+        Spacer(Modifier.width(8.dp))
+        Text(
+            planText,
+            color = KropiColors.mutedForeground,
+            fontSize = 10.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

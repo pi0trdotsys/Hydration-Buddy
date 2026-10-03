@@ -129,7 +129,7 @@ fun snarkGapJab(minutesSinceLast: Long, seed: Int): String? = when {
 enum class SnarkIntensity(val label: String, val emoji: String, val hint: String) {
     MILD("Delikatnie", "🙂", "Przytyk, ale bez ostrych słów"),
     NORMAL("Normalnie", "😏", "Dogryza i nie owija w bawełnę"),
-    SAVAGE("Bezlitośnie", "🔥", "Bez taryfy ulgowej i bez cenzury"),
+    SAVAGE("Ostro", "🔥", "Bez taryfy ulgowej i bez cenzury"),
 }
 
 /** Łagodniejszy rejestr: zaczepka zamiast obelgi. */
