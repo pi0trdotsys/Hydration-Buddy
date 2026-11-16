@@ -10,6 +10,8 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import com.kropi.hydration.backup.BackupFormat
+import com.kropi.hydration.backup.CsvHistory
 import com.kropi.hydration.export.ExportToday
 import com.kropi.hydration.export.HydrationExport
 import kotlinx.coroutines.flow.Flow
@@ -438,6 +440,64 @@ class HydrationRepository(private val context: Context) {
         context.hydrationStore.edit { prefs ->
             prefs[Keys.POKE_SEED] = (prefs[Keys.POKE_SEED] ?: 0) + 1
         }
+    }
+
+    /**
+     * Pełna kopia DataStore (poza chwilowym odroczeniem przypomnienia) — to, co
+     * trafia do pliku kopii zapasowej.
+     */
+    suspend fun snapshot(): BackupFormat.Snapshot {
+        val prefs = context.hydrationStore.data.first()
+        val entries = prefs.asMap().mapNotNull { (key, value) ->
+            if (key.name == Keys.SNOOZE_UNTIL_EPOCH_MINUTE.name) null else BackupFormat.entryOf(key.name, value)
+        }
+        val version = runCatching {
+            context.packageManager.getPackageInfo(context.packageName, 0).versionName
+        }.getOrNull().orEmpty()
+        return BackupFormat.Snapshot(System.currentTimeMillis(), version, entries)
+    }
+
+    /**
+     * Zastępuje całe dane tym, co w kopii. Jeśli kopia jest sprzed paru dni,
+     * `current()` zamknie brakujące dni do historii przy najbliższym odczycie.
+     */
+    suspend fun restore(snapshot: BackupFormat.Snapshot) {
+        editAndExport { prefs ->
+            prefs.clear()
+            snapshot.entries.forEach { e ->
+                when (e.type) {
+                    BackupFormat.Type.INT -> prefs[intPreferencesKey(e.name)] = e.value as Int
+                    BackupFormat.Type.LONG -> prefs[longPreferencesKey(e.name)] = e.value as Long
+                    BackupFormat.Type.FLOAT -> prefs[floatPreferencesKey(e.name)] = e.value as Float
+                    BackupFormat.Type.STRING -> prefs[stringPreferencesKey(e.name)] = e.value as String
+                    BackupFormat.Type.BOOL -> prefs[booleanPreferencesKey(e.name)] = e.value as Boolean
+                }
+            }
+        }
+        rollDayIfNeeded()
+    }
+
+    /**
+     * Dopisuje do historii dni z CSV, których jeszcze w niej nie ma (istniejące
+     * zostają, dzisiejszy i przyszłe pomijamy). Zwraca, ile dni dodano.
+     */
+    suspend fun importHistory(rows: List<CsvHistory.Row>): Int {
+        rollDayIfNeeded()
+        var added = 0
+        context.hydrationStore.edit { prefs ->
+            val today = LocalDate.now().toEpochDay()
+            val existing = decodeRecords(prefs[Keys.HISTORY])
+            val known = existing.map { it.epochDay }.toSet()
+            val fresh = rows
+                .filter { it.epochDay < today && it.epochDay !in known }
+                .distinctBy { it.epochDay }
+                .map { DayRecord(it.epochDay, it.ml, it.goal) }
+            added = fresh.size
+            if (fresh.isNotEmpty()) {
+                prefs[Keys.HISTORY] = encodeRecords((existing + fresh).sortedBy { it.epochDay }.takeLast(HISTORY_LIMIT_DAYS))
+            }
+        }
+        return added
     }
 
     suspend fun setGoal(ml: Int) {

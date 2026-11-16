@@ -125,13 +125,27 @@ prawdziwych zapisów, nie z przykładowych danych. Pomyłkę kasujesz krzyżykie
 na osi czasu dnia, a całość wyeksportujesz do **CSV** jednym dotknięciem, bez
 żadnych uprawnień do pamięci.
 
+## ◉ Kopie zapasowe i aktualizacje
+
+Jak w Szpili: **kopia codziennie** (ostatnie 14) i kopia na żądanie ląduje w
+`Pobrane/Kropi/Kopie`, a Ustawienia pokazują listę z przywracaniem. Przed
+odinstalowaniem zrób kopię, a po ponownej instalacji wybierz ją przez
+**Przywróć z pliku…** (nowa instalacja nie widzi plików poprzedniej — tak działa
+Android). To samo okno wczyta też **CSV z eksportu historii**, jeśli używasz
+starszej wersji bez kopii.
+
+Aktualizacje przychodzą z tego repozytorium: Kropi sprawdza ostatnie wydanie,
+**powiadamia, gdy jest nowsze**, pobiera APK i przed instalacją weryfikuje
+sumę, pakiet, wersję i podpis. Zostaje ci jedno potwierdzenie w oknie systemu.
+
 ## ◉ Działa ze Szpilą
 
 Masz [Szpilę](https://github.com/pi0trdotsys/Glow-Habit-Widget)? Woda logowana
 w Kropi **trafia do niej sama** — koniec z wpisywaniem tego samego dwa razy.
 Każde dolanie odświeża zadanie i widżety Szpili od razu, nawet gdy jest
 zamknięta. Dane przechodzą lokalnie, przez dostawcę chronionego podpisem
-aplikacji: czyta je wyłącznie Szpila, nic nie wychodzi z telefonu.
+aplikacji: czyta je wyłącznie Szpila, nic nie wychodzi z telefonu. Warunek: obie
+aplikacje muszą być podpisane **tym samym kluczem** (patrz niżej).
 
 <br />
 
@@ -164,9 +178,10 @@ dane zostają.
 ## ▸ Twoje dane są twoje
 
 Wszystko zostaje na telefonie. **Bez konta, bez chmury, bez reklam, bez
-śledzenia** — aplikacja nie potrzebuje nawet internetu. Historię wyeksportujesz
-do CSV, kiedy chcesz. Jedyne, co wychodzi poza Kropi, to woda przekazywana
-lokalnie do Szpili, jeśli ją masz.
+śledzenia**. Internet służy wyłącznie do pytania GitHuba o nową wersję
+(bez żadnych danych o tobie). Historię wyeksportujesz do CSV, kiedy chcesz, a
+kopię zapasową zrobisz jednym dotknięciem. Jedyne, co wychodzi poza Kropi, to
+woda przekazywana lokalnie do Szpili, jeśli ją masz.
 
 <br />
 
@@ -188,8 +203,8 @@ lokalnie do Szpili, jeśli ją masz.
 Repozytorium trzyma dwie rzeczy renderujące ten sam design:
 
 - **`android/`** — właściwa aplikacja: Kotlin, Jetpack Compose, widget w
-  Glance, stan w DataStore, przypomnienia na WorkManagerze. Zero zależności
-  sieciowych.
+  Glance, stan w DataStore, przypomnienia na WorkManagerze. Sieć tylko do
+  sprawdzania i pobierania aktualizacji z GitHuba.
 - **`src/`** — makieta webowa (TanStack Start + React), z której wziął się
   design systemu: paleta, pierścień postępu, maskotka i układ kafelków.
 
@@ -202,6 +217,8 @@ Wybrane miejsca w kodzie:
 | [`data/SnarkContent.kt`](android/app/src/main/kotlin/com/kropi/hydration/data/SnarkContent.kt) | Druga osobowość Kropi: tytuły, docinki i zamknięcia w trzech poziomach ostrości |
 | [`widget/HydrationWidget.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/HydrationWidget.kt) | Widget Glance w `SizeMode.Exact`; stan zbierany jako `Flow` **wewnątrz** `provideContent` |
 | [`widget/WidgetGraphics.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/WidgetGraphics.kt) | `IntakeChart` — wykres dnia rysowany tym samym kodem na bitmapie (widget) i na `Canvas` (aplikacja) |
+| [`backup/BackupStore.kt`](android/app/src/main/kotlin/com/kropi/hydration/backup/BackupStore.kt) | Kopie w `Download/Kropi/Kopie` przez MediaStore, kopia dzienna z rotacją 14; format w `BackupFormat.kt` |
+| [`update/UpdateManager.kt`](android/app/src/main/kotlin/com/kropi/hydration/update/UpdateManager.kt) | Aktualizacje z wydań GitHuba: pobranie, SHA-256, kontrola pakietu/wersji/podpisu, instalator systemu |
 | [`export/HydrationExportProvider.kt`](android/app/src/main/kotlin/com/kropi/hydration/export/HydrationExportProvider.kt) | Dostawca tylko do odczytu dla Szpili, chroniony uprawnieniem na poziomie podpisu |
 
 ```bash
@@ -211,8 +228,13 @@ cd android
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-Wymagany JDK 21 i Android SDK 36. Wydania podpisywane jednym kluczem, więc
-aktualizacje instalują się bez odinstalowywania.
+Wymagany JDK 21 i Android SDK 36. **Podpis:** `android/keystore.properties`
+(poza gitem; `storeFile`, `storePassword`, `keyAlias`, `keyPassword`) — ten sam
+klucz co w Szpili, bo uprawnienie `READ_HYDRATION` ma poziom `signature` i bez
+zgodnego podpisu Szpila nie dostanie żadnych danych. Bez tego pliku build
+wraca do klucza debug (instaluje się, ale z Szpilą nie rozmawia). Jeden klucz
+dla wszystkich wydań sprawia też, że aktualizacje instalują się bez
+odinstalowywania.
 
 Makieta webowa: `bun install && bun run dev`.
 

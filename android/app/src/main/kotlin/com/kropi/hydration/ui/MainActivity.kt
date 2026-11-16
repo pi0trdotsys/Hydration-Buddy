@@ -61,7 +61,9 @@ class MainActivity : ComponentActivity() {
                 val state by repo.state.collectAsState(initial = null)
                 val scope = rememberCoroutineScope()
                 LaunchedEffect(Unit) { repo.current() }
-                var tab by remember { mutableStateOf(Tab.HOME) }
+                var tab by remember {
+                    mutableStateOf(Tab.entries.firstOrNull { it.name == intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB) } ?: Tab.HOME)
+                }
 
                 val current = state
                 Scaffold(

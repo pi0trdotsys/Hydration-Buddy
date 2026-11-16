@@ -9,6 +9,7 @@ import androidx.core.content.ContextCompat
 import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
+import com.kropi.hydration.backup.BackupStore
 import com.kropi.hydration.data.Daypart
 import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationRepository
@@ -30,7 +31,10 @@ import com.kropi.hydration.data.formatMl
 import com.kropi.hydration.data.hhmm
 import com.kropi.hydration.data.plan
 import com.kropi.hydration.data.timesText
+import com.kropi.hydration.update.UpdateManager
 import com.kropi.hydration.widget.HydrationWidget
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.time.LocalTime
 import kotlin.math.ceil
 
@@ -55,7 +59,22 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val force = inputData.getBoolean(INPUT_FORCE, false)
         maybeNotify(repo, state, force)
         maybeDailySummary(repo, state)
+        // Niezależne od przypomnień: dzienna kopia zapasowa i wieść o nowej wersji.
+        BackupStore.autoBackupIfDue(applicationContext, repo)
+        maybeUpdateNotice()
         return Result.success()
+    }
+
+    /** Sprawdza GitHuba (najwyżej co 6 h) i raz na wersję powiadamia, że czeka aktualizacja. */
+    @SuppressLint("MissingPermission")
+    private suspend fun maybeUpdateNotice() {
+        val version = withContext(Dispatchers.IO) { UpdateManager.backgroundCheck(applicationContext) } ?: return
+        if (!hasNotificationPermission()) return
+        NotificationHelper.ensureUpdateChannel(applicationContext)
+        NotificationManagerCompat.from(applicationContext).notify(
+            NotificationHelper.UPDATE_NOTIFICATION_ID,
+            NotificationHelper.buildUpdateNotification(applicationContext, version),
+        )
     }
 
     /**

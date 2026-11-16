@@ -20,6 +20,41 @@ object NotificationHelper {
     const val CHANNEL_ID = "hydration_reminders"
     const val REMINDER_NOTIFICATION_ID = 1001
     const val SUMMARY_NOTIFICATION_ID = 1002
+    const val UPDATE_NOTIFICATION_ID = 1003
+    const val UPDATE_CHANNEL_ID = "kropi_updates"
+
+    /** Otwórz aplikację od razu na wskazanej zakładce (np. Ustawienia z kartą aktualizacji). */
+    const val EXTRA_OPEN_TAB = "open_tab"
+
+    /** Aktualizacje mają własny, cichszy kanał — nie dostają dźwięku „pluskania". */
+    fun ensureUpdateChannel(context: Context) {
+        if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
+        val manager = context.getSystemService(NotificationManager::class.java)
+        if (manager.getNotificationChannel(UPDATE_CHANNEL_ID) != null) return
+        manager.createNotificationChannel(
+            NotificationChannel(UPDATE_CHANNEL_ID, "Aktualizacje Kropi", NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = "Informuje, że w GitHubie czeka nowa wersja Kropi"
+            },
+        )
+    }
+
+    fun buildUpdateNotification(context: Context, version: String): Notification {
+        val open = PendingIntent.getActivity(
+            context, 4,
+            Intent(context, MainActivity::class.java).putExtra(EXTRA_OPEN_TAB, "SETTINGS"),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(0xFF00DFE8.toInt())
+            .setContentTitle("Kropi $version jest gotowe")
+            .setContentText("Otwórz Ustawienia → Aktualizacje, żeby pobrać i zainstalować.")
+            .setPriority(NotificationCompat.PRIORITY_DEFAULT)
+            .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .build()
+    }
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return

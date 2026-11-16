@@ -14,8 +14,8 @@ android {
         applicationId = "com.kropi.hydration"
         minSdk = 26
         targetSdk = 36
-        versionCode = 7
-        versionName = "1.6.0"
+        versionCode = 8
+        versionName = "1.7.0"
     }
 
     // Szpila czyta dane Kropi przez uprawnienie na poziomie podpisu, więc Kropi
@@ -87,4 +87,6 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-tooling")
 
     testImplementation("junit:junit:4.13.2")
+    // Na JVM org.json z Androida to atrapa — testy formatu kopii i parsera wydań potrzebują prawdziwego.
+    testImplementation("org.json:json:20240303")
 }

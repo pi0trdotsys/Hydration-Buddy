@@ -134,13 +134,28 @@ whether you made it. The week, the **last 30 days**, your best day and your
 one tap away from being deleted on the day's timeline, and the whole thing
 exports to **CSV** without any storage permissions.
 
+## ◉ Backups and updates
+
+Same as Szpila: a **daily copy** (last 14) and on-demand copies go to
+`Download/Kropi/Kopie`, and Settings lists them with restore. Make a copy before
+uninstalling, and after reinstalling pick it with **Restore from file…** (a fresh
+install can't see the previous one's files — that's how Android works). The same
+dialog also loads a **CSV from the history export**, if you were on an older
+version without backups.
+
+Updates come from this repository: Kropi checks the latest release, **notifies
+you when there is a newer one**, downloads the APK and verifies the checksum,
+package, version and signature before installing. You only confirm in the system
+dialog.
+
 ## ◉ Works with Szpila
 
 Running [Szpila](https://github.com/pi0trdotsys/Glow-Habit-Widget)? Water logged
 in Kropi **lands there by itself** — no more typing the same thing twice. Every
 entry refreshes Szpila's habit and widgets right away, even while it is closed.
 The data travels locally, through a provider guarded by a signature-level
-permission: only Szpila can read it, and nothing leaves your phone.
+permission: only Szpila can read it, and nothing leaves your phone. The one
+condition: both apps must be signed with the **same key** (see below).
 
 <br />
 
@@ -172,9 +187,10 @@ Android 8.0 or newer. Updates install over the top — your data stays put.
 ## ▸ Your data is yours
 
 Everything stays on the phone. **No account, no cloud, no ads, no tracking** —
-the app doesn't even need an internet connection. Export your history to CSV
-whenever you like. The only thing that ever leaves Kropi is the water handed
-locally to Szpila, if you happen to run it.
+the internet is used only to ask GitHub whether a newer version exists (no data
+about you). Export your history to CSV whenever you like, and back everything up
+with one tap. The only thing that ever leaves Kropi is the water handed locally
+to Szpila, if you happen to run it.
 
 <br />
 
@@ -196,7 +212,8 @@ locally to Szpila, if you happen to run it.
 The repository holds two things rendering the same design:
 
 - **`android/`** — the real app: Kotlin, Jetpack Compose, a Glance widget,
-  state in DataStore, reminders on WorkManager. No network dependencies at all.
+  state in DataStore, reminders on WorkManager. The network is used only to
+  check for and download updates from GitHub.
 - **`src/`** — the web mockup (TanStack Start + React) the design system came
   from: palette, progress ring, mascot and tile layout.
 
@@ -209,6 +226,8 @@ Where the interesting parts live:
 | [`data/SnarkContent.kt`](android/app/src/main/kotlin/com/kropi/hydration/data/SnarkContent.kt) | Kropi's second personality: titles, jabs and closers across three snark levels |
 | [`widget/HydrationWidget.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/HydrationWidget.kt) | The Glance widget in `SizeMode.Exact`; state collected as a `Flow` **inside** `provideContent` |
 | [`widget/WidgetGraphics.kt`](android/app/src/main/kotlin/com/kropi/hydration/widget/WidgetGraphics.kt) | `IntakeChart` — the day's chart drawn by the same code onto a bitmap (widget) and a `Canvas` (app) |
+| [`backup/BackupStore.kt`](android/app/src/main/kotlin/com/kropi/hydration/backup/BackupStore.kt) | Copies in `Download/Kropi/Kopie` via MediaStore, daily copy rotated to 14; format in `BackupFormat.kt` |
+| [`update/UpdateManager.kt`](android/app/src/main/kotlin/com/kropi/hydration/update/UpdateManager.kt) | Updates from GitHub releases: download, SHA-256, package/version/signature check, system installer |
 | [`export/HydrationExportProvider.kt`](android/app/src/main/kotlin/com/kropi/hydration/export/HydrationExportProvider.kt) | Read-only provider for Szpila, guarded by a signature-level permission |
 
 ```bash
@@ -218,8 +237,12 @@ cd android
 adb install -r app/build/outputs/apk/release/app-release.apk
 ```
 
-JDK 21 and Android SDK 36 required. Releases are signed with a single key, so
-updates install without uninstalling first.
+JDK 21 and Android SDK 36 required. **Signing:** `android/keystore.properties`
+(git-ignored; `storeFile`, `storePassword`, `keyAlias`, `keyPassword`) — the same
+key as Szpila's, because the `READ_HYDRATION` permission is `signature`-level and
+Szpila gets no data without a matching signature. Without that file the build
+falls back to the debug key (it installs, but won't talk to Szpila). One key for
+all releases also means updates install without uninstalling first.
 
 Web mockup: `bun install && bun run dev`.
 

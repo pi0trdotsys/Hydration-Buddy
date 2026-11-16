@@ -3,6 +3,9 @@
 
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Tylko do sprawdzania i pobierania aktualizacji z GitHuba (zakładka Ustawienia). -->
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
 
     <!-- Odczyt dzisiejszego nawodnienia przez aplikacje podpisane tym samym kluczem (Szpila). -->
     <permission
@@ -74,6 +77,17 @@
         <receiver
             android:name=".notifications.DrinkActionReceiver"
             android:exported="false" />
+
+        <!-- Oddaje systemowemu instalatorowi pobrany APK aktualizacji (cache/updates). -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.fileprovider"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/file_paths" />
+        </provider>
 
         <!-- Tylko do odczytu: dzisiejsze nawodnienie i ostatnie 60 dni dla Szpili. -->
         <provider
