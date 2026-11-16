@@ -40,3 +40,8 @@ android/captures/
 *.njsproj
 *.sln
 *.sw?
+
+# Podpis (wspólny klucz z Szpilą)
+android/keystore.properties
+*.keystore
+*.jks

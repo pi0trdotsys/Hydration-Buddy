@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
     id("org.jetbrains.kotlin.android")
@@ -16,12 +18,29 @@ android {
         versionName = "1.6.0"
     }
 
+    // Szpila czyta dane Kropi przez uprawnienie na poziomie podpisu, więc Kropi
+    // MUSI być podpisane tym samym kluczem co Szpila. Klucz podaje
+    // android/keystore.properties (poza gitem: storeFile, storePassword,
+    // keyAlias, keyPassword). Bez niego build wraca do klucza debug —
+    // instaluje się, ale Szpila nie dostanie wtedy żadnych danych.
+    val keystoreProps = Properties().apply {
+        val f = rootProject.file("keystore.properties")
+        if (f.exists()) f.inputStream().use { load(it) }
+    }
+    val sharedSigning = if (keystoreProps.isEmpty) null else signingConfigs.create("shared") {
+        storeFile = rootProject.file(keystoreProps.getProperty("storeFile"))
+        storePassword = keystoreProps.getProperty("storePassword")
+        keyAlias = keystoreProps.getProperty("keyAlias")
+        keyPassword = keystoreProps.getProperty("keyPassword")
+    }
+
     buildTypes {
+        debug {
+            sharedSigning?.let { signingConfig = it }
+        }
         release {
             isMinifyEnabled = false
-            // Signed with the debug key so the release APK is directly installable
-            // (no Play Store distribution / real signing key for this project).
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = sharedSigning ?: signingConfigs.getByName("debug")
         }
     }
 
