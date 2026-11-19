@@ -13,6 +13,7 @@ import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.GlanceModifier
 import androidx.glance.Image
 import androidx.glance.ImageProvider
+import androidx.glance.LocalContext
 import androidx.glance.LocalSize
 import androidx.glance.action.actionParametersOf
 import androidx.glance.action.clickable
@@ -49,6 +50,7 @@ import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
 import com.kropi.hydration.data.Level
+import com.kropi.hydration.data.NextSipCountdown
 import com.kropi.hydration.data.PlanStatus
 import com.kropi.hydration.data.formatMl
 import com.kropi.hydration.data.hhmm
@@ -217,7 +219,7 @@ private fun CompactContent(state: HydrationState, config: WidgetConfig, width: D
     Column(modifier = GlanceModifier.fillMaxSize()) {
         Header(state, plan, ringSize = 58.dp, titleSize = 14.sp, showMascot = false)
         Spacer(GlanceModifier.height(6.dp))
-        StatusRow(state, plan)
+        StatusRow(state, plan, width - 28.dp)
         Spacer(GlanceModifier.defaultWeight())
         // Napoje i wpis z przeszłości — tylko gdy kafelek jest dość wysoki, żeby się zmieściły.
         if (height >= 210.dp) {
@@ -238,7 +240,7 @@ private fun FullContent(state: HydrationState, config: WidgetConfig, width: Dp, 
     val plan = state.plan()
 
     val headerHeight = 74.dp
-    val statusHeight = 30.dp
+    val statusHeight = 34.dp
     val bottlesHeight = 54.dp
     val toolsHeight = 30.dp
     // Stopka jest najmniej ważna: pokazujemy ją dopiero, gdy po pasku napojów wykresowi
@@ -252,7 +254,7 @@ private fun FullContent(state: HydrationState, config: WidgetConfig, width: Dp, 
     // a sześć sekcji przedzielonych pięcioma Spacerami dawało 11 — stopka znikała.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         Header(state, plan, ringSize = headerHeight, titleSize = 20.sp, showMascot = width >= 300.dp)
-        Box(modifier = GlanceModifier.padding(top = 8.dp)) { StatusRow(state, plan) }
+        Box(modifier = GlanceModifier.padding(top = 8.dp)) { StatusRow(state, plan, width - pad * 2) }
         Box(modifier = GlanceModifier.padding(top = 8.dp)) { BottleRow(height = bottlesHeight, slots = config.slots, undo = state.undo) }
         Box(modifier = GlanceModifier.padding(top = 8.dp)) { ToolRow(state, width - pad * 2) }
         Box(modifier = GlanceModifier.padding(top = 8.dp)) { ChartPanel(state, width = width - pad * 2, height = chartHeight) }
@@ -297,10 +299,26 @@ private fun Header(state: HydrationState, plan: HydrationPlan, ringSize: Dp, tit
     }
 }
 
-/** Dwie pigułki: gdzie powinieneś być o tej porze i co jest następne w planie. */
+/** Dwie pigułki: gdzie powinieneś być o tej porze i co jest następne w planie (z paskiem odliczania). */
 @androidx.compose.runtime.Composable
-private fun StatusRow(state: HydrationState, plan: HydrationPlan) {
-    Row(modifier = GlanceModifier.fillMaxWidth().height(30.dp)) {
+private fun StatusRow(state: HydrationState, plan: HydrationPlan, rowWidth: Dp) {
+    val next = plan.next
+    // Pasek tylko, gdy jest co odliczać: cel niezrobiony i przed końcem okna picia.
+    val showBar = next != null && plan.status != PlanStatus.DONE && plan.status != PlanStatus.AFTER_HOURS
+    val progress = if (showBar) {
+        val now = LocalTime.now()
+        NextSipCountdown.fraction(
+            nowMinute = now.hour * 60 + now.minute,
+            lastSipMinute = state.intakes.maxOfOrNull { it.minuteOfDay },
+            windowStartMinute = state.settings.activeStartHour * 60,
+            nextMinute = next!!.time.hour * 60 + next.time.minute,
+        )
+    } else {
+        null
+    }
+    // Połowa wiersza minus odstęp między pigułkami i poziomy padding pigułki.
+    val barWidth = ((rowWidth - 6.dp) / 2 - 18.dp).coerceAtLeast(30.dp)
+    Row(modifier = GlanceModifier.fillMaxWidth().height(STATUS_HEIGHT)) {
         Pill(
             label = if (state.isBehindSchedule) "PONIŻEJ PLANU" else "PLAN NA TERAZ",
             value = formatMl(state.targetSoFar),
@@ -320,12 +338,23 @@ private fun StatusRow(state: HydrationState, plan: HydrationPlan) {
             },
             accent = Aqua,
             modifier = GlanceModifier.defaultWeight(),
+            progress = progress,
+            barWidth = barWidth,
         )
     }
 }
 
+private val STATUS_HEIGHT = 34.dp
+
 @androidx.compose.runtime.Composable
-private fun Pill(label: String, value: String, accent: ColorProvider, modifier: GlanceModifier) {
+private fun Pill(
+    label: String,
+    value: String,
+    accent: ColorProvider,
+    modifier: GlanceModifier,
+    progress: Float? = null,
+    barWidth: Dp = 0.dp,
+) {
     // Bez fillMaxWidth() w środku: w Glance nadpisuje ono defaultWeight() rodzica
     // i pierwsza pigułka zabiera cały wiersz, wypychając drugą poza kafelek.
     Box(
@@ -339,6 +368,18 @@ private fun Pill(label: String, value: String, accent: ColorProvider, modifier: 
         Column {
             Text(label, style = TextStyle(color = Muted, fontSize = 7.sp, fontWeight = FontWeight.Medium), maxLines = 1)
             Text(value, style = TextStyle(color = accent, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+            if (progress != null) {
+                val density = LocalContext.current.resources.displayMetrics.density
+                val graphics = LocalPalette.current.graphics
+                val widthPx = (barWidth.value * density).toInt()
+                val heightPx = (3 * density).toInt().coerceAtLeast(2)
+                val bar = remember(progress, widthPx, graphics) { countdownBarBitmap(widthPx, heightPx, progress, graphics) }
+                Image(
+                    provider = ImageProvider(bar),
+                    contentDescription = "Odliczanie do następnej szklanki",
+                    modifier = GlanceModifier.width(barWidth).height(3.dp),
+                )
+            }
         }
     }
 }

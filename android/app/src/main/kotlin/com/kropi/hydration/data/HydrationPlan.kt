@@ -227,3 +227,17 @@ private fun enforceSpacing(minutes: List<Int>): List<Int> {
         previous
     }
 }
+
+/**
+ * Odliczanie do następnej zaplanowanej porcji: jaki ułamek drogi od „punktu odniesienia" do
+ * planowanej godziny już minął. Punktem odniesienia jest ostatni łyk dnia, a gdy go nie było —
+ * początek okna picia. Pasek na widgecie pokazuje, ile jeszcze można zwlekać.
+ */
+object NextSipCountdown {
+    fun fraction(nowMinute: Int, lastSipMinute: Int?, windowStartMinute: Int, nextMinute: Int): Float {
+        val anchor = minOf(lastSipMinute ?: windowStartMinute, nowMinute)
+        val span = nextMinute - anchor
+        if (span <= 0) return 1f
+        return ((nowMinute - anchor).toFloat() / span).coerceIn(0f, 1f)
+    }
+}

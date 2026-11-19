@@ -430,3 +430,19 @@ fun weekBarsBitmap(widthPx: Int, heightPx: Int, density: Float, bars: List<WeekB
     }
     return bitmap
 }
+
+
+/** Cienki pasek postępu (np. odliczanie do następnej szklanki): tor i wypełnienie od lewej. */
+fun countdownBarBitmap(widthPx: Int, heightPx: Int, fraction: Float, palette: GraphicsPalette): Bitmap {
+    val width = widthPx.coerceAtLeast(1)
+    val height = heightPx.coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    val canvas = Canvas(bitmap)
+    val radius = height / 2f
+    val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.track }
+    canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, track)
+    val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
+    val filled = (width * fraction.coerceIn(0f, 1f)).coerceAtLeast(if (fraction > 0f) height.toFloat() else 0f).coerceAtMost(width.toFloat())
+    if (filled > 0f) canvas.drawRoundRect(RectF(0f, 0f, filled, height.toFloat()), radius, radius, fill)
+    return bitmap
+}
