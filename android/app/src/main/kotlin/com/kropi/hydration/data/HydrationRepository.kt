@@ -14,6 +14,8 @@ import com.kropi.hydration.backup.CsvHistory
 import com.kropi.hydration.export.ExportToday
 import com.kropi.hydration.export.HydrationExport
 import com.kropi.hydration.health.HealthConnect
+import com.kropi.hydration.notifications.AnchorWorker
+import com.kropi.hydration.weather.OutdoorWeatherSource
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -46,7 +48,13 @@ data class Intake(
     val minuteOfDay: Int get() = hour * 60 + minute
 }
 
-fun IntakeEntity.toIntake(net: Boolean): Intake {
+/** Wpisy z bazy jako [Intake]; „liczone ml" uwzględnia, że kofeina ponad 400 mg dziennie liczy się w połowie. */
+fun List<IntakeEntity>.toIntakes(net: Boolean): List<Intake> {
+    val counted = countedList(net)
+    return mapIndexed { i, e -> e.toIntake(net, counted[i]) }
+}
+
+fun IntakeEntity.toIntake(net: Boolean, countedOverride: Int? = null): Intake {
     val kind = Drink.of(drink)
     return Intake(
         id = id,
@@ -56,7 +64,7 @@ fun IntakeEntity.toIntake(net: Boolean): Intake {
         ml = ml,
         drink = kind,
         note = note,
-        counted = kind.counted(ml, net),
+        counted = countedOverride ?: kind.counted(ml, net),
     )
 }
 
@@ -71,8 +79,9 @@ object DayRecords {
     ): List<DayRecord> {
         val byDay = intakes.groupBy { it.epochDay }
         val goalByDay = goals.associate { it.epochDay to it.goal }
+        val countedByDay = intakes.countedList(net).let { counted -> intakes.indices.groupBy({ intakes[it].epochDay }) { counted[it] } }
         return (byDay.keys + goalByDay.keys).filter { it < currentDay }.sorted().map { day ->
-            val ml = byDay[day].orEmpty().sumOf { Drink.of(it.drink).counted(it.ml, net) }
+            val ml = countedByDay[day].orEmpty().sum()
             DayRecord(day, ml, goalByDay[day] ?: fallbackGoal)
         }
     }
@@ -105,6 +114,11 @@ data class HydrationState(
     val widgetDrink: Drink = Drink.WATER,
     /** Wszystkie łyki z bazy (do ~400 dni wstecz) — kalendarz miesiąca i statystyki napojów. */
     val allIntakes: List<Intake> = emptyList(),
+    /** Z czego składa się dzisiejszy cel (pogoda, korekta osobista, trening, alkohol). Null = nie liczono. */
+    val breakdown: GoalBreakdown? = null,
+    /** Ostatni odczyt temperatury z Homebrew Weather (nawet jeśli ustawienia go dziś nie używają). */
+    val outdoor: OutdoorReading? = null,
+    val checkIn: CheckInState = CheckInState(),
 ) {
     /** Łyki z ostatnich ~30 dni (razem z dzisiejszymi) — do statystyk napojów. */
     val recentIntakes: List<Intake>
@@ -191,32 +205,28 @@ data class HydrationState(
             )
         }
 
-    /**
-     * Seria liczona z realnej historii, a nie z osobnego licznika: idziemy
-     * wstecz dopóki dni mają zaliczony cel. Dzisiaj wlicza się dopiero po jego
-     * osiągnięciu, żeby seria nie migała w trakcie dnia.
-     */
-    val streak: Int
-        get() {
-            val byDay = records.associateBy { it.epochDay }
-            val todayEpoch = LocalDate.now().toEpochDay()
-            var count = 0
-            var day = todayEpoch
-            if (today.reached) {
-                count = 1
-                day -= 1
-            } else {
-                day -= 1
-            }
-            while (true) {
-                val record = byDay[day] ?: break
-                if (!record.reached) break
-                count++
-                day--
-            }
-            return count
-        }
+    /** Seria z tarczą — patrz [Streaks]. */
+    val streakInfo: StreakInfo get() = Streaks.compute(records, today)
+
+    val streak: Int get() = streakInfo.days
+
+    /** Ile alkoholu wpisano dziś (ml) i ile kofeiny wypito (mg) — do ostrzeżeń na ekranie głównym. */
+    val alcoholMl: Int get() = intakes.filter { it.drink == Drink.ALCOHOL }.sumOf { it.ml }
+    val caffeineMg: Int get() = intakes.sumOf { Caffeine.mg(it.drink, it.ml) }
+
+    /** Typowe przerwy w piciu wyuczone z ostatnich tygodni. */
+    val habits: Habits.Result
+        get() = Habits.learn(allIntakes, LocalDate.now().toEpochDay(), settings.activeStartHour, settings.activeEndHour)
 }
+
+/** Stan dzisiejszego pytania „jak dziś?" i korekty osobistej celu. */
+data class CheckInState(
+    val today: Feeling? = null,
+    /** Korekta obowiązująca dziś (procent). */
+    val activePct: Int = 0,
+    /** Korekta, która zacznie obowiązywać od jutra. */
+    val pendingPct: Int = 0,
+)
 
 /** „Pn", „Wt", … — dwuliterowy skrót dnia, jak w makiecie. */
 private fun dayInitials(date: LocalDate): String =
@@ -266,7 +276,33 @@ private object Keys {
     val UNDO_AT = longPreferencesKey("undo_at")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
     val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
+
+    val WEATHER_TEMP = booleanPreferencesKey("weather_temperature")
+    val HEALTH_WORKOUTS = booleanPreferencesKey("health_workouts")
+    val LEARNED_REMINDERS = booleanPreferencesKey("learned_reminders")
+    val ANCHOR_COFFEE = booleanPreferencesKey("anchor_after_coffee")
+    val HOME_WIFI = stringPreferencesKey("home_wifi_ssid")
+
+    val OUTDOOR_NOW_C = floatPreferencesKey("outdoor_now_c")
+    val OUTDOOR_MAX_C = floatPreferencesKey("outdoor_max_c")
+    val OUTDOOR_MIN_C = floatPreferencesKey("outdoor_min_c")
+    val OUTDOOR_UPDATED_MS = longPreferencesKey("outdoor_updated_ms")
+    val OUTDOOR_READ_MS = longPreferencesKey("outdoor_read_ms")
+
+    val PERSONAL_PCT = intPreferencesKey("personal_pct")
+    val PERSONAL_PCT_PENDING = intPreferencesKey("personal_pct_pending")
+    val CHECKINS = stringPreferencesKey("checkins") // "epochDay:C,epochDay:G,…"
+
+    val WORKOUT_ML = intPreferencesKey("workout_ml")
+    val WORKOUT_DAY = longPreferencesKey("workout_day")
+    val WORKOUT_NOTIFIED = stringPreferencesKey("workout_notified_id")
+
+    val NFC_LAST_URI = stringPreferencesKey("nfc_last_uri")
+    val NFC_LAST_AT = longPreferencesKey("nfc_last_at")
 }
+
+private const val NUDGE_PREFIX = "nudge_"
+private fun nudgeKey(kind: String) = stringPreferencesKey(NUDGE_PREFIX + kind)
 
 private const val LAST_ML_PREFIX = "last_ml_"
 private const val WIDGET_CONFIG_PREFIX = "widget_cfg_"
@@ -310,10 +346,52 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
             ?: defaults.snarkIntensity,
         bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
             ?: defaults.bottlesMl,
+        weatherTemperature = prefs[Keys.WEATHER_TEMP] ?: defaults.weatherTemperature,
+        healthWorkouts = prefs[Keys.HEALTH_WORKOUTS] ?: defaults.healthWorkouts,
+        learnedReminders = prefs[Keys.LEARNED_REMINDERS] ?: defaults.learnedReminders,
+        anchorAfterCoffee = prefs[Keys.ANCHOR_COFFEE] ?: defaults.anchorAfterCoffee,
+        homeWifiSsid = prefs[Keys.HOME_WIFI] ?: defaults.homeWifiSsid,
+    )
+}
+
+private fun readOutdoor(prefs: Preferences): OutdoorReading? {
+    val now = prefs[Keys.OUTDOOR_NOW_C] ?: return null
+    return OutdoorReading(
+        nowC = now,
+        maxC = prefs[Keys.OUTDOOR_MAX_C],
+        minC = prefs[Keys.OUTDOOR_MIN_C],
+        updatedAtMs = prefs[Keys.OUTDOOR_UPDATED_MS] ?: 0L,
+        readAtMs = prefs[Keys.OUTDOOR_READ_MS] ?: 0L,
+    )
+}
+
+/**
+ * Dzisiejszy cel automatyczny ze wszystkimi składnikami. Upał bierzemy z prognozy Homebrew Weather,
+ * jeśli odczyt jest świeży i włączony w ustawieniach; inaczej z ręcznego wyboru temperatury.
+ */
+private fun goalBreakdownOf(prefs: Preferences, todayIntakes: List<IntakeEntity>, nowMs: Long = System.currentTimeMillis()): GoalBreakdown {
+    val s = readSettings(prefs)
+    val outdoor = readOutdoor(prefs)?.takeIf { s.weatherTemperature && it.isFresh(nowMs) }
+    val today = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+    val workout = if (s.healthWorkouts && prefs[Keys.WORKOUT_DAY] == today) prefs[Keys.WORKOUT_ML] ?: 0 else 0
+    val alcohol = Alcohol.compensationMl(todayIntakes.filter { it.drink == Drink.ALCOHOL.name }.sumOf { it.ml })
+    return GoalCalculator.breakdown(
+        GoalInputs(
+            weightKg = s.weightKg,
+            activity = s.activity,
+            heat = if (outdoor != null) GoalCalculator.heatFraction(outdoor.heatC) else GoalCalculator.heatFraction(s.temperature),
+            activeHours = s.activeHours,
+            personalPct = prefs[Keys.PERSONAL_PCT] ?: 0,
+            workoutMl = workout,
+            alcoholMl = alcohol,
+            outdoorMaxC = outdoor?.heatC,
+        ),
     )
 }
 
 private const val DEFAULT_GOAL = 2500
+
+private val COFFEE_LIKE = setOf(Drink.COFFEE, Drink.TEA)
 
 /** Ile zamkniętych dni trzymamy — rok z zapasem, a to i tak kilka kB tekstu. */
 private const val HISTORY_LIMIT_DAYS = 400
@@ -356,9 +434,12 @@ class HydrationRepository(private val context: Context) {
         val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
         val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
         val net = settings.netHydration
+        val todayEntities = intakes.filter { it.epochDay == currentDay }
+        val countedAll = intakes.toIntakes(net)
+        val feeling = CheckInRules.decode(prefs[Keys.CHECKINS]).firstOrNull { it.epochDay == currentDay }?.feeling
         return HydrationState(
             goal = goal,
-            intakes = intakes.filter { it.epochDay == currentDay }.map { it.toIntake(net) },
+            intakes = countedAll.filter { it.epochDay == currentDay },
             records = DayRecords.build(intakes, goals, currentDay, goal, net),
             hourlyProfile = decodeProfile(prefs[Keys.HOURLY_PROFILE]),
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
@@ -367,13 +448,17 @@ class HydrationRepository(private val context: Context) {
             widgetDrink = Drink.of(prefs[Keys.WIDGET_DRINK]),
             undo = readUndo(prefs),
             drinkMemory = readDrinkMemory(prefs),
-            allIntakes = intakes.map { it.toIntake(net) },
+            allIntakes = countedAll,
+            breakdown = goalBreakdownOf(prefs, todayEntities),
+            outdoor = readOutdoor(prefs),
+            checkIn = CheckInState(feeling, prefs[Keys.PERSONAL_PCT] ?: 0, prefs[Keys.PERSONAL_PCT_PENDING] ?: prefs[Keys.PERSONAL_PCT] ?: 0),
         )
     }
 
     companion object {
         private val migrationMutex = Mutex()
         private const val GOAL_FORMULA_VERSION = 2
+        private const val OUTDOOR_REFRESH_MS = 30L * 60 * 1000
 
         /** Dzisiejszy stan w kształcie eksportu (provider dla Szpili). */
         fun exportToday(state: HydrationState): ExportToday = ExportToday(
@@ -414,7 +499,7 @@ class HydrationRepository(private val context: Context) {
         val today = if (day != null) dao.intakesOfDay(day) else emptyList()
         return ExportSnapshot(
             epochDay = day,
-            ml = today.sumOf { Drink.of(it.drink).counted(it.ml, net) },
+            ml = today.countedList(net).sum(),
             goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
             intakes = today.size,
             allCount = dao.intakeCount(),
@@ -431,6 +516,7 @@ class HydrationRepository(private val context: Context) {
     private suspend fun <T> mutate(block: suspend () -> T): T {
         val before = exportSnapshot()
         val result = block()
+        refreshAutoGoal()
         syncHealth()
         val after = exportSnapshot()
         if (after != before) {
@@ -448,6 +534,19 @@ class HydrationRepository(private val context: Context) {
             )
         }
         return result
+    }
+
+    /**
+     * W trybie automatycznym cel dnia zależy od rzeczy, które zmieniają się w ciągu dnia: prognozy upału,
+     * dzisiejszego treningu i wypitego alkoholu. Każda zmiana danych (a więc każde [mutate]) przelicza go
+     * i zapisuje; w trybie ręcznym nie ruszamy niczego.
+     */
+    private suspend fun refreshAutoGoal() {
+        val prefs = context.hydrationStore.data.first()
+        if (readSettings(prefs).goalMode != GoalMode.AUTO) return
+        val day = prefs[Keys.LAST_EPOCH_DAY] ?: return
+        val goal = goalBreakdownOf(prefs, dao.intakesOfDay(day)).goalMl
+        if (goal != prefs[Keys.GOAL]) context.hydrationStore.edit { it[Keys.GOAL] = goal }
     }
 
     suspend fun current(): HydrationState = rollDayIfNeeded()
@@ -495,8 +594,10 @@ class HydrationRepository(private val context: Context) {
             val profile = decodeProfile(prefs[Keys.HOURLY_PROFILE])
                 .map { (it * PROFILE_DECAY).toInt() }
                 .toIntArray()
-            dao.intakesOfDay(lastDay).forEach {
-                profile[(it.minuteOfDay / 60).coerceIn(0, 23)] += Drink.of(it.drink).counted(it.ml, net)
+            val closing = dao.intakesOfDay(lastDay)
+            val closingCounted = closing.countedList(net)
+            closing.forEachIndexed { i, it ->
+                profile[(it.minuteOfDay / 60).coerceIn(0, 23)] += closingCounted[i]
             }
 
             dao.insertDayGoals(listOf(DayGoalEntity(lastDay, goal)))
@@ -507,6 +608,8 @@ class HydrationRepository(private val context: Context) {
             context.hydrationStore.edit {
                 it[Keys.HOURLY_PROFILE] = profile.joinToString(",")
                 it[Keys.LAST_EPOCH_DAY] = today
+                // Korekta z wczorajszej odpowiedzi „jak dziś?" zaczyna obowiązywać dopiero od nowego dnia.
+                it[Keys.PERSONAL_PCT_PENDING]?.let { pending -> it[Keys.PERSONAL_PCT] = pending }
             }
         }
         return state.first()
@@ -532,6 +635,9 @@ class HydrationRepository(private val context: Context) {
     ): Long {
         rollDayIfNeeded()
         rememberAmount(drink, ml)
+        val anchorEnabled = epochDay == null && minuteOfDay == null && drink in COFFEE_LIKE &&
+            context.hydrationStore.data.first()[Keys.ANCHOR_COFFEE] == true
+        if (anchorEnabled) AnchorWorker.scheduleAfterCoffee(context, nowMinuteOfDay())
         return mutate {
             val prefs = context.hydrationStore.data.first()
             val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
@@ -719,6 +825,99 @@ class HydrationRepository(private val context: Context) {
         return nowEpochMinute() < until
     }
 
+    /**
+     * Odczytuje temperaturę z Homebrew Weather (najwyżej co [OUTDOOR_REFRESH_MS], chyba że [force]) i,
+     * jeśli się zmieniła, przelicza dzisiejszy cel. Brak aplikacji albo prognozy nic nie psuje: stary odczyt
+     * po 36 godzinach przestaje być brany pod uwagę, a cel wraca do ręcznego wyboru temperatury.
+     */
+    suspend fun refreshOutdoor(force: Boolean = false): OutdoorReading? {
+        val prefs = context.hydrationStore.data.first()
+        if (!readSettings(prefs).weatherTemperature && !force) return readOutdoor(prefs)
+        val now = System.currentTimeMillis()
+        val lastRead = prefs[Keys.OUTDOOR_READ_MS] ?: 0L
+        if (!force && now - lastRead in 0 until OUTDOOR_REFRESH_MS) return readOutdoor(prefs)
+        val reading = OutdoorWeatherSource.read(context, now)
+        mutate {
+            context.hydrationStore.edit {
+                it[Keys.OUTDOOR_READ_MS] = now
+                if (reading != null) {
+                    it[Keys.OUTDOOR_NOW_C] = reading.nowC
+                    reading.maxC?.let { v -> it[Keys.OUTDOOR_MAX_C] = v } ?: it.remove(Keys.OUTDOOR_MAX_C)
+                    reading.minC?.let { v -> it[Keys.OUTDOOR_MIN_C] = v } ?: it.remove(Keys.OUTDOOR_MIN_C)
+                    it[Keys.OUTDOOR_UPDATED_MS] = reading.updatedAtMs
+                }
+            }
+        }
+        return readOutdoor(context.hydrationStore.data.first())
+    }
+
+    /**
+     * Pobiera dzisiejsze treningi z Health Connect, zapisuje dodatek do celu i zwraca sesje (do przypomnienia
+     * po wysiłku). Bez zgody, bez Health Connect albo przy wyłączonej opcji — pusta lista i zerowy dodatek.
+     */
+    suspend fun syncWorkouts(): List<WorkoutSession> {
+        val prefs = context.hydrationStore.data.first()
+        val enabled = readSettings(prefs).healthWorkouts
+        val today = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+        val sessions = if (enabled && HealthConnect.canReadWorkouts(context)) HealthConnect.todaysWorkouts(context) else emptyList()
+        val bonus = if (enabled) Workout.bonusMl(sessions, System.currentTimeMillis()) else 0
+        val storedDay = prefs[Keys.WORKOUT_DAY]
+        val stored = if (storedDay == today) prefs[Keys.WORKOUT_ML] ?: 0 else 0
+        if (bonus != stored || (storedDay != today && enabled)) {
+            mutate {
+                context.hydrationStore.edit {
+                    it[Keys.WORKOUT_ML] = bonus
+                    it[Keys.WORKOUT_DAY] = today
+                }
+            }
+        }
+        return sessions
+    }
+
+    suspend fun lastNotifiedWorkout(): String? = context.hydrationStore.data.first()[Keys.WORKOUT_NOTIFIED]
+
+    suspend fun markWorkoutNotified(id: String) {
+        context.hydrationStore.edit { it[Keys.WORKOUT_NOTIFIED] = id }
+    }
+
+    /**
+     * Zapisuje odpowiedź na pytanie „jak dziś?". Zwraca podpowiedź dla użytkownika albo null, jeśli dziś już
+     * odpowiedział. Korekta celu zaczyna obowiązywać od jutra (patrz [CheckInRules]).
+     */
+    suspend fun answerCheckIn(feeling: Feeling): String? {
+        val state = rollDayIfNeeded()
+        val prefs = context.hydrationStore.data.first()
+        val today = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+        val history = CheckInRules.decode(prefs[Keys.CHECKINS])
+        if (history.any { it.epochDay == today }) return null
+        val ratio = if (state.goal > 0) state.total.toFloat() / state.goal else 0f
+        val pending = prefs[Keys.PERSONAL_PCT_PENDING] ?: prefs[Keys.PERSONAL_PCT] ?: 0
+        val next = CheckInRules.nextPct(pending, history, feeling, ratio)
+        context.hydrationStore.edit {
+            it[Keys.CHECKINS] = CheckInRules.encode(history + CheckInEntry(today, feeling))
+            it[Keys.PERSONAL_PCT_PENDING] = next
+        }
+        return CheckInRules.adviceKey(feeling, ratio)
+    }
+
+    /** Ostatni znacznik wysłanego przypomnienia danego rodzaju (np. „gap" → „19700:14") albo null. */
+    suspend fun lastNudge(kind: String): String? = context.hydrationStore.data.first()[nudgeKey(kind)]
+
+    suspend fun markNudge(kind: String, value: String) {
+        context.hydrationStore.edit { it[nudgeKey(kind)] = value }
+    }
+
+    /** Czy to ponowne przyłożenie tego samego tagu NFC tuż po poprzednim; zapamiętuje to przyłożenie. */
+    suspend fun nfcIsRepeat(uri: String, nowMs: Long = System.currentTimeMillis()): Boolean {
+        val prefs = context.hydrationStore.data.first()
+        val repeat = NfcTag.isRepeat(prefs[Keys.NFC_LAST_URI], prefs[Keys.NFC_LAST_AT] ?: 0L, uri, nowMs)
+        if (!repeat) context.hydrationStore.edit {
+            it[Keys.NFC_LAST_URI] = uri
+            it[Keys.NFC_LAST_AT] = nowMs
+        }
+        return repeat
+    }
+
     suspend fun saveSettings(settings: HydrationSettings) {
         mutate {
             context.hydrationStore.edit { prefs ->
@@ -740,7 +939,17 @@ class HydrationRepository(private val context: Context) {
                 prefs[Keys.QUIET_MEETINGS] = settings.quietDuringMeetings
                 prefs[Keys.HEALTH_WRITE] = settings.healthWriteHydration
                 prefs[Keys.HEALTH_PROFILE] = settings.healthSyncProfile
-                prefs[Keys.GOAL] = settings.effectiveGoalMl
+                prefs[Keys.WEATHER_TEMP] = settings.weatherTemperature
+                prefs[Keys.HEALTH_WORKOUTS] = settings.healthWorkouts
+                prefs[Keys.LEARNED_REMINDERS] = settings.learnedReminders
+                prefs[Keys.ANCHOR_COFFEE] = settings.anchorAfterCoffee
+                prefs[Keys.HOME_WIFI] = settings.homeWifiSsid
+                // Cel liczy się tu jeszcze raz, razem z pogodą, treningiem i alkoholem (patrz refreshAutoGoal).
+                prefs[Keys.GOAL] = if (settings.goalMode == GoalMode.AUTO) {
+                    goalBreakdownOf(prefs, prefs[Keys.LAST_EPOCH_DAY]?.let { dao.intakesOfDay(it) }.orEmpty()).goalMl
+                } else {
+                    settings.manualGoalMl
+                }
             }
         }
     }

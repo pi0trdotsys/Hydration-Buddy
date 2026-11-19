@@ -54,6 +54,7 @@ fun SettingsScreen(
     initial: HydrationSettings,
     onSave: (HydrationSettings) -> Unit,
     onTestNotification: () -> Unit,
+    state: com.kropi.hydration.data.HydrationState? = null,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
@@ -86,12 +87,14 @@ fun SettingsScreen(
                     initial = initial,
                     onSave = { lastSaved = it; onSave(it) },
                     onTestNotification = onTestNotification,
+                    state = state,
                 )
             }
         }
         item { SectionLabel(stringResource(R.string.settings_section_app)) }
         item { BackgroundRestrictionsCard() }
         item { HealthConnectCard(initial) }
+        item { NfcTagCard() }
         item { DataBackupCard() }
         item { UpdateCard() }
     }
@@ -209,6 +212,7 @@ private fun SettingsSection(
     initial: HydrationSettings,
     onSave: (HydrationSettings) -> Unit,
     onTestNotification: () -> Unit,
+    state: com.kropi.hydration.data.HydrationState?,
 ) {
     var weightKg by remember { mutableStateOf(initial.weightKg) }
     var temperature by remember { mutableStateOf(initial.temperature) }
@@ -226,10 +230,26 @@ private fun SettingsSection(
     var netHydration by remember { mutableStateOf(initial.netHydration) }
     var respectDnd by remember { mutableStateOf(initial.respectDnd) }
     var quietMeetings by remember { mutableStateOf(initial.quietDuringMeetings) }
+    var weatherTemp by remember { mutableStateOf(initial.weatherTemperature) }
+    var learnedReminders by remember { mutableStateOf(initial.learnedReminders) }
+    var anchorCoffee by remember { mutableStateOf(initial.anchorAfterCoffee) }
+    var homeWifi by remember { mutableStateOf(initial.homeWifiSsid) }
+    var wifiNote by remember { mutableStateOf<Int?>(null) }
     val calendarPermission = androidx.activity.compose.rememberLauncherForActivityResult(
         androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
     ) { granted -> quietMeetings = granted }
     val appContext = LocalContext.current
+    val locationPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestMultiplePermissions(),
+    ) { result ->
+        // Android 12+ pozwala dać tylko przybliżoną lokalizację — a z nią nazwy sieci nie widać.
+        if (result[android.Manifest.permission.ACCESS_FINE_LOCATION] == true) {
+            val ssid = com.kropi.hydration.notifications.WifiAnchor.currentSsid(appContext)
+            if (ssid != null) { homeWifi = ssid; wifiNote = null } else wifiNote = R.string.settings_wifi_unreadable
+        } else {
+            wifiNote = R.string.settings_wifi_need_location
+        }
+    }
     // Na żywo: co teraz wstrzymałoby przypomnienie (spotkanie albo „Nie przeszkadzać").
     var holdNow by remember { mutableStateOf<com.kropi.hydration.notifications.ReminderGate.Reason?>(null) }
     androidx.compose.runtime.LaunchedEffect(respectDnd, quietMeetings) {
@@ -256,6 +276,10 @@ private fun SettingsSection(
         snarkIntensity = intensity,
         adaptivePlan = adaptivePlan,
         netHydration = netHydration,
+        weatherTemperature = weatherTemp,
+        learnedReminders = learnedReminders,
+        anchorAfterCoffee = anchorCoffee,
+        homeWifiSsid = homeWifi,
     )
     var justSaved by remember { mutableStateOf(false) }
     androidx.compose.runtime.LaunchedEffect(draft) {
@@ -268,7 +292,20 @@ private fun SettingsSection(
         }
     }
 
-    val goalBreakdown = GoalCalculator.breakdown(weightKg, activity, temperature, (endHour - startHour).coerceAtLeast(1))
+    // Ta sama liczba co w repozytorium: upał z prognozy (jeśli świeża i włączona), korekta osobista, trening, alkohol.
+    val outdoorNow = state?.outdoor?.takeIf { weatherTemp && it.isFresh(System.currentTimeMillis()) }
+    val goalBreakdown = GoalCalculator.breakdown(
+        com.kropi.hydration.data.GoalInputs(
+            weightKg = weightKg,
+            activity = activity,
+            heat = outdoorNow?.let { GoalCalculator.heatFraction(it.heatC) } ?: GoalCalculator.heatFraction(temperature),
+            activeHours = (endHour - startHour).coerceAtLeast(1),
+            personalPct = state?.checkIn?.activePct ?: 0,
+            workoutMl = state?.breakdown?.workoutMl ?: 0,
+            alcoholMl = state?.breakdown?.alcoholMl ?: 0,
+            outdoorMaxC = outdoorNow?.heatC,
+        ),
+    )
     val calculatedGoal = goalBreakdown.goalMl
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
 
@@ -398,6 +435,43 @@ private fun SettingsSection(
             )
         }
 
+        // --- przypomnienia uczone z nawyków ---
+        ToggleRow(
+            title = stringResource(R.string.settings_learned_title),
+            detail = stringResource(R.string.settings_learned_desc),
+            checked = learnedReminders,
+        ) { learnedReminders = it }
+
+        // --- skojarzenia z nawykami ---
+        Text(stringResource(R.string.settings_anchors_title), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        ToggleRow(
+            title = stringResource(R.string.settings_anchor_coffee_title),
+            detail = stringResource(R.string.settings_anchor_coffee_desc, com.kropi.hydration.notifications.AnchorWorker.DELAY_MINUTES.toInt()),
+            checked = anchorCoffee,
+        ) { anchorCoffee = it }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            Text(stringResource(R.string.settings_anchor_wifi_title), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(
+                if (homeWifi.isBlank()) stringResource(R.string.settings_anchor_wifi_desc)
+                else stringResource(R.string.settings_anchor_wifi_set, homeWifi),
+                color = if (homeWifi.isBlank()) KropiColors.mutedForeground else KropiColors.aqua,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
+            wifiNote?.let { Text(stringResource(it), color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp) }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChipButton(stringResource(R.string.settings_wifi_set), false) {
+                    if (com.kropi.hydration.notifications.WifiAnchor.hasLocationPermission(appContext)) {
+                        val ssid = com.kropi.hydration.notifications.WifiAnchor.currentSsid(appContext)
+                        if (ssid != null) { homeWifi = ssid; wifiNote = null } else wifiNote = R.string.settings_wifi_unreadable
+                    } else {
+                        locationPermission.launch(arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION))
+                    }
+                }
+                if (homeWifi.isNotBlank()) ChipButton(stringResource(R.string.settings_wifi_clear), false) { homeWifi = ""; wifiNote = null }
+            }
+        }
+
         // --- napoje wg współczynnika nawodnienia ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
@@ -435,7 +509,16 @@ private fun SettingsSection(
                     colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = KropiColors.aqua, activeTrackColor = KropiColors.aqua),
                 )
             }
-            Text(stringResource(R.string.settings_temperatura_otoczenia), color = KropiColors.mutedForeground, fontSize = 12.sp)
+            ToggleRow(
+                title = stringResource(R.string.settings_weather_temp_title),
+                detail = weatherStatus(state, weatherTemp),
+                checked = weatherTemp,
+            ) { weatherTemp = it }
+            Text(
+                stringResource(if (weatherTemp) R.string.settings_weather_manual_fallback else R.string.settings_temperatura_otoczenia),
+                color = KropiColors.mutedForeground,
+                fontSize = 12.sp,
+            )
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Temperature.entries.forEach { t ->
                     ChipButton("${t.emoji} ${t.label}", temperature == t) { temperature = t }
@@ -548,7 +631,13 @@ private fun GoalBreakdownCard(b: com.kropi.hydration.data.GoalBreakdown) {
         Text(stringResource(R.string.goal_how_title), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
         GoalLine(stringResource(R.string.goal_line_base), formatMl(b.baseMl))
         if (b.activityMl > 0) GoalLine(stringResource(R.string.goal_line_activity), "+" + formatMl(b.activityMl))
-        if (b.heatMl > 0) GoalLine(stringResource(R.string.goal_line_heat), "+" + formatMl(b.heatMl))
+        if (b.heatMl > 0) {
+            GoalLine(
+                b.outdoorMaxC?.let { stringResource(R.string.goal_line_heat_outdoor, it.toInt().toString()) } ?: stringResource(R.string.goal_line_heat),
+                "+" + formatMl(b.heatMl),
+            )
+        }
+        if (b.personalMl != 0) GoalLine(stringResource(R.string.goal_line_personal), (if (b.personalMl > 0) "+" else "−") + formatMl(kotlin.math.abs(b.personalMl)))
         b.cappedBy?.let { cap ->
             Text(
                 when (cap) {
@@ -563,6 +652,8 @@ private fun GoalBreakdownCard(b: com.kropi.hydration.data.GoalBreakdown) {
                 lineHeight = 15.sp,
             )
         }
+        if (b.workoutMl > 0) GoalLine(stringResource(R.string.goal_line_workout), "+" + formatMl(b.workoutMl))
+        if (b.alcoholMl > 0) GoalLine(stringResource(R.string.goal_line_alcohol), "+" + formatMl(b.alcoholMl))
         GoalLine(stringResource(R.string.goal_line_total), formatMl(b.goalMl), bold = true)
         Text(stringResource(R.string.goal_sources), color = KropiColors.mutedForeground, fontSize = 10.sp, lineHeight = 14.sp)
         Text(stringResource(R.string.reg_tip), color = KropiColors.mutedForeground, fontSize = 10.sp, lineHeight = 14.sp)
@@ -579,5 +670,42 @@ private fun GoalLine(label: String, value: String, bold: Boolean = false) {
             fontSize = 12.sp,
             fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
         )
+    }
+}
+
+
+/** Wiersz z przełącznikiem: tytuł, opis i dostępny dla czytnika ekranu przełącznik. */
+@Composable
+internal fun ToggleRow(title: String, detail: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(detail, color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        Switch(
+            modifier = Modifier.semantics { contentDescription = title },
+            checked = checked,
+            onCheckedChange = onChange,
+            colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+        )
+    }
+}
+
+/** Co teraz wiemy o temperaturze z Homebrew Weather — albo dlaczego jej nie ma. */
+@Composable
+private fun weatherStatus(state: com.kropi.hydration.data.HydrationState?, enabled: Boolean): String {
+    val context = LocalContext.current
+    val installed = remember { com.kropi.hydration.weather.OutdoorWeatherSource.isInstalled(context) }
+    val reading = state?.outdoor?.takeIf { it.isFresh(System.currentTimeMillis()) }
+    return when {
+        !enabled -> stringResource(
+            R.string.settings_weather_temp_desc,
+            GoalCalculator.HEAT_FROM_C.toInt(), GoalCalculator.HEAT_FULL_C.toInt(),
+        )
+        reading != null && reading.maxC != null ->
+            stringResource(R.string.settings_weather_status_ok, reading.maxC!!.toInt().toString(), reading.nowC.toInt().toString())
+        reading != null -> stringResource(R.string.settings_weather_status_now, reading.nowC.toInt().toString())
+        !installed -> stringResource(R.string.settings_weather_status_missing)
+        else -> stringResource(R.string.settings_weather_status_nodata)
     }
 }

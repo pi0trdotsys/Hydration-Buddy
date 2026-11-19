@@ -13,6 +13,9 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.kropi.hydration.backup.BackupStore
 import com.kropi.hydration.data.Daypart
+import com.kropi.hydration.data.Habits
+import com.kropi.hydration.data.Workout
+import com.kropi.hydration.data.WorkoutSession
 import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
@@ -49,6 +52,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
     companion object {
         const val INPUT_FORCE = "force"
+        private const val MAX_NUDGE_ML = 500
     }
 
     override suspend fun doWork(): Result {
@@ -57,12 +61,18 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         // Health Connect: dopisz zaległe wpisy i odśwież wagę/aktywność (każde z nich ma własne wyłączniki).
         repo.syncHealth()
         repo.refreshProfileFromHealth()
+        // Temperatura z Homebrew Weather i dzisiejsze treningi zmieniają cel dnia; potem czytamy stan jeszcze raz.
+        repo.refreshOutdoor()
+        val workouts = repo.syncWorkouts()
+        WifiAnchor.sync(applicationContext, state.settings.homeWifiSsid)
+        val fresh = repo.current()
 
         updateAllWidgets(applicationContext)
 
         val force = inputData.getBoolean(INPUT_FORCE, false)
-        maybeNotify(repo, state, force)
-        maybeDailySummary(repo, state)
+        val sent = maybeNotify(repo, fresh, force)
+        if (!sent && !force) maybeNudges(repo, fresh, workouts)
+        maybeDailySummary(repo, fresh)
         // Niezależne od przypomnień: dzienna kopia zapasowa i wieść o nowej wersji.
         BackupStore.autoBackupIfDue(applicationContext, repo)
         maybeUpdateNotice()
@@ -114,6 +124,9 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 appendLine(str(R.string.n_sum_streak, applicationContext.daysText(state.streak)))
             } else {
                 appendLine(str(R.string.n_sum_missing_streak, formatMl(state.remaining), applicationContext.daysText(state.streak)))
+                if (state.streak > 0) {
+                    appendLine(if (state.streakInfo.shields > 0) str(R.string.n_sum_shield_ok) else str(R.string.n_sum_shield_none))
+                }
             }
             appendLine()
             append(
@@ -133,32 +146,87 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         repo.markSummarySent(today)
     }
 
+    /**
+     * Przypomnienia „poza planem": po treningu, gdy zagrożona jest seria i tuż przed godzinami, w których
+     * zwykle nie pijesz. Wysyłamy najwyżej jedno na tik, w tej kolejności ważności, i żadne nie powtarza się
+     * w tym samym dniu. Zwykłe przypomnienie godzinowe ma pierwszeństwo.
+     */
+    private suspend fun maybeNudges(repo: HydrationRepository, state: HydrationState, workouts: List<WorkoutSession>) {
+        if (!Nudges.mayNudge(applicationContext, repo, state)) return
+        val settings = state.settings
+        val nowMs = System.currentTimeMillis()
+        val today = java.time.LocalDate.now().toEpochDay()
+        val nowMin = Nudges.nowMinute()
+
+        if (settings.healthWorkouts) {
+            Workout.nudgeCandidate(workouts, nowMs, repo.lastNotifiedWorkout())?.let { session ->
+                repo.markWorkoutNotified(session.id)
+                val ml = Workout.afterWorkoutMl(session)
+                Nudges.send(
+                    applicationContext, state,
+                    str(R.string.n_workout_title),
+                    str(R.string.n_workout_text, session.minutes, formatMl(ml), formatMl(state.breakdown?.workoutMl ?: 0)),
+                    ml,
+                )
+                return
+            }
+        }
+
+        val streak = state.streakInfo
+        if (streak.atRisk && streak.days >= 3 && nowMin >= settings.activeEndHour * 60 - 120 && repo.lastNudge("streak") != today.toString()) {
+            repo.markNudge("streak", today.toString())
+            val ml = state.remaining.coerceAtMost(MAX_NUDGE_ML).coerceAtLeast(settings.reminderGlassMl)
+            val shield = if (streak.shields > 0) str(R.string.n_streak_shield) else str(R.string.n_streak_noshield)
+            Nudges.send(
+                applicationContext, state,
+                str(R.string.n_streak_title, applicationContext.daysText(streak.days)),
+                str(R.string.n_streak_text, formatMl(state.remaining), shield),
+                ml,
+            )
+            return
+        }
+
+        if (settings.learnedReminders) {
+            val gap = Habits.gapAhead(state.habits.gaps, nowMin, repo.minutesSinceLastIntake()) ?: return
+            val key = "$today:${gap.startHour}"
+            if (repo.lastNudge("gap") == key) return
+            repo.markNudge("gap", key)
+            val ml = settings.reminderGlassMl
+            Nudges.send(
+                applicationContext, state,
+                str(R.string.n_gap_title),
+                str(R.string.n_gap_text, "${gap.startHour}:00", "${gap.endHour}:00", formatMl(ml)),
+                ml,
+            )
+        }
+    }
+
     // Uprawnienie sprawdza hasNotificationPermission() przed notify() — lint nie widzi tego przez helper.
     @SuppressLint("MissingPermission")
-    private suspend fun maybeNotify(repo: HydrationRepository, state: HydrationState, force: Boolean) {
+    private suspend fun maybeNotify(repo: HydrationRepository, state: HydrationState, force: Boolean): Boolean {
         val settings = state.settings
         if (!force) {
-            if (!settings.remindersEnabled) return
-            if (state.remaining <= 0) return
-            if (repo.isSnoozed()) return
+            if (!settings.remindersEnabled) return false
+            if (state.remaining <= 0) return false
+            if (repo.isSnoozed()) return false
             // Spotkanie albo „Nie przeszkadzać": przypomnienie czeka do następnego tiku, nie przepada.
-            if (ReminderGate.currentHold(applicationContext, settings.respectDnd, settings.quietDuringMeetings) != null) return
+            if (ReminderGate.currentHold(applicationContext, settings.respectDnd, settings.quietDuringMeetings) != null) return false
         }
 
         val now = LocalTime.now()
         val nowMinutes = now.hour * 60 + now.minute
         val startMinutes = settings.activeStartHour * 60
         val endMinutes = settings.activeEndHour * 60
-        if (!force && (nowMinutes < startMinutes || nowMinutes >= endMinutes)) return
+        if (!force && (nowMinutes < startMinutes || nowMinutes >= endMinutes)) return false
 
         val numGlasses = ceil(state.goal.toDouble() / settings.reminderGlassMl).toInt().coerceAtLeast(1)
         val activeWindowMinutes = (endMinutes - startMinutes).coerceAtLeast(60)
         val intervalMinutes = (activeWindowMinutes / numGlasses).coerceIn(20, 180)
 
         val sinceLast = repo.minutesSinceLastIntake() ?: (nowMinutes - startMinutes).toLong().coerceAtLeast(0)
-        if (!force && sinceLast < intervalMinutes) return
+        if (!force && sinceLast < intervalMinutes) return false
 
-        if (!hasNotificationPermission()) return
+        if (!hasNotificationPermission()) return false
 
         NotificationHelper.ensureChannel(applicationContext)
         val plan = state.plan(now)
@@ -173,6 +241,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         )
         NotificationManagerCompat.from(applicationContext)
             .notify(NotificationHelper.REMINDER_NOTIFICATION_ID, notification)
+        return true
     }
 
     private data class ReminderMessage(val title: String, val short: String, val full: String)

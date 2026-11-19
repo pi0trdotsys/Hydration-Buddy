@@ -21,6 +21,7 @@ object NotificationHelper {
     const val REMINDER_NOTIFICATION_ID = 1001
     const val SUMMARY_NOTIFICATION_ID = 1002
     const val UPDATE_NOTIFICATION_ID = 1003
+    const val NUDGE_NOTIFICATION_ID = 1004
     const val UPDATE_CHANNEL_ID = "kropi_updates"
 
     /** Otwórz aplikację od razu na wskazanej zakładce (np. Ustawienia z kartą aktualizacji). */
@@ -165,6 +166,40 @@ object NotificationHelper {
             .setContentIntent(openAppIntent)
             .addAction(0, context.getString(R.string.notif_action_drank, formatMl(portionMl)), drinkPendingIntent)
             .addAction(0, context.getString(R.string.notif_action_snooze), snoozePendingIntent)
+            .build()
+    }
+
+    /**
+     * Krótkie „szturchnięcie" poza planem godzinowym: przed typową przerwą w piciu, po kawie, po powrocie do
+     * domu, po treningu, gdy zagrożona jest seria. Jeden przycisk dolewa podaną porcję.
+     */
+    fun buildNudgeNotification(context: Context, title: String, text: String, drinkMl: Int, state: HydrationState): Notification {
+        val open = PendingIntent.getActivity(
+            context, 5,
+            Intent(context, MainActivity::class.java),
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        val drink = PendingIntent.getBroadcast(
+            context, 6,
+            Intent(context, DrinkActionReceiver::class.java).apply {
+                action = DrinkActionReceiver.ACTION_MARK_DRUNK
+                putExtra(DrinkActionReceiver.EXTRA_ML, drinkMl)
+            },
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
+        )
+        return NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setColor(0xFF00DFE8.toInt())
+            .setContentTitle(title)
+            .setContentText(text)
+            .setStyle(NotificationCompat.BigTextStyle().setBigContentTitle(title).bigText(text))
+            .setSubText(context.getString(R.string.notif_subtext, ((state.progress * 100).toInt()).toString(), formatMl(state.goal)))
+            .setProgress(state.goal.coerceAtLeast(1), state.total.coerceAtMost(state.goal), false)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(open)
+            .addAction(0, context.getString(R.string.notif_action_drank, formatMl(drinkMl)), drink)
             .build()
     }
 }

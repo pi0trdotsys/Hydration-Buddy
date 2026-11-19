@@ -23,9 +23,23 @@
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />
     <uses-permission android:name="android.permission.health.READ_STEPS" />
+    <uses-permission android:name="android.permission.health.READ_EXERCISE" />
+
+    <!-- Tagi NFC: zapis z ustawień; odczyt (dolewanie po przyłożeniu telefonu) nie wymaga uprawnień. -->
+    <uses-permission android:name="android.permission.NFC" />
+    <uses-feature android:name="android.hardware.nfc" android:required="false" />
+
+    <!-- Opcjonalnie: „po powrocie do domu" — rozpoznanie domowej sieci Wi-Fi. Android wymaga do tego zgody na lokalizację. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_WIFI_STATE" />
+    <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
+    <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
 
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
+        <!-- Homebrew Weather (wydanie i build debug): źródło temperatury na zewnątrz. -->
+        <provider android:authorities="dev.pi0trdotsys.homebrewweather.export" />
+        <provider android:authorities="dev.pi0trdotsys.homebrewweather.debug.export" />
     </queries>
 
     <application
@@ -80,6 +94,12 @@
             android:theme="@android:style/Theme.Translucent.NoTitleBar">
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:scheme="kropi" android:host="add" />
+            </intent-filter>
+            <!-- Tag NFC z adresem kropi://add?ml=…&drink=… dolewa po przyłożeniu telefonu. -->
+            <intent-filter>
+                <action android:name="android.nfc.action.NDEF_DISCOVERED" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:scheme="kropi" android:host="add" />
             </intent-filter>
@@ -152,6 +172,11 @@
 
         <receiver
             android:name=".notifications.DrinkActionReceiver"
+            android:exported="false" />
+
+        <!-- Zmiana sieci Wi-Fi (rejestrowana w kodzie przez PendingIntent) → „po powrocie do domu". -->
+        <receiver
+            android:name=".notifications.WifiAnchorReceiver"
             android:exported="false" />
 
         <!-- Oddaje systemowemu instalatorowi pobrany APK aktualizacji (cache/updates). -->

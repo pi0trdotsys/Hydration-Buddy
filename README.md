@@ -129,14 +129,66 @@ naraz (nerki wydalają ok. 0,8–1 l na godzinę), a karta **Regularność** pok
 w ilu dwugodzinnych oknach faktycznie piłeś, jaka była najdłuższa przerwa i
 ostrzega, gdy wlewasz w siebie za dużo naraz.
 
-Podajesz wagę, temperaturę otoczenia i poziom aktywności — Kropi liczy cel
-(ok. 33 ml na kilogram, plus bonus za upał i wysiłek). Wolisz własną liczbę?
+Podajesz wagę i poziom aktywności — Kropi liczy cel (28 ml na kilogram z
+napojów, plus bonus za upał i wysiłek). Wolisz własną liczbę?
 Tryb ręczny i suwak. Do tego **aktywne godziny picia**, np. 8–22: w tym oknie
 działają przypomnienia i liczy się tempo, poza nim Kropi daje spokój.
 
 Chcesz, żeby cel liczył się sam? Połącz Kropi z **Health Connect**: waga i średnia
 liczba kroków z tygodnia ustawiają cel, a to, co pijesz, trafia z powrotem do
 Health Connect jako nawodnienie (alkohol pomijamy).
+
+## ◉ Cel, który się dopasowuje
+
+Automatyczny cel zmienia się w ciągu dnia razem z tym, co się dzieje — i w
+Ustawieniach widać każdy składnik:
+
+- **Pogoda z Homebrew Weather.** Jeśli masz moją aplikację pogodową, Kropi
+  czyta z niej prognozowane **maksimum dnia** (tylko liczby, bez lokalizacji) i
+  dodaje wodę płynnie: nic poniżej 24 °C, pełny dodatek od 32 °C. Bez niej albo
+  gdy prognoza jest starsza niż 36 godzin, zostaje ręczny wybór temperatury.
+- **Trening z Health Connect.** Sesje treningowe dodają ok. 600 ml na godzinę
+  (środek widełek ACSM), a po treningu przychodzi przypomnienie z konkretną
+  porcją.
+- **Pytanie „jak dziś?"** — raz dziennie od południa: jak wygląda mocz (skala
+  Armstronga: jasny = dobrze nawodniony). Ciemny po wypitym celu podnosi Twój cel
+  o 3%, a bardzo jasny trzeci raz z rzędu go obniża — maksymalnie ±10%, od
+  następnego dnia. Ciemny po niewypitym celu nic nie zmienia: winna jest ilość,
+  nie cel.
+- **Alkohol i kofeina.** Alkohol się nie liczy i **podnosi dzisiejszy cel** o
+  połowę swojej objętości (do 600 ml), do tego karta z ostrzeżeniem. Kawa i
+  herbata liczą się normalnie do ok. 400 mg kofeiny dziennie (granica EFSA), a
+  nadwyżka — w połowie.
+
+## ◉ Seria z tarczą
+
+Seria, która kończy się po pierwszym gorszym dniu, zniechęca. Dlatego zaczynasz z
+jedną **tarczą**, a kolejną dostajesz za każde 7 dni z rzędu (maksymalnie dwie).
+Opuszczony dzień zużywa tarczę zamiast zerować serię. Gdy seria jest zagrożona,
+wieczorem przychodzi przypomnienie z tym, ile brakuje.
+
+## ◉ Przypomnienia z Twoich nawyków
+
+- **Uczone z nawyków.** Kropi sprawdza z ostatnich tygodni, w jakich godzinach
+  zwykle nie pijesz (spotkania, jazda, praca), i przypomina **tuż przed taką
+  przerwą**, jeśli dopiero co nie piłeś.
+- **Po kawie szklanka wody.** Kawa albo herbata uruchamia odliczanie 20 minut;
+  jeśli woda nie wpadła, przychodzi krótkie przypomnienie.
+- **Po powrocie do domu.** Gdy telefon łączy się z domowym Wi-Fi. Android pozwala
+  poznać nazwę sieci tylko ze zgodą na lokalizację, więc jest ona potrzebna
+  (i tylko do tego); niektóre telefony w tle wymagają opcji „Zawsze".
+
+Wszystkie szanują „Nie przeszkadzać", spotkania, okno aktywności i odroczenie.
+
+## ◉ Tagi NFC
+
+Naklejka na kubku albo butelce, która po **przyłożeniu telefonu** dolewa dokładnie
+to, co w niej zapisano — np. „kawa 200 ml". W Ustawieniach wybierasz napój i
+ilość, przykładasz telefon do tagu i gotowe (potrzebny tag co najmniej NTAG213).
+Odczyt nie wymaga żadnych uprawnień, a dwa przyłożenia tego samego tagu w ciągu
+6 sekund liczą się jako jedno. Zawartość to zwykły adres
+`kropi://add?ml=250&drink=COFFEE`, więc tag zapiszesz też dowolną aplikacją do
+tagów.
 
 ## ◉ Historia, która nie kłamie
 
@@ -227,7 +279,9 @@ Wszystko zostaje na telefonie. **Bez konta, bez chmury, bez reklam, bez
 śledzenia**. Internet służy wyłącznie do pytania GitHuba o nową wersję
 (bez żadnych danych o tobie). Historię wyeksportujesz do CSV, kiedy chcesz, a
 kopię zapasową zrobisz jednym dotknięciem. Jedyne, co wychodzi poza Kropi, to
-woda przekazywana lokalnie do Szpili, jeśli ją masz.
+woda przekazywana lokalnie do Szpili, jeśli ją masz. Zgoda na lokalizację jest
+opcjonalna i służy tylko do rozpoznania domowej sieci Wi-Fi; temperaturę Kropi
+bierze z Homebrew Weather lokalnie, bez internetu.
 
 <br />
 

@@ -3,6 +3,7 @@ package com.kropi.hydration.health
 import android.content.Context
 import androidx.health.connect.client.HealthConnectClient
 import androidx.health.connect.client.permission.HealthPermission
+import androidx.health.connect.client.records.ExerciseSessionRecord
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.StepsRecord
 import androidx.health.connect.client.records.WeightRecord
@@ -13,6 +14,7 @@ import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.Volume
 import com.kropi.hydration.data.HealthMapping
 import com.kropi.hydration.data.Intake
+import com.kropi.hydration.data.WorkoutSession
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -25,6 +27,7 @@ object HealthConnect {
         HealthPermission.getReadPermission(WeightRecord::class),
         HealthPermission.getReadPermission(StepsRecord::class),
         HealthPermission.getWritePermission(HydrationRecord::class),
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class),
     )
 
     enum class Availability { AVAILABLE, NEEDS_INSTALL_OR_UPDATE, UNSUPPORTED }
@@ -47,6 +50,25 @@ object HealthConnect {
     suspend fun canReadProfile(context: Context): Boolean = grantedPermissions(context).containsAll(
         setOf(HealthPermission.getReadPermission(WeightRecord::class), HealthPermission.getReadPermission(StepsRecord::class)),
     )
+
+    suspend fun canReadWorkouts(context: Context): Boolean =
+        HealthPermission.getReadPermission(ExerciseSessionRecord::class) in grantedPermissions(context)
+
+    /** Treningi, które zaczęły się dziś (od północy czasu lokalnego), od najstarszego. */
+    suspend fun todaysWorkouts(context: Context): List<WorkoutSession> = runCatching {
+        val c = client(context) ?: return emptyList()
+        val zone = ZoneId.systemDefault()
+        val start = LocalDate.now().atStartOfDay(zone).toInstant()
+        val result = c.readRecords(
+            ReadRecordsRequest(
+                recordType = ExerciseSessionRecord::class,
+                timeRangeFilter = TimeRangeFilter.between(start, Instant.now().plusSeconds(60)),
+                ascendingOrder = true,
+                pageSize = 50,
+            ),
+        )
+        result.records.map { WorkoutSession(it.metadata.id, it.startTime.toEpochMilli(), it.endTime.toEpochMilli(), it.title) }
+    }.getOrDefault(emptyList())
 
     /** Ostatnia waga z ostatnich 30 dni (tyle HC pozwala czytać wstecz) albo null. */
     suspend fun latestWeightKg(context: Context): Float? = runCatching {

@@ -35,8 +35,10 @@ class DrinkActionReceiver : BroadcastReceiver() {
                         repo.snoozeFor(20)
                     }
                 }
-                context.getSystemService<NotificationManager>()
-                    ?.cancel(NotificationHelper.REMINDER_NOTIFICATION_ID)
+                context.getSystemService<NotificationManager>()?.apply {
+                    cancel(NotificationHelper.REMINDER_NOTIFICATION_ID)
+                    cancel(NotificationHelper.NUDGE_NOTIFICATION_ID)
+                }
             } finally {
                 pending.finish()
             }

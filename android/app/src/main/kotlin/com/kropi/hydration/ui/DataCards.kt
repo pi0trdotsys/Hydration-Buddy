@@ -421,6 +421,17 @@ fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
                         if (on) profileNote = describeProfile(context, repository.refreshProfileFromHealth(force = true))
                     }
                 }
+                HealthToggle(
+                    title = stringResource(R.string.health_workouts_title),
+                    detail = stringResource(R.string.health_workouts_detail, com.kropi.hydration.data.Workout.ML_PER_HOUR),
+                    checked = settings.healthWorkouts,
+                    enabled = allGranted,
+                ) { on ->
+                    scope.launch {
+                        repository.saveSettings(settings.copy(healthWorkouts = on))
+                        repository.syncWorkouts()
+                    }
+                }
                 if (allGranted && settings.healthSyncProfile) {
                     Button(
                         onClick = { scope.launch { profileNote = describeProfile(context, repository.refreshProfileFromHealth(force = true)) } },
@@ -451,9 +462,8 @@ private fun HealthToggle(title: String, detail: String, checked: Boolean, enable
             Text(title, color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Text(detail, color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
         }
-        val switchLabel2 = stringResource(R.string.data_pobierz_teraz)
         Switch(
-            modifier = Modifier.semantics { contentDescription = switchLabel2 },
+            modifier = Modifier.semantics { contentDescription = title },
             checked = checked && enabled,
             onCheckedChange = onChange,
             enabled = enabled,

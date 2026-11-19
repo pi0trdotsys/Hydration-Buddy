@@ -136,15 +136,64 @@ never asks for more than 500 ml at once (kidneys clear about 0.8–1 l an hour),
 and the **Regularity** card shows in how many two-hour windows you really drank,
 your longest gap, and warns when you pour in too much at once.
 
-Give it your weight, the ambient temperature and your activity level — Kropi
-works out the goal (roughly 33 ml per kilogram, plus a bump for heat and
-effort). Prefer your own number? Manual mode with a slider. On top of that,
+Give it your weight and your activity level — Kropi works out the goal (28 ml
+per kilogram from drinks, plus a bump for heat and effort). Prefer your own number? Manual mode with a slider. On top of that,
 **active drinking hours**, say 8 am to 10 pm: reminders and pace only count
 inside that window, outside it Kropi leaves you alone.
 
 Want the goal to work itself out? Connect Kropi to **Health Connect**: your
 weight and the week's average steps set the goal, and what you drink goes back
 to Health Connect as hydration (alcohol is skipped).
+
+## ◉ A goal that adapts
+
+The automatic goal changes during the day with what's going on — and Settings
+shows every component:
+
+- **Weather from Homebrew Weather.** If you run my weather app, Kropi reads the
+  forecast **high of the day** from it (numbers only, no location) and adds water
+  smoothly: nothing below 24 °C, the full allowance from 32 °C. Without it, or if
+  the forecast is older than 36 hours, your manual temperature choice stays.
+- **Workouts from Health Connect.** Sessions add about 600 ml an hour (the middle
+  of the ACSM range), and a reminder with a concrete portion follows the workout.
+- **The "how are you today?" question** — once a day from noon: what colour is
+  your urine (Armstrong scale: pale = well hydrated). Dark after hitting the goal
+  raises your goal by 3%, and very pale three times in a row lowers it — at most
+  ±10%, from the next day. Dark after missing the goal changes nothing: the
+  amount is to blame, not the goal.
+- **Alcohol and caffeine.** Alcohol doesn't count and **raises today's goal** by
+  half its volume (up to 600 ml), plus a warning card. Coffee and tea count
+  normally up to about 400 mg of caffeine a day (EFSA's limit), and the excess at
+  half value.
+
+## ◉ A streak with a shield
+
+A streak that ends after the first bad day is discouraging. So you start with one
+**shield** and earn another for every 7 days in a row (two at most). A missed day
+spends a shield instead of resetting the streak. When the streak is at risk, an
+evening reminder tells you how much is missing.
+
+## ◉ Reminders from your habits
+
+- **Learned from your habits.** Kropi works out from recent weeks when you usually
+  don't drink (meetings, driving, deep work) and reminds you **just before such a
+  gap**, if you haven't just had a drink.
+- **A glass of water after coffee.** Coffee or tea starts a 20-minute countdown;
+  if no water went in, a short reminder arrives.
+- **When you get home.** When the phone joins your home Wi-Fi. Android only lets
+  an app learn the network name with the location permission, so it's needed (and
+  used for that alone); some phones require "Always" for it in the background.
+
+All of them respect Do Not Disturb, meetings, your active window and snoozing.
+
+## ◉ NFC tags
+
+A sticker on a cup or bottle that logs exactly what's written on it when you
+**tap your phone** — say "coffee 200 ml". In Settings you pick the drink and the
+amount, hold the phone to the tag, done (you need at least an NTAG213). Reading
+needs no permissions, and two taps of the same tag within 6 seconds count as one.
+The content is a plain address, `kropi://add?ml=250&drink=COFFEE`, so any tag app
+can write one too.
 
 ## ◉ History that doesn't lie
 
@@ -233,7 +282,9 @@ Everything stays on the phone. **No account, no cloud, no ads, no tracking** —
 the internet is used only to ask GitHub whether a newer version exists (no data
 about you). Export your history to CSV whenever you like, and back everything up
 with one tap. The only thing that ever leaves Kropi is the water handed locally
-to Szpila, if you happen to run it.
+to Szpila, if you happen to run it. The location permission is optional and
+used only to recognise your home Wi-Fi; the temperature comes from Homebrew
+Weather locally, without the internet.
 
 <br />
 

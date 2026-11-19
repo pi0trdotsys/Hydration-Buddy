@@ -20,7 +20,11 @@ import java.util.concurrent.TimeUnit
 class MidnightRollWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
     override suspend fun doWork(): Result {
-        HydrationRepository(applicationContext).current()
+        val repo = HydrationRepository(applicationContext)
+        repo.current()
+        // Nowy dzień = świeża prognoza upału i czysty licznik treningu.
+        repo.refreshOutdoor(force = true)
+        repo.syncWorkouts()
         updateAllWidgets(applicationContext)
         return Result.success()
     }

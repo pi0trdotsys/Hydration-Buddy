@@ -146,4 +146,138 @@ class RepositoryInstrumentedTest {
         )
         assertEquals(3100, repo.current().goal)
     }
+
+    // --- 1.13 ---
+
+    private suspend fun restoreWith(vararg extra: BackupFormat.Entry) {
+        repo.restore(
+            BackupFormat.Snapshot(
+                0, "test",
+                listOf(
+                    BackupFormat.Entry("goal", BackupFormat.Type.INT, 2500),
+                    BackupFormat.Entry("weight_kg", BackupFormat.Type.FLOAT, 70f),
+                    BackupFormat.Entry("activity", BackupFormat.Type.STRING, "LOW"),
+                ) + extra,
+            ),
+        )
+    }
+
+    private fun f(name: String, v: Float) = BackupFormat.Entry(name, BackupFormat.Type.FLOAT, v)
+    private fun l(name: String, v: Long) = BackupFormat.Entry(name, BackupFormat.Type.LONG, v)
+
+    @Test
+    fun forecastHeatRaisesTheAutoGoal() = runBlocking {
+        val now = System.currentTimeMillis()
+        restoreWith(f("outdoor_now_c", 30f), f("outdoor_max_c", 34f), l("outdoor_updated_ms", now), l("outdoor_read_ms", now))
+        val state = repo.current()
+        assertEquals(2450, state.goal) // 70 kg × 28 + pełne 7 ml/kg
+        assertEquals(34f, state.breakdown!!.outdoorMaxC!!, 0.01f)
+    }
+
+    @Test
+    fun aStaleForecastFallsBackToTheManualTemperature() = runBlocking {
+        val now = System.currentTimeMillis()
+        val old = now - 40L * 3_600_000L
+        restoreWith(f("outdoor_now_c", 30f), f("outdoor_max_c", 34f), l("outdoor_updated_ms", old), l("outdoor_read_ms", now))
+        assertEquals(1950, repo.current().goal) // ręcznie „umiarkowanie" → bez dodatku
+    }
+
+    @Test
+    fun weatherCanBeSwitchedOffInSettings() = runBlocking {
+        val now = System.currentTimeMillis()
+        restoreWith(f("outdoor_now_c", 30f), f("outdoor_max_c", 34f), l("outdoor_updated_ms", now), l("outdoor_read_ms", now))
+        val settings = repo.current().settings
+        repo.saveSettings(settings.copy(weatherTemperature = false))
+        assertEquals(1950, repo.current().goal)
+    }
+
+    @Test
+    fun alcoholRaisesTodaysGoalAndDeletingItTakesItBack() = runBlocking {
+        restoreWith()
+        val before = repo.current().goal
+        val id = repo.addIntake(330, Drink.ALCOHOL)
+        val after = repo.current()
+        assertEquals(before + 150, after.goal)
+        assertEquals(0, after.total) // alkohol nie liczy się do celu
+        assertEquals(330, after.alcoholMl)
+        repo.deleteIntake(id)
+        assertEquals(before, repo.current().goal)
+    }
+
+    @Test
+    fun manualGoalIsNotTouchedByAlcohol() = runBlocking {
+        restoreWith()
+        repo.saveSettings(repo.current().settings.copy(goalMode = GoalMode.MANUAL, manualGoalMl = 2000))
+        repo.addIntake(500, Drink.ALCOHOL)
+        assertEquals(2000, repo.current().goal)
+    }
+
+    @Test
+    fun darkCheckInAfterReachingTheGoalRaisesTheGoalFromTomorrowOnly() = runBlocking {
+        restoreWith()
+        val goal = repo.current().goal
+        repo.addIntake(goal, Drink.WATER)
+        assertEquals("goal_up", repo.answerCheckIn(Feeling.DARK))
+        val state = repo.current()
+        assertEquals(Feeling.DARK, state.checkIn.today)
+        assertEquals(3, state.checkIn.pendingPct)
+        assertEquals(0, state.checkIn.activePct)
+        assertEquals(goal, state.goal) // dziś bez zmian
+        assertNull(repo.answerCheckIn(Feeling.GOOD)) // jedna odpowiedź dziennie
+        assertEquals(Feeling.DARK, repo.current().checkIn.today)
+    }
+
+    @Test
+    fun checkInPromotedAtDayRollWhenPrefsSayTomorrowHasCome() = runBlocking {
+        // Wczorajszy dzień z oczekującą korektą +3%: po rozpoczęciu nowego dnia obowiązuje.
+        val yesterday = java.time.LocalDate.now().toEpochDay() - 1
+        restoreWith(l("last_epoch_day", yesterday), BackupFormat.Entry("personal_pct_pending", BackupFormat.Type.INT, 3))
+        val state = repo.current()
+        assertEquals(3, state.checkIn.activePct)
+        assertEquals(GoalCalculator.breakdown(GoalInputs(70f, ActivityLevel.LOW, 0f, 14, personalPct = 3)).goalMl, state.goal)
+    }
+
+    @Test
+    fun newSettingsSurviveARoundTrip() = runBlocking {
+        restoreWith()
+        val s = repo.current().settings.copy(
+            healthWorkouts = true, learnedReminders = false, anchorAfterCoffee = true, homeWifiSsid = "Dom 5G", weatherTemperature = false,
+        )
+        repo.saveSettings(s)
+        val back = repo.current().settings
+        assertTrue(back.healthWorkouts)
+        assertEquals(false, back.learnedReminders)
+        assertTrue(back.anchorAfterCoffee)
+        assertEquals("Dom 5G", back.homeWifiSsid)
+        assertEquals(false, back.weatherTemperature)
+    }
+
+    @Test
+    fun tagTappedTwiceQuicklyIsLoggedOnce() = runBlocking {
+        restoreWith()
+        val uri = NfcTag.uri(250, Drink.COFFEE)
+        assertEquals(false, repo.nfcIsRepeat(uri, nowMs = 10_000))
+        assertTrue(repo.nfcIsRepeat(uri, nowMs = 12_000))
+        assertEquals(false, repo.nfcIsRepeat(NfcTag.uri(250, Drink.WATER), nowMs = 12_500))
+        assertEquals(false, repo.nfcIsRepeat(uri, nowMs = 12_500 + NfcTag.DEBOUNCE_MS))
+    }
+
+    @Test
+    fun nudgeMarkersAreRememberedPerKind() = runBlocking {
+        restoreWith()
+        assertNull(repo.lastNudge("gap"))
+        repo.markNudge("gap", "100:14")
+        repo.markNudge("wifi", "5")
+        assertEquals("100:14", repo.lastNudge("gap"))
+        assertEquals("5", repo.lastNudge("wifi"))
+    }
+
+    @Test
+    fun overTheCaffeineLimitCountsLessThanTheNaiveSum() = runBlocking {
+        restoreWith()
+        repeat(6) { repo.addIntake(200, Drink.COFFEE, minuteOfDay = 480 + it * 30) }
+        val total = repo.current().total
+        assertTrue("było $total", total < 6 * 160)
+        assertTrue(repo.current().caffeineMg > Caffeine.DAILY_LIMIT_MG)
+    }
 }

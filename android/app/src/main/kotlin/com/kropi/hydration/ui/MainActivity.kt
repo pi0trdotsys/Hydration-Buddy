@@ -87,7 +87,13 @@ class MainActivity : ComponentActivity() {
             MaterialTheme {
                 val state by repo.state.collectAsState(initial = null)
                 val scope = rememberCoroutineScope()
-                LaunchedEffect(Unit) { repo.current() }
+                LaunchedEffect(Unit) {
+                    repo.current()
+                    // Prognoza upału z Homebrew Weather i dzisiejsze treningi zmieniają cel; WifiAnchor wraca po restarcie telefonu.
+                    repo.refreshOutdoor()
+                    repo.syncWorkouts()
+                    com.kropi.hydration.notifications.WifiAnchor.sync(applicationContext, repo.current().settings.homeWifiSsid)
+                }
                 // Zakładka przeżywa obrót ekranu i zmianę języka (rememberSaveable zapisuje indeks).
                 var tabIndex by androidx.compose.runtime.saveable.rememberSaveable {
                     mutableIntStateOf((Tab.entries.firstOrNull { it.name == intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB) } ?: Tab.HOME).ordinal)
@@ -238,6 +244,7 @@ class MainActivity : ComponentActivity() {
                                     onEditIntake = { intake -> editor = EditorTarget(intake, null) },
                                     onDeleteIntake = { id -> deleteWithFeedback(id, current.intakes.firstOrNull { it.id == id }?.ml ?: 0) },
                                     onOpenSettings = { tabIndex = Tab.SETTINGS.ordinal },
+                                    onCheckIn = { feeling -> scope.launch { repo.answerCheckIn(feeling) } },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
                                     state = current,
@@ -259,11 +266,13 @@ class MainActivity : ComponentActivity() {
                                     onSave = { settings ->
                                         scope.launch {
                                             repo.saveSettings(settings)
+                                            com.kropi.hydration.notifications.WifiAnchor.sync(applicationContext, settings.homeWifiSsid)
                                             updateAllWidgets(applicationContext)
                                             NotificationScheduler.schedule(applicationContext)
                                         }
                                     },
                                     onTestNotification = { NotificationScheduler.sendTestNotification(applicationContext) },
+                                    state = current,
                                 )
                             }
                         }

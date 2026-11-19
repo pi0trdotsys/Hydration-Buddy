@@ -56,6 +56,7 @@ fun HomeScreen(
     onEditIntake: (Intake) -> Unit,
     onDeleteIntake: (Long) -> Unit,
     onOpenSettings: () -> Unit = {},
+    onCheckIn: (com.kropi.hydration.data.Feeling) -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -79,7 +80,10 @@ fun HomeScreen(
             // dało się sprawdzić bez czekania na przypomnienie.
             InsightCard(eyebrow = stringResource(R.string.home_plan_na_reszte_dnia), body = state.plan().detailText(), modifier = Modifier.fillMaxWidth())
         }
+        item { CheckInCard(state, onCheckIn) }
+        item { StreakCard(state) }
         item { RegularityCard(state) }
+        item { DrinkWarningsCard(state) }
         item { InsightCard(eyebrow = stringResource(R.string.home_self_care_na_dzis), body = state.selfCareAlt, modifier = Modifier.fillMaxWidth()) }
         item { InsightCard(eyebrow = stringResource(R.string.home_ciekawostka), body = state.fact, modifier = Modifier.fillMaxWidth()) }
         item {
@@ -393,6 +397,16 @@ private fun RegularityCard(state: HydrationState) {
             fontSize = 12.sp,
             lineHeight = 17.sp,
         )
+        val typicalGaps = state.habits.gaps
+        if (typicalGaps.isNotEmpty() && s.learnedReminders) {
+            Text(
+                stringResource(
+                    R.string.reg_typical_gaps,
+                    typicalGaps.joinToString(", ") { "${it.startHour}–${it.endHour}" },
+                ),
+                color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp,
+            )
+        }
         if (burst) {
             Text(
                 stringResource(R.string.reg_burst, formatMl(recent)),

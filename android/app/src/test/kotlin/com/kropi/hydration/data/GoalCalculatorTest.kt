@@ -88,4 +88,70 @@ class GoalCalculatorTest {
         assertTrue(narrow.calculatedGoalMl < wide.calculatedGoalMl)
         assertEquals(8, narrow.activeHours)
     }
+
+    // --- 1.13: pogoda, korekta osobista, trening, alkohol ---
+
+    private fun inputs(
+        kg: Float = 70f, a: ActivityLevel = ActivityLevel.LOW, heat: Float = 0f, hours: Int = 14,
+        personal: Int = 0, workout: Int = 0, alcohol: Int = 0,
+    ) = GoalInputs(kg, a, heat, hours, personal, workout, alcohol)
+
+    @Test
+    fun heatGrowsSmoothlyWithTheForecastMaximum() {
+        assertEquals(0f, GoalCalculator.heatFraction(20f), 0.001f)
+        assertEquals(0f, GoalCalculator.heatFraction(GoalCalculator.HEAT_FROM_C), 0.001f)
+        assertEquals(0.5f, GoalCalculator.heatFraction(28f), 0.001f)
+        assertEquals(1f, GoalCalculator.heatFraction(GoalCalculator.HEAT_FULL_C), 0.001f)
+        assertEquals(1f, GoalCalculator.heatFraction(41f), 0.001f)
+        val warm = GoalCalculator.breakdown(inputs(heat = GoalCalculator.heatFraction(28f))).goalMl
+        val hot = GoalCalculator.breakdown(inputs(heat = GoalCalculator.heatFraction(34f))).goalMl
+        assertTrue(warm in 2000..2400 && hot > warm)
+    }
+
+    @Test
+    fun manualHotEqualsAFullForecastHeat() {
+        assertEquals(
+            GoalCalculator.breakdown(70f, ActivityLevel.LOW, Temperature.HOT).goalMl,
+            GoalCalculator.breakdown(inputs(heat = GoalCalculator.heatFraction(35f))).goalMl,
+        )
+    }
+
+    @Test
+    fun personalCorrectionMovesTheGoalByThatPercent() {
+        val base = GoalCalculator.breakdown(inputs()).goalMl // 1950
+        assertEquals(2050, GoalCalculator.breakdown(inputs(personal = 5)).goalMl) // 1960 × 1,05 = 2058
+        assertTrue(GoalCalculator.breakdown(inputs(personal = -5)).goalMl < base)
+        assertEquals(GoalCalculator.breakdown(inputs(personal = 10)).goalMl, GoalCalculator.breakdown(inputs(personal = 99)).goalMl)
+        assertEquals(196, GoalCalculator.breakdown(inputs(personal = 10)).personalMl)
+    }
+
+    @Test
+    fun workoutAndAlcoholComeAfterTheFeasibilityCap() {
+        val capped = GoalCalculator.breakdown(inputs(kg = 110f, a = ActivityLevel.HIGH, heat = 1f, hours = 10))
+        assertEquals(GoalCap.PACE, capped.cappedBy)
+        val withExtras = GoalCalculator.breakdown(inputs(kg = 110f, a = ActivityLevel.HIGH, heat = 1f, hours = 10, workout = 600, alcohol = 150))
+        assertEquals(capped.goalMl + 750, withExtras.goalMl)
+        assertEquals(600, withExtras.workoutMl)
+        assertEquals(150, withExtras.alcoholMl)
+    }
+
+    @Test
+    fun totalNeverExceedsTheHardCeiling() {
+        val b = GoalCalculator.breakdown(inputs(kg = 150f, a = ActivityLevel.HIGH, heat = 1f, hours = 16, workout = 1800, alcohol = 600))
+        assertEquals(GoalCalculator.HARD_CEILING_ML, b.goalMl)
+    }
+
+    @Test
+    fun extrasAreRoundedToFiftyAndNegativesIgnored() {
+        val b = GoalCalculator.breakdown(inputs(workout = 333, alcohol = -40))
+        assertEquals(350, b.workoutMl)
+        assertEquals(0, b.alcoholMl)
+    }
+
+    @Test
+    fun outdoorTemperatureIsRememberedInTheBreakdown() {
+        val b = GoalCalculator.breakdown(GoalInputs(70f, ActivityLevel.LOW, 0.5f, 14, outdoorMaxC = 28f))
+        assertEquals(28f, b.outdoorMaxC!!, 0.001f)
+        assertNull(GoalCalculator.breakdown(inputs()).outdoorMaxC)
+    }
 }
