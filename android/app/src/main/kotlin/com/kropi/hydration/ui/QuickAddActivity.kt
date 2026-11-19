@@ -1,13 +1,12 @@
 package com.kropi.hydration.ui
 
 import android.os.Bundle
+import com.kropi.hydration.widget.updateAllWidgets
 import android.widget.Toast
 import androidx.activity.ComponentActivity
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.formatMl
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.launch
 
 /**
@@ -30,7 +29,7 @@ class QuickAddActivity : ComponentActivity() {
             val ml = requested?.toIntOrNull() ?: state.settings.reminderGlassMl
 
             repository.addWater(ml)
-            HydrationWidget().updateAll(applicationContext)
+            updateAllWidgets(applicationContext)
 
             val total = state.total + ml
             Toast.makeText(

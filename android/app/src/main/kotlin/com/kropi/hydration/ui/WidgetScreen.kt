@@ -28,6 +28,8 @@ fun WidgetScreen(
     onUndo: () -> Unit,
     onPoke: () -> Unit,
     onPin: () -> Unit,
+    onPinGlass: () -> Unit,
+    onPinWeek: () -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -51,11 +53,26 @@ fun WidgetScreen(
             }
         }
         item {
-            Button(
-                onClick = onPin,
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
-            ) {
-                Text("Dodaj widget do ekranu głównego", fontWeight = FontWeight.Bold)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onPin,
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
+                ) {
+                    Text("Dodaj widget do ekranu głównego", fontWeight = FontWeight.Bold)
+                }
+                Button(
+                    onClick = onPinGlass,
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+                ) { Text("Dodaj widget „dolej szklankę” (1×1)") }
+                Button(
+                    onClick = onPinWeek,
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+                ) { Text("Dodaj widget tygodniowy (4×2)") }
+                Text(
+                    "Przytrzymaj widget na ekranie głównym i wybierz „Konfiguruj”, żeby zmienić jego styl i przyciski.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                )
             }
         }
         item {

@@ -1,6 +1,7 @@
 package com.kropi.hydration.ui
 
 import androidx.activity.compose.rememberLauncherForActivityResult
+import com.kropi.hydration.widget.updateAllWidgets
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -32,7 +33,6 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.updateAll
 import com.kropi.hydration.backup.BackupFormat
 import com.kropi.hydration.backup.BackupStore
 import com.kropi.hydration.backup.CsvHistory
@@ -40,7 +40,6 @@ import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.notifications.NotificationScheduler
 import com.kropi.hydration.update.UpdateLogic
 import com.kropi.hydration.update.UpdateManager
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -73,7 +72,7 @@ fun DataBackupCard() {
 
     suspend fun applyRestore(snapshot: BackupFormat.Snapshot) {
         repo.restore(snapshot)
-        HydrationWidget().updateAll(context)
+        updateAllWidgets(context)
         NotificationScheduler.schedule(context)
         message = "Przywrócono kopię. Widget i przypomnienia już ją widzą."
     }

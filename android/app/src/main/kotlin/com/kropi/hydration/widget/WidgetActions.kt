@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.glance.GlanceId
 import androidx.glance.action.ActionParameters
 import androidx.glance.appwidget.action.ActionCallback
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingWorkPolicy
 import androidx.work.OneTimeWorkRequestBuilder
@@ -24,7 +23,7 @@ val DrinkKey = ActionParameters.Key<String>("drink")
  * kafelki na ekranie głównym pokazywały to samo, a nie tylko ten dotknięty.
  */
 private suspend fun refreshWidgets(context: Context) {
-    runCatching { HydrationWidget().updateAll(context) }
+    updateAllWidgets(context)
 }
 
 class AddWaterAction : ActionCallback {
@@ -85,7 +84,7 @@ class RestoreUndoAction : ActionCallback {
 class UndoExpiryWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
     override suspend fun doWork(): Result {
         HydrationRepository(applicationContext).clearUndo(olderThanMs = EXPIRY_MS - 1_000L)
-        runCatching { HydrationWidget().updateAll(applicationContext) }
+        updateAllWidgets(applicationContext)
         return Result.success()
     }
 

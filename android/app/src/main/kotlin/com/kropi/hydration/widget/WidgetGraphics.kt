@@ -385,3 +385,48 @@ fun intakeChartBitmap(
     )
     return bitmap
 }
+
+/** Jeden słupek tygodniowego widgetu. */
+data class WeekBar(val label: String, val pct: Float, val reached: Boolean, val isToday: Boolean)
+
+/**
+ * Siedem słupków (realizacja celu w kolejnych dniach) z podpisami dni — rysowane jako bitmapa,
+ * bo Glance nie ma własnego Canvasu. Dzień z osiągniętym celem jest w pełni nasycony, dzisiejszy
+ * ma podpis w kolorze akcentu.
+ */
+fun weekBarsBitmap(widthPx: Int, heightPx: Int, density: Float, bars: List<WeekBar>, palette: GraphicsPalette): Bitmap {
+    val width = widthPx.coerceAtLeast(1)
+    val height = heightPx.coerceAtLeast(1)
+    val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
+    if (bars.isEmpty()) return bitmap
+    val canvas = Canvas(bitmap)
+
+    val labelSize = 9.5f * density
+    val labelArea = labelSize + 6f * density
+    val chartHeight = (height - labelArea).coerceAtLeast(8f * density)
+    val slot = width.toFloat() / bars.size
+    val barWidth = slot * 0.58f
+    val radius = (barWidth / 2f).coerceAtMost(8f * density)
+
+    val trackPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.track }
+    val fillPaint = Paint(Paint.ANTI_ALIAS_FLAG)
+    val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { textAlign = Paint.Align.CENTER; textSize = labelSize }
+
+    bars.forEachIndexed { index, bar ->
+        val cx = slot * index + slot / 2f
+        val left = cx - barWidth / 2f
+        val right = cx + barWidth / 2f
+        canvas.drawRoundRect(RectF(left, 0f, right, chartHeight), radius, radius, trackPaint)
+
+        val fraction = bar.pct.coerceIn(0f, 1f).coerceAtLeast(0.06f)
+        val top = chartHeight - fraction * chartHeight
+        fillPaint.color = palette.accent
+        fillPaint.alpha = if (bar.reached) 255 else 130
+        canvas.drawRoundRect(RectF(left, top, right, chartHeight), radius, radius, fillPaint)
+
+        textPaint.color = if (bar.isToday) palette.accent else palette.muted
+        textPaint.isFakeBoldText = bar.isToday
+        canvas.drawText(bar.label, cx, height - 2f * density, textPaint)
+    }
+    return bitmap
+}

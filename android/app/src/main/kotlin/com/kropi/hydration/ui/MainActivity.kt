@@ -1,6 +1,7 @@
 package com.kropi.hydration.ui
 
 import android.Manifest
+import com.kropi.hydration.widget.updateAllWidgets
 import android.appwidget.AppWidgetManager
 import android.content.ComponentName
 import android.os.Build
@@ -28,11 +29,9 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.updateAll
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.notifications.NotificationHelper
 import com.kropi.hydration.notifications.NotificationScheduler
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.launch
 
 // Host app. Mirrors the whole Lovable web plan under src/routes: a bottom-nav
@@ -41,6 +40,15 @@ import kotlinx.coroutines.launch
 // calculator, reminders), all sharing one HydrationRepository-backed state
 // like the web's single useHydrationMock() instance.
 class MainActivity : ComponentActivity() {
+
+    /** Zakładka z intentu przychodzącego, gdy aplikacja już działa (np. dotknięcie widgetu tygodniowego). */
+    private var requestedTab by mutableStateOf<String?>(null)
+
+    override fun onNewIntent(intent: android.content.Intent) {
+        super.onNewIntent(intent)
+        requestedTab = intent.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB)
+    }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         val repo = HydrationRepository(applicationContext)
@@ -75,6 +83,11 @@ class MainActivity : ComponentActivity() {
 
                 var editor by remember { mutableStateOf<EditorTarget?>(null) }
 
+                LaunchedEffect(requestedTab) {
+                    Tab.entries.firstOrNull { it.name == requestedTab }?.let { tab = it }
+                    requestedTab = null
+                }
+
                 val current = state
                 if (onboarding == null) {
                     androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize().background(KropiColors.background))
@@ -84,11 +97,11 @@ class MainActivity : ComponentActivity() {
                     OnboardingScreen(
                         initial = current.settings,
                         onRequestNotifications = { askNotificationPermission() },
-                        onPinWidget = { pinWidget() },
+                        onPinWidget = { pinWidget(com.kropi.hydration.widget.HydrationWidgetReceiver::class.java) },
                         onFinish = { settings ->
                             scope.launch {
                                 repo.completeOnboarding(settings)
-                                HydrationWidget().updateAll(applicationContext)
+                                updateAllWidgets(applicationContext)
                                 NotificationScheduler.schedule(applicationContext)
                             }
                             onboarding = false
@@ -110,13 +123,13 @@ class MainActivity : ComponentActivity() {
                             scope.launch {
                                 if (target.intake == null) repo.addIntake(ml, drink, note, day, minute)
                                 else repo.updateIntake(target.intake.id, ml, drink, note, day, minute)
-                                HydrationWidget().updateAll(applicationContext)
+                                updateAllWidgets(applicationContext)
                             }
                             editor = null
                         },
                         onDelete = target.intake?.let { old ->
                             {
-                                scope.launch { repo.deleteIntake(old.id); HydrationWidget().updateAll(applicationContext) }
+                                scope.launch { repo.deleteIntake(old.id); updateAllWidgets(applicationContext) }
                                 editor = null
                             }
                         },
@@ -150,20 +163,22 @@ class MainActivity : ComponentActivity() {
                             when (tab) {
                                 Tab.HOME -> HomeScreen(
                                     state = current,
-                                    onAdd = { ml -> scope.launch { repo.addWater(ml); HydrationWidget().updateAll(applicationContext) } },
-                                    onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
+                                    onAdd = { ml -> scope.launch { repo.addWater(ml); updateAllWidgets(applicationContext) } },
+                                    onUndo = { scope.launch { repo.undoLast(); updateAllWidgets(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
-                                    onSetGoal = { ml -> scope.launch { repo.setGoal(ml); HydrationWidget().updateAll(applicationContext) } },
+                                    onSetGoal = { ml -> scope.launch { repo.setGoal(ml); updateAllWidgets(applicationContext) } },
                                     onAddEntry = { editor = EditorTarget(null, null) },
                                     onEditIntake = { intake -> editor = EditorTarget(intake, null) },
-                                    onDeleteIntake = { id -> scope.launch { repo.deleteIntake(id); HydrationWidget().updateAll(applicationContext) } },
+                                    onDeleteIntake = { id -> scope.launch { repo.deleteIntake(id); updateAllWidgets(applicationContext) } },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
                                     state = current,
-                                    onAdd = { ml -> scope.launch { repo.addWater(ml); HydrationWidget().updateAll(applicationContext) } },
-                                    onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
+                                    onAdd = { ml -> scope.launch { repo.addWater(ml); updateAllWidgets(applicationContext) } },
+                                    onUndo = { scope.launch { repo.undoLast(); updateAllWidgets(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
-                                    onPin = { pinWidget() },
+                                    onPin = { pinWidget(com.kropi.hydration.widget.HydrationWidgetReceiver::class.java) },
+                                    onPinGlass = { pinWidget(com.kropi.hydration.widget.GlassWidgetReceiver::class.java) },
+                                    onPinWeek = { pinWidget(com.kropi.hydration.widget.WeekWidgetReceiver::class.java) },
                                 )
                                 Tab.HISTORY -> HistoryScreen(
                                     state = current,
@@ -176,7 +191,7 @@ class MainActivity : ComponentActivity() {
                                     onSave = { settings ->
                                         scope.launch {
                                             repo.saveSettings(settings)
-                                            HydrationWidget().updateAll(applicationContext)
+                                            updateAllWidgets(applicationContext)
                                             NotificationScheduler.schedule(applicationContext)
                                         }
                                     },
@@ -190,10 +205,10 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    private fun pinWidget() {
+    private fun pinWidget(receiver: Class<*>) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
         val appWidgetManager = getSystemService(AppWidgetManager::class.java)
-        val provider = ComponentName(this, com.kropi.hydration.widget.HydrationWidgetReceiver::class.java)
+        val provider = ComponentName(this, receiver)
         if (appWidgetManager.isRequestPinAppWidgetSupported) {
             appWidgetManager.requestPinAppWidget(provider, null, null)
         }

@@ -1,14 +1,13 @@
 package com.kropi.hydration.quicksettings
 
 import android.graphics.drawable.Icon
+import com.kropi.hydration.widget.updateAllWidgets
 import android.os.Build
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import androidx.glance.appwidget.updateAll
 import com.kropi.hydration.R
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
@@ -35,7 +34,7 @@ class HydrationTileService : TileService() {
             val repository = HydrationRepository(applicationContext)
             val glassMl = repository.current().settings.reminderGlassMl
             repository.addWater(glassMl)
-            HydrationWidget().updateAll(applicationContext)
+            updateAllWidgets(applicationContext)
             render(repository.current())
         }
     }

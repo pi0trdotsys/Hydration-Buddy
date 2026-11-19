@@ -1,12 +1,12 @@
 package com.kropi.hydration.notifications
 
 import android.Manifest
+import com.kropi.hydration.widget.updateAllWidgets
 import android.annotation.SuppressLint
 import android.content.Context
 import android.content.pm.PackageManager
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
-import androidx.glance.appwidget.updateAll
 import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.kropi.hydration.backup.BackupStore
@@ -32,7 +32,6 @@ import com.kropi.hydration.data.hhmm
 import com.kropi.hydration.data.plan
 import com.kropi.hydration.data.timesText
 import com.kropi.hydration.update.UpdateManager
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.time.LocalTime
@@ -54,7 +53,7 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val repo = HydrationRepository(applicationContext)
         val state = repo.current()
 
-        HydrationWidget().updateAll(applicationContext)
+        updateAllWidgets(applicationContext)
 
         val force = inputData.getBoolean(INPUT_FORCE, false)
         maybeNotify(repo, state, force)

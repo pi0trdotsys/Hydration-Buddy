@@ -59,6 +59,16 @@
             android:taskAffinity=""
             android:theme="@android:style/Theme.Translucent.NoTitleBar" />
 
+        <!-- Konfiguracja widgetu: styl kolorów i przyciski. Otwiera ją launcher. -->
+        <activity
+            android:name=".ui.WidgetConfigActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Kropi">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
+
         <service
             android:name=".quicksettings.HydrationTileService"
             android:exported="true"
@@ -80,6 +90,30 @@
             <meta-data
                 android:name="android.appwidget.provider"
                 android:resource="@xml/hydration_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.GlassWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_glass_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/glass_widget_info" />
+        </receiver>
+
+        <receiver
+            android:name=".widget.WeekWidgetReceiver"
+            android:exported="false"
+            android:label="@string/widget_week_label">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/week_widget_info" />
         </receiver>
 
         <receiver

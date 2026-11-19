@@ -11,4 +11,6 @@
     android:initialLayout="@layout/widget_loading"
     android:previewLayout="@layout/widget_loading"
     android:description="@string/widget_description"
+    android:configure="com.kropi.hydration.ui.WidgetConfigActivity"
+    android:widgetFeatures="reconfigurable|configuration_optional"
     android:updatePeriodMillis="0" />

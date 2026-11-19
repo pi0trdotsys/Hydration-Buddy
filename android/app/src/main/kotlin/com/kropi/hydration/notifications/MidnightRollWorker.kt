@@ -1,7 +1,7 @@
 package com.kropi.hydration.notifications
 
 import android.content.Context
-import androidx.glance.appwidget.updateAll
+import com.kropi.hydration.widget.updateAllWidgets
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.PeriodicWorkRequestBuilder
@@ -9,7 +9,6 @@ import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.MidnightSchedule
-import com.kropi.hydration.widget.HydrationWidget
 import java.util.concurrent.TimeUnit
 
 /**
@@ -22,7 +21,7 @@ class MidnightRollWorker(context: Context, params: WorkerParameters) : Coroutine
 
     override suspend fun doWork(): Result {
         HydrationRepository(applicationContext).current()
-        runCatching { HydrationWidget().updateAll(applicationContext) }
+        updateAllWidgets(applicationContext)
         return Result.success()
     }
 

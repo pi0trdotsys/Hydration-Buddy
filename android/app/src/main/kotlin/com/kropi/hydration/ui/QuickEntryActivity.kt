@@ -1,6 +1,7 @@
 package com.kropi.hydration.ui
 
 import android.os.Bundle
+import com.kropi.hydration.widget.updateAllWidgets
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.compose.foundation.background
@@ -33,12 +34,10 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.glance.appwidget.updateAll
 import androidx.lifecycle.lifecycleScope
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
 import com.kropi.hydration.data.Intake
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.launch
 
 /**
@@ -58,7 +57,7 @@ class QuickEntryActivity : ComponentActivity() {
         val repository = HydrationRepository(applicationContext)
         val startWithList = intent?.getBooleanExtra(EXTRA_DAY_LIST, false) == true
 
-        fun refreshWidgets() = lifecycleScope.launch { HydrationWidget().updateAll(applicationContext) }
+        fun refreshWidgets() = lifecycleScope.launch { updateAllWidgets(applicationContext) }
 
         setContent {
             MaterialTheme {

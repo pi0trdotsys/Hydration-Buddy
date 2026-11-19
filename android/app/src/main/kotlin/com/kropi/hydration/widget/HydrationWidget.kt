@@ -56,15 +56,15 @@ import com.kropi.hydration.data.plan
 import java.time.LocalTime
 import kotlinx.coroutines.launch
 
-private val Aqua: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accent
-private val AquaMuted: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accentMuted
-private val AquaSoft: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accentSoft
-private val Foreground: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.foreground
-private val Muted: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.muted
-private val Secondary: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.secondary
-private val CardBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.card
-private val ScreenBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.screen
-private val Warn: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.warn
+internal val Aqua: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accent
+internal val AquaMuted: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accentMuted
+internal val AquaSoft: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.accentSoft
+internal val Foreground: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.foreground
+internal val Muted: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.muted
+internal val Secondary: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.secondary
+internal val CardBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.card
+internal val ScreenBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.screen
+internal val Warn: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.warn
 
 private enum class Variant { TINY, BAR, COMPACT, FULL }
 
@@ -383,7 +383,7 @@ private fun Footer(state: HydrationState, plan: HydrationPlan) {
 
 /** Glance has no compose-ui LocalDensity; widgets only ever run on the device, so convert by hand. */
 @androidx.compose.runtime.Composable
-private fun dpToPx(dp: Dp): Int {
+internal fun dpToPx(dp: Dp): Int {
     val ctx = androidx.glance.LocalContext.current
     return (dp.value * ctx.resources.displayMetrics.density).toInt()
 }
@@ -419,7 +419,7 @@ private fun IntakeChartImage(state: HydrationState, width: Dp, height: Dp) {
 }
 
 @androidx.compose.runtime.Composable
-private fun RingWithMascot(progress: Float, level: Level, ringSize: Dp, mascotSize: Dp, behind: Boolean) {
+internal fun RingWithMascot(progress: Float, level: Level, ringSize: Dp, mascotSize: Dp, behind: Boolean) {
     val pal = LocalPalette.current
     val ringColors = if (behind) pal.warnGraphics else pal.graphics
     val ringPx = dpToPx(ringSize)
@@ -441,7 +441,7 @@ private fun RingWithMascot(progress: Float, level: Level, ringSize: Dp, mascotSi
 }
 
 @androidx.compose.runtime.Composable
-private fun RingWithPercent(progress: Float, pct: Int, ringSize: Dp, behind: Boolean) {
+internal fun RingWithPercent(progress: Float, pct: Int, ringSize: Dp, behind: Boolean) {
     val pal = LocalPalette.current
     val ringColors = if (behind) pal.warnGraphics else pal.graphics
     val ringPx = dpToPx(ringSize)

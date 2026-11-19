@@ -1,13 +1,12 @@
 package com.kropi.hydration.notifications
 
 import android.app.NotificationManager
+import com.kropi.hydration.widget.updateAllWidgets
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
 import androidx.core.content.getSystemService
-import androidx.glance.appwidget.updateAll
 import com.kropi.hydration.data.HydrationRepository
-import com.kropi.hydration.widget.HydrationWidget
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -30,7 +29,7 @@ class DrinkActionReceiver : BroadcastReceiver() {
                     ACTION_MARK_DRUNK -> {
                         val ml = intent.getIntExtra(EXTRA_ML, 250)
                         repo.addWater(ml)
-                        HydrationWidget().updateAll(context)
+                        updateAllWidgets(context)
                     }
                     ACTION_SNOOZE -> {
                         repo.snoozeFor(20)

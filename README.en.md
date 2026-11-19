@@ -71,6 +71,8 @@ Four log buttons live on the tile, so **water gets logged without opening the
 app**. Tapped the wrong one? Undo sits right next to them. A strip below the buttons lets you **pick a drink** (tea, coffee, juice…) for the next pour, and "**＋ wpis**" opens the full editor — past sips included. Three layouts —
 a 4×1 bar, a 2×1 tile and a full 2×2 — each showing as much as it can fit.
 
+The widget is **yours to tune**: long-press it and pick "Configure" to decide what each of the four buttons logs (say, "coffee 200" in one tap) and to choose a style — Kropi's own palette (light or dark per system) or **Material You** colours from your wallpaper. Drinks also remember a "typical portion". Tapping the chart opens today's entries for fixing, and after an undo a **Restore** option sits there for a few seconds. When you're behind plan the widget says plainly "Drink 250 ml now", and it resets itself at midnight. Two smaller widgets are available too: a **1×1 "pour a glass"** and a **weekly** one with seven bars and your streak.
+
 <div align="center">
 <img src="docs/screenshots/widget-large.png" width="330" alt="Large 2×2 widget with the day's chart" />
 </div>

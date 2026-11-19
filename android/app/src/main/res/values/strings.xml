@@ -2,6 +2,10 @@
     <string name="app_name">Kropi — Nawodnienie</string>
     <string name="widget_label">Kropi — widget nawodnienia</string>
     <string name="widget_description">Skalowalny widget nawodnienia: pierścień postępu, klikalne butelki i maskotka Kropi.</string>
+    <string name="widget_glass_label">Kropi — dolej szklankę</string>
+    <string name="widget_glass_description">Jedno dotknięcie dolewa szklankę wody; pierścień pokazuje postęp dnia.</string>
+    <string name="widget_week_label">Kropi — tydzień</string>
+    <string name="widget_week_description">Siedem ostatnich dni, seria i średnie nawodnienie; dotknięcie otwiera Historię.</string>
     <string name="tile_label">Kropi — dolej wodę</string>
     <string name="shortcut_glass_short">Szklanka</string>
     <string name="shortcut_glass_long">Dolej szklankę wody</string>
