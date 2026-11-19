@@ -22,6 +22,7 @@ android {
         targetSdk = 36
         versionCode = 11
         versionName = "1.10.0"
+        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
     // Szpila czyta dane Kropi przez uprawnienie na poziomie podpisu, więc Kropi
@@ -63,6 +64,12 @@ android {
         compose = true
     }
 
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
+
     sourceSets {
         getByName("main") {
             kotlin.srcDirs("src/main/kotlin")
@@ -96,8 +103,22 @@ dependencies {
     ksp("androidx.room:room-compiler:2.6.1")
 
     debugImplementation("androidx.compose.ui:ui-tooling")
+    debugImplementation("androidx.compose.ui:ui-test-manifest")
+
+    androidTestImplementation("androidx.test.ext:junit:1.2.1")
+    androidTestImplementation("androidx.test:runner:1.6.2")
+    androidTestImplementation("androidx.test:rules:1.6.1")
+    androidTestImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    androidTestImplementation("androidx.compose.ui:ui-test-junit4")
 
     testImplementation("junit:junit:4.13.2")
     // Na JVM org.json z Androida to atrapa — testy formatu kopii i parsera wydań potrzebują prawdziwego.
     testImplementation("org.json:json:20240303")
+
+    // Testy interfejsu Compose na JVM (Robolectric): szybkie i bez emulatora, więc działają w CI.
+    testImplementation("org.robolectric:robolectric:4.14.1")
+    testImplementation("androidx.test.ext:junit:1.2.1")
+    testImplementation("androidx.test:core:1.6.1")
+    testImplementation(platform("androidx.compose:compose-bom:2024.06.00"))
+    testImplementation("androidx.compose.ui:ui-test-junit4")
 }

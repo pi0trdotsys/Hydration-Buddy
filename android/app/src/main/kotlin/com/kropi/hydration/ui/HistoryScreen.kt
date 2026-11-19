@@ -18,6 +18,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -515,6 +516,7 @@ private fun DayCell(
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
+            .testTag("day-$day")
             .height(40.dp)
             .clip(RoundedCornerShape(12.dp))
             .background(fill)
