@@ -439,7 +439,8 @@ fun countdownBarBitmap(widthPx: Int, heightPx: Int, fraction: Float, palette: Gr
     val bitmap = Bitmap.createBitmap(width, height, Bitmap.Config.ARGB_8888)
     val canvas = Canvas(bitmap)
     val radius = height / 2f
-    val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.track }
+    // Tor jaśniejszy niż tło pigułki (to samo „track" jest tłem pierścienia), żeby pusty pasek było widać.
+    val track = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.muted; alpha = 70 }
     canvas.drawRoundRect(RectF(0f, 0f, width.toFloat(), height.toFloat()), radius, radius, track)
     val fill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.accent }
     val filled = (width * fraction.coerceIn(0f, 1f)).coerceAtLeast(if (fraction > 0f) height.toFloat() else 0f).coerceAtMost(width.toFloat())

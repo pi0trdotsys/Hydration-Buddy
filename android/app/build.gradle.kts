@@ -46,7 +46,9 @@ android {
             sharedSigning?.let { signingConfig = it }
         }
         release {
-            isMinifyEnabled = false
+            isMinifyEnabled = true
+            isShrinkResources = true
+            proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
             signingConfig = sharedSigning ?: signingConfigs.getByName("debug")
         }
     }

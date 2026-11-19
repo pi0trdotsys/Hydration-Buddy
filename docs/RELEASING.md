@@ -35,6 +35,14 @@ Klucz nigdy nie trafia do repozytorium — lokalnie leży w `android/keystore.pr
 3. Poczekaj na zielony bieg „Wydanie" — APK pojawi się w wydaniu jako `kropi-hydration-v1.10.1.apk`.
    Opis wydania można potem dopisać ręcznie albo wskazać własny przy `gh release create`.
 
+## R8 i zmniejszony APK
+
+Wydanie jest minifikowane (R8) i ma zmniejszone zasoby — APK ma ok. 2 MB zamiast ok. 8 MB. Reguły są w
+`android/app/proguard-rules.pro`: akcje widgetu Glance i zadania WorkManagera są tworzone przez nazwę
+klasy, więc ich konstruktory muszą zostać. Po zmianie zależności albo dodaniu nowego zadania/akcji
+**zainstaluj build release na urządzeniu i dotknij widgetu** — błąd refleksji widać dopiero tam.
+`mapping.txt` (do odczytu śladów stosu) CI dokłada jako artefakt biegu wydania.
+
 ## Lokalnie
 
 ```bash
