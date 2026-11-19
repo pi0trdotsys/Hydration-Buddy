@@ -1,0 +1,84 @@
+name: Wydanie
+
+# Tag vX.Y.Z buduje podpisany APK i dołącza go do wydania na GitHubie.
+# Potrzebne sekrety — patrz docs/RELEASING.md.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag wydania (np. v1.10.1)"
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Podpisany APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    env:
+      TAG: ${{ github.event.inputs.tag || github.ref_name }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - uses: gradle/actions/setup-gradle@v4
+
+      - name: Klucz podpisu z sekretów
+        env:
+          KEYSTORE_BASE64: ${{ secrets.KEYSTORE_BASE64 }}
+          KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+          KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+          KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        run: |
+          if [ -z "$KEYSTORE_BASE64" ]; then
+            echo "::error::Brak sekretu KEYSTORE_BASE64 — bez klucza Szpili APK nie połączy się ze Szpilą. Zobacz docs/RELEASING.md."
+            exit 1
+          fi
+          echo "$KEYSTORE_BASE64" | base64 --decode > android/release.jks
+          {
+            echo "storeFile=release.jks"
+            echo "storePassword=$KEYSTORE_PASSWORD"
+            echo "keyAlias=$KEY_ALIAS"
+            echo "keyPassword=$KEY_PASSWORD"
+          } > android/keystore.properties
+
+      - name: Testy i build release
+        working-directory: android
+        run: ./gradlew testDebugUnitTest assembleRelease --stacktrace
+
+      # Szpila czyta dane Kropi tylko przy tym samym podpisie — inny klucz po cichu zerwałby integrację.
+      - name: Sprawdź odcisk klucza
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.EXPECTED_CERT_SHA256 || '94148ac32c55a760cf869dc7abd69100e9b37269a58eb9185791307475df3206' }}
+        run: |
+          APKSIGNER=$(ls "$ANDROID_HOME"/build-tools/*/apksigner | sort -V | tail -1)
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          ACTUAL=$("$APKSIGNER" verify --print-certs "$APK" | grep -i "certificate SHA-256 digest" | head -1 | awk '{print $NF}')
+          echo "Odcisk APK:        $ACTUAL"
+          echo "Oczekiwany odcisk: $EXPECTED_CERT_SHA256"
+          [ "$ACTUAL" = "$EXPECTED_CERT_SHA256" ] || { echo "::error::Odcisk klucza się nie zgadza."; exit 1; }
+
+      - name: Dołącz do wydania
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          cp android/app/build/outputs/apk/release/app-release.apk "kropi-hydration-${TAG}.apk"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "kropi-hydration-${TAG}.apk" --clobber
+          else
+            gh release create "$TAG" "kropi-hydration-${TAG}.apk" --title "Kropi ${TAG}" --generate-notes
+          fi
+
+      - name: Sprzątanie klucza
+        if: always()
+        run: rm -f android/release.jks android/keystore.properties
