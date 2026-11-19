@@ -650,6 +650,9 @@ private fun TrendsCard(state: HydrationState) {
         trends.avgFirstSipMinute?.let { minute ->
             TrendRow(stringResource(R.string.history_pierwsza_szklanka), stringResource(R.string.history_srednio_o_d_d, (minute / 60).toString(), String.format("%02d", minute % 60)), null, null)
         }
+        trends.regularityPct?.let { pct ->
+            TrendRow(stringResource(R.string.reg_title), stringResource(R.string.history_regularity_value, pct), null, null)
+        }
         if (trends.strongestHour != null && trends.weakestHour != null) {
             TrendRow(
                 stringResource(R.string.history_godziny),

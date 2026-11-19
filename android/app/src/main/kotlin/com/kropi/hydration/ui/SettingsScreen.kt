@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.runtime.mutableIntStateOf
+import com.kropi.hydration.data.formatMl
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import com.kropi.hydration.R
@@ -69,13 +71,35 @@ fun SettingsScreen(
                 )
             }
         }
+        // Najpierw to, po co się tu przychodzi (cel, przypomnienia), a techniczne karty na końcu.
+        item {
+            // Formularz zapisuje się sam, więc nie wolno go odtwarzać po własnym zapisie (zgubiłby trwający
+            // gest na suwaku). Odtwarzamy go tylko, gdy ustawienia zmieniły się z zewnątrz — przywrócona
+            // kopia, waga z Health Connect.
+            var lastSaved by remember { mutableStateOf(initial) }
+            var version by remember { mutableIntStateOf(0) }
+            androidx.compose.runtime.LaunchedEffect(initial) {
+                if (initial != lastSaved) { lastSaved = initial; version++ }
+            }
+            key(version) {
+                SettingsSection(
+                    initial = initial,
+                    onSave = { lastSaved = it; onSave(it) },
+                    onTestNotification = onTestNotification,
+                )
+            }
+        }
+        item { SectionLabel(stringResource(R.string.settings_section_app)) }
         item { BackgroundRestrictionsCard() }
-        item { UpdateCard() }
         item { HealthConnectCard(initial) }
         item { DataBackupCard() }
-        // key(initial): po przywróceniu kopii formularz wczytuje nowe, zapisane ustawienia.
-        item { key(initial) { SettingsSection(initial = initial, onSave = onSave, onTestNotification = onTestNotification) } }
+        item { UpdateCard() }
     }
+}
+
+@Composable
+private fun SectionLabel(text: String) {
+    Text(text.uppercase(), color = KropiColors.mutedForeground, fontSize = 11.sp, letterSpacing = 2.sp, fontWeight = FontWeight.Bold)
 }
 
 /**
@@ -214,7 +238,38 @@ private fun SettingsSection(
         }
     }
 
-    val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
+    // Szkic ustawień z tego, co jest w formularzu — zapisujemy go sami, po chwili bez zmian.
+    val draft = initial.copy(
+        weightKg = weightKg,
+        temperature = temperature,
+        activity = activity,
+        goalMode = goalMode,
+        manualGoalMl = manualGoal.toInt(),
+        activeStartHour = startHour,
+        activeEndHour = endHour,
+        reminderGlassMl = glassMl,
+        remindersEnabled = remindersEnabled,
+        respectDnd = respectDnd,
+        quietDuringMeetings = quietMeetings,
+        notificationTone = tone,
+        bottlesMl = bottles,
+        snarkIntensity = intensity,
+        adaptivePlan = adaptivePlan,
+        netHydration = netHydration,
+    )
+    var justSaved by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(draft) {
+        if (draft != initial) {
+            kotlinx.coroutines.delay(600)
+            onSave(draft)
+            justSaved = true
+            kotlinx.coroutines.delay(2000)
+            justSaved = false
+        }
+    }
+
+    val goalBreakdown = GoalCalculator.breakdown(weightKg, activity, temperature, (endHour - startHour).coerceAtLeast(1))
+    val calculatedGoal = goalBreakdown.goalMl
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
 
     Column(
@@ -418,6 +473,7 @@ private fun SettingsSection(
                 fontWeight = FontWeight.Bold,
             )
         }
+        if (goalMode == GoalMode.AUTO) GoalBreakdownCard(goalBreakdown)
 
         // --- active hours ---
         Text(stringResource(R.string.settings_aktywne_godziny_picia), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
@@ -460,42 +516,68 @@ private fun SettingsSection(
             }
         }
 
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-            Button(
-                onClick = {
-                    onSave(
-                        initial.copy(
-                            weightKg = weightKg,
-                            temperature = temperature,
-                            activity = activity,
-                            goalMode = goalMode,
-                            manualGoalMl = manualGoal.toInt(),
-                            activeStartHour = startHour,
-                            activeEndHour = endHour,
-                            reminderGlassMl = glassMl,
-                            remindersEnabled = remindersEnabled,
-                            respectDnd = respectDnd,
-                            quietDuringMeetings = quietMeetings,
-                            notificationTone = tone,
-                            bottlesMl = bottles,
-                            snarkIntensity = intensity,
-                            adaptivePlan = adaptivePlan,
-                            netHydration = netHydration,
-                        ),
+        Text(
+            if (justSaved) stringResource(R.string.settings_saved) else stringResource(R.string.settings_autosave_hint),
+            color = if (justSaved) KropiColors.aqua else KropiColors.mutedForeground,
+            fontSize = 11.sp,
+        )
+        Button(
+            onClick = onTestNotification,
+            colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+            modifier = Modifier.fillMaxWidth(),
+        ) {
+            Text(stringResource(R.string.settings_testuj_powiadomienie))
+        }
+    }
+}
+
+/**
+ * Skąd się wziął automatyczny cel: składniki, ewentualne przycięcie do tego, co da się realnie wypić,
+ * i źródła. Dzięki temu liczba nie jest czarną skrzynką.
+ */
+@Composable
+private fun GoalBreakdownCard(b: com.kropi.hydration.data.GoalBreakdown) {
+    Column(
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(14.dp))
+            .background(KropiColors.secondary.copy(alpha = 0.5f))
+            .padding(12.dp),
+    ) {
+        Text(stringResource(R.string.goal_how_title), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        GoalLine(stringResource(R.string.goal_line_base), formatMl(b.baseMl))
+        if (b.activityMl > 0) GoalLine(stringResource(R.string.goal_line_activity), "+" + formatMl(b.activityMl))
+        if (b.heatMl > 0) GoalLine(stringResource(R.string.goal_line_heat), "+" + formatMl(b.heatMl))
+        b.cappedBy?.let { cap ->
+            Text(
+                when (cap) {
+                    com.kropi.hydration.data.GoalCap.FLOOR -> stringResource(R.string.goal_cap_floor, formatMl(b.goalMl))
+                    com.kropi.hydration.data.GoalCap.CEILING -> stringResource(R.string.goal_cap_ceiling, formatMl(b.goalMl))
+                    com.kropi.hydration.data.GoalCap.PACE -> stringResource(
+                        R.string.goal_cap_pace, formatMl(b.goalMl), com.kropi.hydration.data.GoalCalculator.MAX_PACE_ML_PER_HOUR,
                     )
                 },
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(stringResource(R.string.settings_zapisz), fontWeight = FontWeight.Bold)
-            }
-            Button(
-                onClick = onTestNotification,
-                colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
-                modifier = Modifier.weight(1f),
-            ) {
-                Text(stringResource(R.string.settings_testuj_powiadomienie))
-            }
+                color = KropiColors.aqua,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+            )
         }
+        GoalLine(stringResource(R.string.goal_line_total), formatMl(b.goalMl), bold = true)
+        Text(stringResource(R.string.goal_sources), color = KropiColors.mutedForeground, fontSize = 10.sp, lineHeight = 14.sp)
+        Text(stringResource(R.string.reg_tip), color = KropiColors.mutedForeground, fontSize = 10.sp, lineHeight = 14.sp)
+    }
+}
+
+@Composable
+private fun GoalLine(label: String, value: String, bold: Boolean = false) {
+    Row(modifier = Modifier.fillMaxWidth()) {
+        Text(label, color = KropiColors.mutedForeground, fontSize = 12.sp, modifier = Modifier.weight(1f))
+        Text(
+            value,
+            color = KropiColors.foreground,
+            fontSize = 12.sp,
+            fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
+        )
     }
 }

@@ -154,7 +154,7 @@
     <string name="settings_fancy_powiadomienie_gdy_dawno_nie">Fancy powiadomienie, gdy dawno nie piłeś/aś wody</string>
     <string name="settings_gdy_telefon_ma_wlaczony_ten">Gdy telefon ma włączony ten tryb, przypomnienie czeka i odezwie się, gdy się skończy.</string>
     <string name="settings_jesli_dolanie_wody_z_widgetu">Jeśli dolanie wody z widgetu widać dopiero po otwarciu aplikacji, to system usypia Kropi w tle. Wyłącz dla niej optymalizację baterii%1$s, żeby widget odświeżał się od razu.</string>
-    <string name="settings_kawa_sok_czy_napoj_gazowany">Kawa, sok czy napój gazowany liczą się do celu częściowo (np. kawa 80%%), a alkohol wcale. Wyłączone — każdy napój liczy się 1:1.</string>
+    <string name="settings_kawa_sok_czy_napoj_gazowany" formatted="false">Kawa, sok czy napój gazowany liczą się do celu częściowo (np. kawa 80%), a alkohol wcale. Wyłączone — każdy napój liczy się 1:1.</string>
     <string name="settings_kropi_dogryza_i_nie_owija">Kropi dogryza i nie owija w bawełnę. Liczby i plan są te same.</string>
     <string name="settings_kropi_przypomina_spokojnie_ze_zdaniem">Kropi przypomina spokojnie, ze zdaniem self-care.</string>
     <string name="settings_kropi_uczy_sie_o_ktorej">Kropi uczy się, o której naprawdę pijesz, i tam przesuwa porcje. Wyłączone — rozkłada je równo co tyle samo.</string>
@@ -177,7 +177,6 @@
     <string name="settings_ustawienia">Ustawienia</string>
     <string name="settings_waga_kg">Waga: %1$s kg</string>
     <string name="settings_wlaczone">Włączone</string>
-    <string name="settings_zapisz">Zapisz</string>
     <string name="wcfg_gotowe_zestawy">Gotowe zestawy</string>
     <string name="wcfg_kawa_i_herbata">☕ Kawa i herbata</string>
     <string name="wcfg_mieszane">🧃 Mieszane</string>
@@ -218,7 +217,7 @@
     <string name="update_downloading">Pobieram %1$s…</string>
     <string name="update_ready">Gotowe — potwierdź instalację w oknie systemu.</string>
     <string name="update_download_failed">Pobieranie nie powiodło się: %1$s</string>
-    <string name="update_waiting_suffix"> · czeka %1$s</string>
+    <string name="update_waiting_suffix">" · czeka %1$s"</string>
     <string name="update_err_checksum">Pobrany plik jest uszkodzony (zła suma kontrolna).</string>
     <string name="update_err_not_app">Plik nie jest aplikacją.</string>
     <string name="update_err_other_app">To inna aplikacja.</string>
@@ -229,8 +228,8 @@
     <string name="health_nothing_yet">W Health Connect nie ma jeszcze wagi ani kroków.</string>
     <string name="health_weight">waga %1$s kg</string>
     <string name="health_steps">~%1$s kroków dziennie → aktywność %2$s</string>
-    <string name="settings_and_autostart"> i włącz autostart</string>
-    <string name="settings_calculated_suffix"> (wyliczony)</string>
+    <string name="settings_and_autostart">" i włącz autostart"</string>
+    <string name="settings_calculated_suffix">" (wyliczony)"</string>
     <string name="tab_home">Główny</string>
     <string name="tab_widget">Widget</string>
     <string name="tab_history">Historia</string>
@@ -238,10 +237,10 @@
     <string name="tab_settings">Ustawienia</string>
     <string name="quote_wrap">„%1$s”</string>
     <string name="quickadd_toast">Dolane %1$s — razem %2$s z %3$s</string>
-    <string name="insights_level_low">Niski postęp (0–25%%)</string>
-    <string name="insights_level_mid">Średni postęp (26–60%%)</string>
-    <string name="insights_level_high">Wysoki postęp (61–99%%)</string>
-    <string name="insights_level_done">Cel osiągnięty (100%%)</string>
+    <string name="insights_level_low" formatted="false">Niski postęp (0–25%)</string>
+    <string name="insights_level_mid" formatted="false">Średni postęp (26–60%)</string>
+    <string name="insights_level_high" formatted="false">Wysoki postęp (61–99%)</string>
+    <string name="insights_level_done" formatted="false">Cel osiągnięty (100%)</string>
     <string name="insights_part_morning">Rano</string>
     <string name="insights_part_day">Dzień</string>
     <string name="insights_part_evening">Wieczór</string>
@@ -330,13 +329,45 @@
     <string name="a11y_next_month">Następny miesiąc</string>
     <string name="a11y_decrease">Zmniejsz</string>
     <string name="a11y_increase">Zwiększ</string>
-    <string name="a11y_progress">Postęp nawodnienia: %1$s%%</string>
     <string name="a11y_mascot">Maskotka Kropi</string>
     <string name="a11y_day_cell">%1$s, %2$s</string>
-    <string name="editor_hour">Godzina</string>
-    <string name="editor_minutes">Minuty</string>
     <string name="a11y_change_down">Zmniejsz: %1$s</string>
     <string name="a11y_change_up">Zwiększ: %1$s</string>
+    <string name="n_short_capped">Wypij %1$s o %2$s — i jeszcze %3$s× do %4$s. Reszty (%5$s) nie pij naraz — zostaw na jutro.</string>
+    <string name="n_full_capped">Nie wszystko zmieści się w regularnych porcjach: %1$s zostaw na jutro. Nerki wydalają ok. 0,8–1 l na godzinę — więcej naraz nie nawadnia lepiej.</string>
+    <string name="reg_title">Regularność</string>
+    <string name="reg_summary">Okna z piciem: %1$s z %2$s</string>
+    <string name="reg_summary_none">Pierwsze okno jeszcze trwa.</string>
+    <string name="reg_gap">Najdłuższa przerwa: %1$s</string>
+    <string name="reg_gap_long">wypij szklankę</string>
+    <string name="reg_burst">W ostatniej godzinie wypito %1$s. To więcej, niż nerki wydalają (ok. 0,8–1 l na godzinę) — zwolnij i rozłóż resztę na kolejne godziny.</string>
+    <string name="reg_tip">Pij regularnie, po ok. 250 ml co 45–60 minut — nerki wydalają 0,8–1 l na godzinę, więc nadmiar naraz nie nawadnia lepiej.</string>
+    <string name="reg_bar_cd">Okna picia z piciem: %1$s z %2$s zakończonych</string>
+    <string name="reg_duration_hm">%1$d h %2$d min</string>
+    <string name="reg_duration_m">%1$d min</string>
+    <string name="history_regularity_value">średnio %1$s%% okien z piciem (14 dni)</string>
+    <string name="goal_how_title">Jak liczymy cel</string>
+    <string name="goal_line_base">Podstawa z wagi (28 ml na kg)</string>
+    <string name="goal_line_activity">Ruch</string>
+    <string name="goal_line_heat">Upał</string>
+    <string name="goal_line_total">Razem</string>
+    <string name="goal_cap_floor">Podniesiony do minimum: %1$s.</string>
+    <string name="goal_cap_ceiling">Przycięty do %1$s — powyżej trudno pić regularnie.</string>
+    <string name="goal_cap_pace">Przycięty do %1$s, bo okno picia jest krótkie (nie więcej niż %2$s ml na godzinę).</string>
+    <string name="goal_sources" formatted="false">Podstawa: zalecenia EFSA (2010) i NASEM (2004) — ok. 35 ml wody na kg dziennie, z czego ok. 80% z napojów, reszta z jedzenia. Ruch i upał zwiększają zapotrzebowanie (ACSM 2007).</string>
+    <string name="home_goal_auto_hint">Liczony automatycznie z wagi, aktywności i pogody</string>
+    <string name="home_goal_change">Zmień</string>
+    <string name="home_goal_change_cd">Zmień sposób liczenia celu w Ustawieniach</string>
+    <string name="snackbar_added">Dodano %1$s</string>
+    <string name="snackbar_deleted">Usunięto %1$s</string>
+    <string name="snackbar_undo">Cofnij</string>
+    <string name="snackbar_restore">Przywróć</string>
+    <string name="a11y_pick_time">Wybierz godzinę, teraz %1$s</string>
+    <string name="settings_section_app">Aplikacja i dane</string>
+    <string name="settings_autosave_hint">Zmiany zapisują się automatycznie.</string>
+    <string name="settings_saved">Zapisano ✓</string>
+    <string name="editor_other_day">Inny dzień…</string>
+    <string name="settings_zapisz">Zapisz</string>
     <plurals name="n_days">
         <item quantity="one">%d dzień</item>
         <item quantity="few">%d dni</item>

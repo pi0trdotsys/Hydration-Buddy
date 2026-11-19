@@ -99,13 +99,18 @@ class StringResourcesTest {
     }
 
     @Test
-    fun percentSignsAreEscapedSoFormattingWorks() {
-        // Samotny „%" przed literą inną niż s/d wywraca String.format — w zasobach ma być „%%".
+    fun percentSignsMatchHowTheStringIsUsed() {
+        // Tekst z podstawieniami idzie przez String.format: tam „%" musi być „%%". Tekst bez podstawień
+        // jest wyświetlany wprost: „%%" pokazałoby się użytkownikowi dosłownie.
         val bad = Regex("%(?!\\d+\\$[sd]|[sd])")
         for ((lang, r) in listOf("pl" to pl, "en" to en)) {
             for ((key, text) in r.strings) {
-                val withoutEscaped = text.replace("%%", "")
-                assertTrue("$lang „$key” ma niezabezpieczone %: $text", !bad.containsMatchIn(withoutEscaped))
+                val formatted = Regex("%\\d+\\$[sd]").containsMatchIn(text)
+                if (formatted) {
+                    assertTrue("$lang „$key” ma niezabezpieczone %: $text", !bad.containsMatchIn(text.replace("%%", "")))
+                } else {
+                    assertTrue("$lang „$key” nie ma podstawień, a zawiera %%: $text", !text.contains("%%"))
+                }
             }
         }
     }

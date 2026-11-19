@@ -13,3 +13,9 @@ fun Context.entriesText(n: Int): String = resources.getQuantityString(R.plurals.
 @Composable fun daysText(n: Int): String = LocalContext.current.daysText(n)
 @Composable fun timesText(n: Int): String = LocalContext.current.timesText(n)
 @Composable fun entriesText(n: Int): String = LocalContext.current.entriesText(n)
+
+/** „2 h 40 min" albo „35 min". */
+fun Context.durationText(minutes: Int): String =
+    if (minutes >= 60) getString(R.string.reg_duration_hm, minutes / 60, minutes % 60) else getString(R.string.reg_duration_m, minutes)
+
+@Composable fun durationText(minutes: Int): String = LocalContext.current.durationText(minutes)

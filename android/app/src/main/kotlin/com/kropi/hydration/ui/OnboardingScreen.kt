@@ -75,7 +75,7 @@ fun OnboardingScreen(
     var tone by remember { mutableStateOf(initial.notificationTone) }
     var reminders by remember { mutableStateOf(true) }
 
-    val goal = GoalCalculator.calculate(weightKg, activity, temperature)
+    val goal = GoalCalculator.calculate(weightKg, activity, temperature, (endHour - startHour).coerceAtLeast(1))
 
     Box(modifier = Modifier.fillMaxSize().background(KropiColors.background)) {
         Column(

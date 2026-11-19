@@ -33,11 +33,20 @@ data class HydrationPlan(
     val remainingMl: Int,
     val windowEnd: LocalTime,
     val status: PlanStatus,
+    /** Ile z brakującej ilości NIE zmieści się w porcjach ≤ [MAX_PORTION_ML] do końca okna (0 = cel realny). */
+    val shortfallMl: Int = 0,
 ) {
     val next: PlannedSip? get() = sips.firstOrNull()
     val finishAt: LocalTime? get() = sips.lastOrNull()?.time
     val portionMl: Int get() = sips.firstOrNull()?.ml ?: 0
 }
+
+/**
+ * Największa porcja, jaką plan w ogóle proponuje. Nerki wydalają ok. 0,8–1 l na godzinę, więc
+ * jednorazowe wlewanie litra nie nawadnia lepiej, a zwiększa ryzyko rozcieńczenia sodu. Gdy do końca
+ * okna zostało za mało czasu na regularne porcje, plan mówi wprost, że resztę trzeba zostawić na jutro.
+ */
+const val MAX_PORTION_ML = 500
 
 /** Odstęp, poniżej którego przypominanie o kolejnej szklance przestaje mieć sens. */
 private const val MIN_SPACING_MINUTES = 20
@@ -88,11 +97,13 @@ fun HydrationState.plan(now: LocalTime = LocalTime.now()): HydrationPlan {
     val tight = wantedSips > maxSips
     val sipCount = if (tight) maxSips.coerceAtLeast(1) else wantedSips
 
-    val portionMl = if (sipCount == 1) {
+    val neededPortionMl = if (sipCount == 1) {
         roundUpTo(remaining, 10)
     } else {
         roundUpTo(ceil(remaining.toDouble() / sipCount).toInt(), 50)
     }
+    val portionMl = minOf(neededPortionMl, MAX_PORTION_ML)
+    val shortfallMl = if (neededPortionMl > MAX_PORTION_ML) (remaining - portionMl * sipCount).coerceAtLeast(0) else 0
     val useProfile = settings.adaptivePlan && sipCount > 1 && hourlyProfile.sum() > 0
     val rawMinutes = if (useProfile) {
         adaptiveMinutes(hourlyProfile, firstMinute, lastMinute, sipCount)
@@ -111,7 +122,7 @@ fun HydrationState.plan(now: LocalTime = LocalTime.now()): HydrationPlan {
         tight -> PlanStatus.TIGHT
         else -> PlanStatus.ON_TRACK
     }
-    return HydrationPlan(sips, total, goal, remaining, windowEnd, status)
+    return HydrationPlan(sips, total, goal, remaining, windowEnd, status, shortfallMl)
 }
 
 /** "1 250 ml" — spacja jako separator tysięcy, tak jak w polskiej typografii. */
@@ -158,7 +169,10 @@ fun HydrationPlan.summaryLine(): String = when (status) {
         "Okno picia zamknięte. Brakuje ${formatMl(remainingMl)} — dopij, ile dasz radę.",
         "The drinking window is closed. ${formatMl(remainingMl)} short — drink what you can.",
     )
-    else -> tr(
+    else -> if (shortfallMl > 0) tr(
+        "${sips.size} × ${formatMl(portionMl)} o ${timesText(limit = 2)} → jeszcze ${formatMl(shortfallMl)} jutro",
+        "${sips.size} × ${formatMl(portionMl)} at ${timesText(limit = 2)} → ${formatMl(shortfallMl)} left for tomorrow",
+    ) else tr(
         "${sips.size} × ${formatMl(portionMl)} o ${timesText(limit = 2)} → cel ${formatMl(goalMl)}",
         "${sips.size} × ${formatMl(portionMl)} at ${timesText(limit = 2)} → goal ${formatMl(goalMl)}",
     )
@@ -178,7 +192,14 @@ fun HydrationPlan.detailText(): String = when (status) {
         "The drinking window closed at ${windowEnd.hhmm()} and you're ${formatMl(remainingMl)} short. " +
             "Drink what suits you — a litre right before bed will only end in a night-time wake-up.",
     )
-    PlanStatus.TIGHT -> tr(
+    PlanStatus.TIGHT -> if (shortfallMl > 0) tr(
+        "Do ${windowEnd.hhmm()} zostało mało czasu: zmieścisz ok. ${formatMl(portionMl * sips.size)} " +
+            "(${sips.size} × ${formatMl(portionMl)} o ${timesText()}). Reszty — ${formatMl(shortfallMl)} — nie pij naraz: " +
+            "nerki wydalają ok. 0,8–1 l na godzinę, więcej naraz nie nawadnia lepiej. Dopij jutro.",
+        "There's little time left before ${windowEnd.hhmm()}: you can fit about ${formatMl(portionMl * sips.size)} " +
+            "(${sips.size} × ${formatMl(portionMl)} at ${timesText()}). Don't drink the rest — ${formatMl(shortfallMl)} — all at once: " +
+            "kidneys clear about 0.8–1 l an hour, so more at once doesn't hydrate better. Finish it tomorrow.",
+    ) else tr(
         "Do ${windowEnd.hhmm()} zostało mało czasu, więc porcje są większe niż Twoja szklanka: " +
             "${sips.size} × ${formatMl(portionMl)} o ${timesText()}. " +
             "Pij spokojnie — to dalej domyka cel ${formatMl(goalMl)}.",

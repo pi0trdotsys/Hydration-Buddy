@@ -154,7 +154,7 @@
     <string name="settings_fancy_powiadomienie_gdy_dawno_nie">A fancy notification when you haven\'t had water for a while</string>
     <string name="settings_gdy_telefon_ma_wlaczony_ten">While the phone is in this mode, the reminder waits and speaks up once it ends.</string>
     <string name="settings_jesli_dolanie_wody_z_widgetu">If water logged from the widget only shows up after you open the app, the system is putting Kropi to sleep in the background. Turn off battery optimisation for it%1$s so the widget refreshes right away.</string>
-    <string name="settings_kawa_sok_czy_napoj_gazowany">Coffee, juice or soda count toward the goal only partly (coffee 80%%, say), alcohol not at all. Off — every drink counts 1:1.</string>
+    <string name="settings_kawa_sok_czy_napoj_gazowany" formatted="false">Coffee, juice or soda count toward the goal only partly (coffee 80%, say), alcohol not at all. Off — every drink counts 1:1.</string>
     <string name="settings_kropi_dogryza_i_nie_owija">Kropi teases and doesn\'t sugar-coat it. The numbers and plan are the same.</string>
     <string name="settings_kropi_przypomina_spokojnie_ze_zdaniem">Kropi reminds you calmly, with a self-care line.</string>
     <string name="settings_kropi_uczy_sie_o_ktorej">Kropi learns when you really drink and moves portions there. Off — it spreads them evenly.</string>
@@ -177,7 +177,6 @@
     <string name="settings_ustawienia">Settings</string>
     <string name="settings_waga_kg">Weight: %1$s kg</string>
     <string name="settings_wlaczone">On</string>
-    <string name="settings_zapisz">Save</string>
     <string name="wcfg_gotowe_zestawy">Ready-made sets</string>
     <string name="wcfg_kawa_i_herbata">☕ Coffee and tea</string>
     <string name="wcfg_mieszane">🧃 Mixed</string>
@@ -218,7 +217,7 @@
     <string name="update_downloading">Downloading %1$s…</string>
     <string name="update_ready">Ready — confirm the installation in the system window.</string>
     <string name="update_download_failed">Download failed: %1$s</string>
-    <string name="update_waiting_suffix"> · waiting: %1$s</string>
+    <string name="update_waiting_suffix">" · waiting: %1$s"</string>
     <string name="update_err_checksum">The downloaded file is corrupt (wrong checksum).</string>
     <string name="update_err_not_app">The file is not an app.</string>
     <string name="update_err_other_app">This is a different app.</string>
@@ -229,8 +228,8 @@
     <string name="health_nothing_yet">Health Connect has no weight or steps yet.</string>
     <string name="health_weight">weight %1$s kg</string>
     <string name="health_steps">~%1$s steps a day → activity %2$s</string>
-    <string name="settings_and_autostart"> and enable autostart</string>
-    <string name="settings_calculated_suffix"> (calculated)</string>
+    <string name="settings_and_autostart">" and enable autostart"</string>
+    <string name="settings_calculated_suffix">" (calculated)"</string>
     <string name="tab_home">Home</string>
     <string name="tab_widget">Widget</string>
     <string name="tab_history">History</string>
@@ -238,10 +237,10 @@
     <string name="tab_settings">Settings</string>
     <string name="quote_wrap">“%1$s”</string>
     <string name="quickadd_toast">Added %1$s — total %2$s of %3$s</string>
-    <string name="insights_level_low">Low progress (0–25%%)</string>
-    <string name="insights_level_mid">Medium progress (26–60%%)</string>
-    <string name="insights_level_high">High progress (61–99%%)</string>
-    <string name="insights_level_done">Goal reached (100%%)</string>
+    <string name="insights_level_low" formatted="false">Low progress (0–25%)</string>
+    <string name="insights_level_mid" formatted="false">Medium progress (26–60%)</string>
+    <string name="insights_level_high" formatted="false">High progress (61–99%)</string>
+    <string name="insights_level_done" formatted="false">Goal reached (100%)</string>
     <string name="insights_part_morning">Morning</string>
     <string name="insights_part_day">Daytime</string>
     <string name="insights_part_evening">Evening</string>
@@ -330,13 +329,45 @@
     <string name="a11y_next_month">Next month</string>
     <string name="a11y_decrease">Decrease</string>
     <string name="a11y_increase">Increase</string>
-    <string name="a11y_progress">Hydration progress: %1$s%%</string>
     <string name="a11y_mascot">Kropi mascot</string>
     <string name="a11y_day_cell">%1$s, %2$s</string>
-    <string name="editor_hour">Hour</string>
-    <string name="editor_minutes">Minutes</string>
     <string name="a11y_change_down">Decrease: %1$s</string>
     <string name="a11y_change_up">Increase: %1$s</string>
+    <string name="n_short_capped">Drink %1$s at %2$s — and %3$s× more by %4$s. Don\'t drink the rest (%5$s) all at once — leave it for tomorrow.</string>
+    <string name="n_full_capped">Not everything fits into regular portions: leave %1$s for tomorrow. Kidneys clear about 0.8–1 l an hour — more at once doesn\'t hydrate better.</string>
+    <string name="reg_title">Regularity</string>
+    <string name="reg_summary">Windows with drinking: %1$s of %2$s</string>
+    <string name="reg_summary_none">The first window is still running.</string>
+    <string name="reg_gap">Longest gap: %1$s</string>
+    <string name="reg_gap_long">have a glass</string>
+    <string name="reg_burst">%1$s drunk in the last hour. That\'s more than kidneys clear (about 0.8–1 l an hour) — slow down and spread the rest over the coming hours.</string>
+    <string name="reg_tip">Drink regularly, about 250 ml every 45–60 minutes — kidneys clear 0.8–1 l an hour, so excess at once doesn\'t hydrate better.</string>
+    <string name="reg_bar_cd">Drinking windows with drinking: %1$s of %2$s finished</string>
+    <string name="reg_duration_hm">%1$d h %2$d min</string>
+    <string name="reg_duration_m">%1$d min</string>
+    <string name="history_regularity_value">on average %1$s%% of windows with drinking (14 days)</string>
+    <string name="goal_how_title">How the goal is calculated</string>
+    <string name="goal_line_base">Base from weight (28 ml per kg)</string>
+    <string name="goal_line_activity">Activity</string>
+    <string name="goal_line_heat">Heat</string>
+    <string name="goal_line_total">Total</string>
+    <string name="goal_cap_floor">Raised to the minimum: %1$s.</string>
+    <string name="goal_cap_ceiling">Capped at %1$s — above that it\'s hard to drink regularly.</string>
+    <string name="goal_cap_pace">Capped at %1$s because your drinking window is short (no more than %2$s ml an hour).</string>
+    <string name="goal_sources" formatted="false">Basis: EFSA (2010) and NASEM (2004) recommendations — about 35 ml of water per kg a day, roughly 80% of it from drinks and the rest from food. Activity and heat raise the need (ACSM 2007).</string>
+    <string name="home_goal_auto_hint">Calculated automatically from your weight, activity and the weather</string>
+    <string name="home_goal_change">Change</string>
+    <string name="home_goal_change_cd">Change how the goal is calculated in Settings</string>
+    <string name="snackbar_added">Added %1$s</string>
+    <string name="snackbar_deleted">Deleted %1$s</string>
+    <string name="snackbar_undo">Undo</string>
+    <string name="snackbar_restore">Restore</string>
+    <string name="a11y_pick_time">Pick the time, now %1$s</string>
+    <string name="settings_section_app">App and data</string>
+    <string name="settings_autosave_hint">Changes save automatically.</string>
+    <string name="settings_saved">Saved ✓</string>
+    <string name="editor_other_day">Other day…</string>
+    <string name="settings_zapisz">Save</string>
     <plurals name="n_days">
         <item quantity="one">%d day</item>
         <item quantity="other">%d days</item>

@@ -1,5 +1,14 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.data.formatMl
+import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.material3.SnackbarResult
+import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.SnackbarHost
+import androidx.compose.material3.SnackbarDuration
+import androidx.compose.material3.Snackbar
 import androidx.compose.ui.res.stringResource
 import com.kropi.hydration.R
 import android.Manifest
@@ -79,14 +88,60 @@ class MainActivity : ComponentActivity() {
                 val state by repo.state.collectAsState(initial = null)
                 val scope = rememberCoroutineScope()
                 LaunchedEffect(Unit) { repo.current() }
-                var tab by remember {
-                    mutableStateOf(Tab.entries.firstOrNull { it.name == intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB) } ?: Tab.HOME)
+                // Zakładka przeżywa obrót ekranu i zmianę języka (rememberSaveable zapisuje indeks).
+                var tabIndex by androidx.compose.runtime.saveable.rememberSaveable {
+                    mutableIntStateOf((Tab.entries.firstOrNull { it.name == intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB) } ?: Tab.HOME).ordinal)
+                }
+                val tab = Tab.entries[tabIndex]
+                // „Wstecz" z dowolnej zakładki wraca na ekran główny, a dopiero stamtąd zamyka aplikację.
+                androidx.activity.compose.BackHandler(enabled = tab != Tab.HOME) { tabIndex = Tab.HOME.ordinal }
+
+                val snackbar = remember { SnackbarHostState() }
+                val haptics = LocalHapticFeedback.current
+                val undoLabel = stringResource(R.string.snackbar_undo)
+                val restoreLabel = stringResource(R.string.snackbar_restore)
+
+                /** Dolewka z ekranu: wibracja, krótkie potwierdzenie i „Cofnij" — jak na widgecie. */
+                fun addWithFeedback(ml: Int) {
+                    scope.launch {
+                        repo.addWater(ml)
+                        updateAllWidgets(applicationContext)
+                        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+                        snackbar.currentSnackbarData?.dismiss()
+                        val result = snackbar.showSnackbar(
+                            message = getString(R.string.snackbar_added, formatMl(ml)),
+                            actionLabel = undoLabel,
+                            duration = SnackbarDuration.Short,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            repo.undoLast()
+                            updateAllWidgets(applicationContext)
+                        }
+                    }
+                }
+
+                /** Usunięcie wpisu z możliwością przywrócenia, zamiast kasowania bez śladu. */
+                fun deleteWithFeedback(id: Long, ml: Int) {
+                    scope.launch {
+                        if (!repo.deleteIntakeKeeping(id)) return@launch
+                        updateAllWidgets(applicationContext)
+                        snackbar.currentSnackbarData?.dismiss()
+                        val result = snackbar.showSnackbar(
+                            message = getString(R.string.snackbar_deleted, formatMl(ml)),
+                            actionLabel = restoreLabel,
+                            duration = SnackbarDuration.Long,
+                        )
+                        if (result == SnackbarResult.ActionPerformed) {
+                            repo.restoreUndone()
+                            updateAllWidgets(applicationContext)
+                        }
+                    }
                 }
 
                 var editor by remember { mutableStateOf<EditorTarget?>(null) }
 
                 LaunchedEffect(requestedTab) {
-                    Tab.entries.firstOrNull { it.name == requestedTab }?.let { tab = it }
+                    Tab.entries.firstOrNull { it.name == requestedTab }?.let { tabIndex = it.ordinal }
                     requestedTab = null
                 }
 
@@ -131,7 +186,7 @@ class MainActivity : ComponentActivity() {
                         },
                         onDelete = target.intake?.let { old ->
                             {
-                                scope.launch { repo.deleteIntake(old.id); updateAllWidgets(applicationContext) }
+                                deleteWithFeedback(old.id, old.ml)
                                 editor = null
                             }
                         },
@@ -140,12 +195,22 @@ class MainActivity : ComponentActivity() {
                 }
                 Scaffold(
                     containerColor = KropiColors.background,
+                    snackbarHost = {
+                        SnackbarHost(snackbar) { data ->
+                            Snackbar(
+                                snackbarData = data,
+                                containerColor = KropiColors.secondary,
+                                contentColor = KropiColors.foreground,
+                                actionColor = KropiColors.aqua,
+                            )
+                        }
+                    },
                     bottomBar = {
                         NavigationBar(containerColor = KropiColors.card) {
                             Tab.entries.forEach { t ->
                                 NavigationBarItem(
                                     selected = tab == t,
-                                    onClick = { tab = t },
+                                    onClick = { tabIndex = t.ordinal },
                                     icon = { Text(t.emoji, fontSize = 18.sp) },
                                     label = { Text(stringResource(t.labelRes), fontSize = 10.sp) },
                                     colors = NavigationBarItemDefaults.colors(
@@ -165,17 +230,18 @@ class MainActivity : ComponentActivity() {
                             when (tab) {
                                 Tab.HOME -> HomeScreen(
                                     state = current,
-                                    onAdd = { ml -> scope.launch { repo.addWater(ml); updateAllWidgets(applicationContext) } },
+                                    onAdd = { ml -> addWithFeedback(ml) },
                                     onUndo = { scope.launch { repo.undoLast(); updateAllWidgets(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
                                     onSetGoal = { ml -> scope.launch { repo.setGoal(ml); updateAllWidgets(applicationContext) } },
                                     onAddEntry = { editor = EditorTarget(null, null) },
                                     onEditIntake = { intake -> editor = EditorTarget(intake, null) },
-                                    onDeleteIntake = { id -> scope.launch { repo.deleteIntake(id); updateAllWidgets(applicationContext) } },
+                                    onDeleteIntake = { id -> deleteWithFeedback(id, current.intakes.firstOrNull { it.id == id }?.ml ?: 0) },
+                                    onOpenSettings = { tabIndex = Tab.SETTINGS.ordinal },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
                                     state = current,
-                                    onAdd = { ml -> scope.launch { repo.addWater(ml); updateAllWidgets(applicationContext) } },
+                                    onAdd = { ml -> addWithFeedback(ml) },
                                     onUndo = { scope.launch { repo.undoLast(); updateAllWidgets(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
                                     onPin = { pinWidget(com.kropi.hydration.widget.HydrationWidgetReceiver::class.java) },

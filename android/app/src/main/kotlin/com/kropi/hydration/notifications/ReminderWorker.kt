@@ -223,6 +223,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 str(R.string.n_short_after, formatMl(plan.remainingMl), formatMl(next.ml), next.time.hhmm())
             plan.sips.size == 1 ->
                 str(R.string.n_short_last, formatMl(plan.portionMl), next.time.hhmm(), formatMl(state.goal))
+            plan.shortfallMl > 0 ->
+                str(R.string.n_short_capped, formatMl(plan.portionMl), next.time.hhmm(), plan.sips.size - 1, plan.windowEnd.hhmm(), formatMl(plan.shortfallMl))
             else ->
                 str(R.string.n_short_more, formatMl(plan.portionMl), next.time.hhmm(), plan.sips.size - 1, plan.windowEnd.hhmm(), formatMl(state.goal))
         }
@@ -252,10 +254,13 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
                 PlanStatus.TIGHT, PlanStatus.ON_TRACK -> {
                     appendLine(str(R.string.n_full_plan, plan.windowEnd.hhmm(), plan.sips.size, formatMl(plan.portionMl)))
                     appendLine(plan.timesText())
-                    plan.finishAt?.let {
+                    // Gdy nie wszystko się zmieści, ostatnia porcja nie „domyka celu" — nie obiecujemy tego.
+                    if (plan.shortfallMl == 0) plan.finishAt?.let {
                         appendLine(str(R.string.n_full_last_portion, it.hhmm(), formatMl(state.goal)))
                     }
-                    if (plan.status == PlanStatus.TIGHT) {
+                    if (plan.status == PlanStatus.TIGHT && plan.shortfallMl > 0) {
+                        appendLine(str(R.string.n_full_capped, formatMl(plan.shortfallMl)))
+                    } else if (plan.status == PlanStatus.TIGHT) {
                         appendLine(str(R.string.n_full_tight, formatMl(state.settings.reminderGlassMl)))
                     }
                 }

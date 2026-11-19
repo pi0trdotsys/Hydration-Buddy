@@ -113,4 +113,37 @@ class RepositoryInstrumentedTest {
         // Kopia z wcześniejszej wersji nie zna powitania — po przywróceniu nie wolno go pokazać drugi raz.
         assertEquals(false, repo.needsOnboarding())
     }
+
+    @Test
+    fun oldAutoGoalIsRecalculatedOnceWithTheNewFormula() = runBlocking {
+        // Kopia sprzed 1.11: cel 2660 policzony starym wzorem, tryb automatyczny, brak znacznika wersji wzoru.
+        repo.restore(
+            BackupFormat.Snapshot(
+                0, "1.10.0",
+                listOf(
+                    BackupFormat.Entry("goal", BackupFormat.Type.INT, 2660),
+                    BackupFormat.Entry("goal_mode", BackupFormat.Type.STRING, "AUTO"),
+                    BackupFormat.Entry("weight_kg", BackupFormat.Type.FLOAT, 70f),
+                    BackupFormat.Entry("activity", BackupFormat.Type.STRING, "MEDIUM"),
+                    BackupFormat.Entry("temperature", BackupFormat.Type.STRING, "MILD"),
+                ),
+            ),
+        )
+        assertEquals(2250, repo.current().goal)
+    }
+
+    @Test
+    fun manualGoalSurvivesTheFormulaChange() = runBlocking {
+        repo.restore(
+            BackupFormat.Snapshot(
+                0, "1.10.0",
+                listOf(
+                    BackupFormat.Entry("goal", BackupFormat.Type.INT, 3100),
+                    BackupFormat.Entry("goal_mode", BackupFormat.Type.STRING, "MANUAL"),
+                    BackupFormat.Entry("manual_goal", BackupFormat.Type.INT, 3100),
+                ),
+            ),
+        )
+        assertEquals(3100, repo.current().goal)
+    }
 }

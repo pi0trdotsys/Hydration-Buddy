@@ -121,6 +121,14 @@ Jeden przełącznik w Ustawieniach i wracasz do równego rytmu.
 
 ## ◉ Cel policzony pod Ciebie
 
+Cel dotyczy **napojów**, nie całej wody z jedzeniem: opiera się na zaleceniach
+EFSA i NASEM (ok. 28 ml na kg z napojów), plus dodatek za ruch i upał. Jest
+**realny do wykonania** — nie przekracza ok. 300 ml na godzinę aktywnego okna, a
+w Ustawieniach widać, z czego się składa. Plan nie każe wypić więcej niż 500 ml
+naraz (nerki wydalają ok. 0,8–1 l na godzinę), a karta **Regularność** pokazuje,
+w ilu dwugodzinnych oknach faktycznie piłeś, jaka była najdłuższa przerwa i
+ostrzega, gdy wlewasz w siebie za dużo naraz.
+
 Podajesz wagę, temperaturę otoczenia i poziom aktywności — Kropi liczy cel
 (ok. 33 ml na kilogram, plus bonus za upał i wysiłek). Wolisz własną liczbę?
 Tryb ręczny i suwak. Do tego **aktywne godziny picia**, np. 8–22: w tym oknie

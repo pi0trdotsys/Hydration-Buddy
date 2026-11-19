@@ -61,4 +61,29 @@ class HydrationPlanTest {
         assertEquals(400, s.total)
         assertEquals(1600, s.remaining)
     }
+
+    @Test
+    fun portionsNeverExceedHalfALitre() {
+        // 3,5 h przed końcem okna brakuje 2 l: potrzebne byłyby porcje po ponad 500 ml.
+        val plan = state(2500, 500).plan(LocalTime.of(18, 30))
+        assertTrue(plan.portionMl <= MAX_PORTION_ML)
+        assertTrue(plan.sips.all { it.ml <= MAX_PORTION_ML })
+    }
+
+    @Test
+    fun whenItDoesNotFitTheShortfallIsReportedNotHiddenInHugePortions() {
+        val plan = state(3000, 0).plan(LocalTime.of(20, 30))
+        assertEquals(PlanStatus.TIGHT, plan.status)
+        assertTrue(plan.shortfallMl > 0)
+        // to, co plan zaproponuje, plus zostawione na jutro, pokrywa brakującą ilość
+        assertTrue(plan.sips.sumOf { it.ml } + plan.shortfallMl >= plan.remainingMl)
+        assertTrue(plan.detailText().contains("jutro") || plan.detailText().contains("tomorrow"))
+    }
+
+    @Test
+    fun planWithoutShortfallStillClosesTheGoal() {
+        val plan = state(2500, 1000).plan(LocalTime.of(12, 0))
+        assertEquals(0, plan.shortfallMl)
+        assertTrue(plan.sips.sumOf { it.ml } >= plan.remainingMl)
+    }
 }

@@ -252,6 +252,7 @@ private object Keys {
     val WIDGET_DRINK = stringPreferencesKey("widget_drink")
     val RESPECT_DND = booleanPreferencesKey("respect_dnd")
     val QUIET_MEETINGS = booleanPreferencesKey("quiet_during_meetings")
+    val GOAL_FORMULA = intPreferencesKey("goal_formula") // wersja wzoru celu; 2 = EFSA/NASEM (1.11)
     val HEALTH_WRITE = booleanPreferencesKey("health_write_hydration")
     val HEALTH_PROFILE = booleanPreferencesKey("health_sync_profile")
     val HC_WRITTEN = stringPreferencesKey("hc_written_ids") // id wpisów zapisanych do Health Connect (ostatnie 3 dni)
@@ -372,6 +373,7 @@ class HydrationRepository(private val context: Context) {
 
     companion object {
         private val migrationMutex = Mutex()
+        private const val GOAL_FORMULA_VERSION = 2
 
         /** Dzisiejszy stan w kształcie eksportu (provider dla Szpili). */
         fun exportToday(state: HydrationState): ExportToday = ExportToday(
@@ -455,8 +457,24 @@ class HydrationRepository(private val context: Context) {
      * do profilu godzinowego i pilnuje, żeby dni bez używania aplikacji też trafiły
      * do historii — pustą, inaczej luka udawałaby, że cel został zaliczony.
      */
+    /**
+     * Wzór celu zmienił się w 1.11 (z 33 ml/kg „wody ogółem" na zalecenia dla napojów). Zapisany cel
+     * dnia przeliczamy raz, żeby nowy wzór zadziałał bez wchodzenia w Ustawienia. Tryb ręczny zostaje
+     * nietknięty.
+     */
+    private suspend fun migrateGoalFormulaIfNeeded() {
+        val prefs = context.hydrationStore.data.first()
+        if ((prefs[Keys.GOAL_FORMULA] ?: 1) >= GOAL_FORMULA_VERSION) return
+        context.hydrationStore.edit {
+            val settings = readSettings(it)
+            if (settings.goalMode == GoalMode.AUTO) it[Keys.GOAL] = settings.effectiveGoalMl
+            it[Keys.GOAL_FORMULA] = GOAL_FORMULA_VERSION
+        }
+    }
+
     private suspend fun rollDayIfNeeded(): HydrationState {
         migrateLegacyIfNeeded()
+        migrateGoalFormulaIfNeeded()
         val today = LocalDate.now().toEpochDay()
         mutate {
             val prefs = context.hydrationStore.data.first()
@@ -591,17 +609,33 @@ class HydrationRepository(private val context: Context) {
             val id = dao.newestIdOfDay(day) ?: return@mutate
             val entry = dao.intakeById(id) ?: return@mutate
             dao.delete(id)
-            context.hydrationStore.edit {
-                it[Keys.UNDO_ML] = entry.ml
-                it[Keys.UNDO_DRINK] = entry.drink
-                it[Keys.UNDO_DAY] = entry.epochDay
-                it[Keys.UNDO_MINUTE] = entry.minuteOfDay
-                if (entry.note != null) it[Keys.UNDO_NOTE] = entry.note else it.remove(Keys.UNDO_NOTE)
-                it[Keys.UNDO_AT] = System.currentTimeMillis()
-            }
+            stashUndo(entry)
             removed = true
         }
         return removed
+    }
+
+    /** Usuwa wskazany wpis, ale zostawia go w pamięci, żeby dało się go przywrócić ([restoreUndone]). */
+    suspend fun deleteIntakeKeeping(id: Long): Boolean {
+        var removed = false
+        mutate {
+            val entry = dao.intakeById(id) ?: return@mutate
+            dao.delete(id)
+            stashUndo(entry)
+            removed = true
+        }
+        return removed
+    }
+
+    private suspend fun stashUndo(entry: IntakeEntity) {
+        context.hydrationStore.edit {
+            it[Keys.UNDO_ML] = entry.ml
+            it[Keys.UNDO_DRINK] = entry.drink
+            it[Keys.UNDO_DAY] = entry.epochDay
+            it[Keys.UNDO_MINUTE] = entry.minuteOfDay
+            if (entry.note != null) it[Keys.UNDO_NOTE] = entry.note else it.remove(Keys.UNDO_NOTE)
+            it[Keys.UNDO_AT] = System.currentTimeMillis()
+        }
     }
 
     /** Odtwarza łyk cofnięty z widgetu, o ile nie minęło za dużo czasu. */
@@ -777,7 +811,13 @@ class HydrationRepository(private val context: Context) {
     }
 
     suspend fun setGoal(ml: Int) {
-        mutate { context.hydrationStore.edit { prefs -> prefs[Keys.GOAL] = ml } }
+        mutate {
+            context.hydrationStore.edit { prefs ->
+                prefs[Keys.GOAL] = ml
+                // W trybie ręcznym suwak na ekranie głównym jest źródłem prawdy — inaczej najbliższy zapis ustawień cofnąłby go.
+                if (readSettings(prefs).goalMode == GoalMode.MANUAL) prefs[Keys.MANUAL_GOAL] = ml
+            }
+        }
     }
 
     /**

@@ -128,6 +128,14 @@ switch in Settings and the even rhythm is back.
 
 ## ◉ A goal calculated for you
 
+The goal covers **drinks**, not all water including food: it follows EFSA and
+NASEM recommendations (about 28 ml per kg from drinks), plus an allowance for
+activity and heat. It is **realistic to actually do** — capped at about 300 ml
+per hour of your active window — and Settings shows what it's made of. The plan
+never asks for more than 500 ml at once (kidneys clear about 0.8–1 l an hour),
+and the **Regularity** card shows in how many two-hour windows you really drank,
+your longest gap, and warns when you pour in too much at once.
+
 Give it your weight, the ambient temperature and your activity level — Kropi
 works out the goal (roughly 33 ml per kilogram, plus a bump for heat and
 effort). Prefer your own number? Manual mode with a slider. On top of that,

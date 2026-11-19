@@ -16,13 +16,15 @@ data class Trends(
     val weakestHour: Int?,
     val bestWeekday: DayOfWeek?,
     val worstWeekday: DayOfWeek?,
+    /** Średni odsetek okien z piciem w ostatnich 14 dniach z zapisami (null = za mało dni). */
+    val regularityPct: Int? = null,
 ) {
     /** Zmiana tydzień do tygodnia w procentach (np. +12 albo -8). */
     val weekDeltaPct: Int? get() = deltaPct(weekAvgMl, prevWeekAvgMl)
     val monthDeltaPct: Int? get() = deltaPct(monthAvgMl, prevMonthAvgMl)
 
     val hasAnything: Boolean
-        get() = weekAvgMl != null || monthAvgMl != null || avgFirstSipMinute != null
+        get() = weekAvgMl != null || monthAvgMl != null || avgFirstSipMinute != null || regularityPct != null
 
     private fun deltaPct(now: Int?, before: Int?): Int? =
         if (now == null || before == null || before <= 0) null else Math.round((now - before) * 100f / before)
@@ -81,6 +83,13 @@ object TrendCalculator {
             }
         }
 
+        val regularityDays = (0..13).mapNotNull { back ->
+            val day = byDay[todayEpoch - back]
+            if (day == null || day.size < 3 || windowEndHour <= windowStartHour) null
+            else Regularity.dayPercent(day, windowStartHour, windowEndHour)
+        }
+        val regularity = if (regularityDays.size >= 3) Math.round(regularityDays.average().toFloat()) else null
+
         return Trends(
             weekAvgMl = avg(0, 6),
             prevWeekAvgMl = avg(7, 13),
@@ -91,6 +100,7 @@ object TrendCalculator {
             weakestHour = weakest,
             bestWeekday = best,
             worstWeekday = worst,
+            regularityPct = regularity,
         )
     }
 }

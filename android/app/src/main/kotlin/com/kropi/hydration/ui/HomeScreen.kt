@@ -1,5 +1,8 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.data.formatMl
+import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
@@ -52,13 +55,14 @@ fun HomeScreen(
     onAddEntry: () -> Unit,
     onEditIntake: (Intake) -> Unit,
     onDeleteIntake: (Long) -> Unit,
+    onOpenSettings: () -> Unit = {},
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        item { HomeHeader(state.goal, onSetGoal) }
+        item { HomeHeader(state.goal, state.settings.goalMode == com.kropi.hydration.data.GoalMode.AUTO, onSetGoal, onOpenSettings) }
         item {
             WidgetCard(
                 state = state,
@@ -66,16 +70,18 @@ fun HomeScreen(
                 onAdd = onAdd,
                 onUndo = onUndo,
                 onPoke = onPoke,
-                modifier = Modifier.fillMaxWidth().height(420.dp),
+                modifier = Modifier.fillMaxWidth(),
+                wrapHeight = true,
             )
         }
         item {
             // Ta sama kalkulacja, którą dostajesz w powiadomieniu — żeby plan dnia
             // dało się sprawdzić bez czekania na przypomnienie.
-            InsightCard(eyebrow = stringResource(R.string.home_plan_na_reszte_dnia), body = state.plan().detailText())
+            InsightCard(eyebrow = stringResource(R.string.home_plan_na_reszte_dnia), body = state.plan().detailText(), modifier = Modifier.fillMaxWidth())
         }
-        item { InsightCard(eyebrow = stringResource(R.string.home_self_care_na_dzis), body = state.selfCareAlt) }
-        item { InsightCard(eyebrow = stringResource(R.string.home_ciekawostka), body = state.fact) }
+        item { RegularityCard(state) }
+        item { InsightCard(eyebrow = stringResource(R.string.home_self_care_na_dzis), body = state.selfCareAlt, modifier = Modifier.fillMaxWidth()) }
+        item { InsightCard(eyebrow = stringResource(R.string.home_ciekawostka), body = state.fact, modifier = Modifier.fillMaxWidth()) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
@@ -102,7 +108,7 @@ fun HomeScreen(
 }
 
 @Composable
-private fun HomeHeader(goal: Int, onSetGoal: (Int) -> Unit) {
+private fun HomeHeader(goal: Int, auto: Boolean, onSetGoal: (Int) -> Unit, onOpenSettings: () -> Unit) {
     val today = LocalDate.now()
     val dayName = today.dayOfWeek.getDisplayName(TextStyle.FULL, com.kropi.hydration.data.Lang.locale)
         .replaceFirstChar { it.uppercase(com.kropi.hydration.data.Lang.locale) }
@@ -123,7 +129,23 @@ private fun HomeHeader(goal: Int, onSetGoal: (Int) -> Unit) {
                 modifier = Modifier.padding(top = 2.dp),
             )
         }
-        Row(
+        if (auto) {
+            // Tryb automatyczny: cel liczy się sam, więc suwak by tylko udawał, że coś zmienia.
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(20.dp))
+                    .background(KropiColors.card)
+                    .padding(start = 16.dp, top = 8.dp, bottom = 8.dp, end = 8.dp),
+            ) {
+                Column(modifier = Modifier.weight(1f)) {
+                    Text("${stringResource(R.string.home_cel)}: $goal ml", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.home_goal_auto_hint), color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
+                }
+                ChipButton(stringResource(R.string.home_goal_change), false, stringResource(R.string.home_goal_change_cd), onOpenSettings)
+            }
+        } else Row(
             verticalAlignment = Alignment.CenterVertically,
             modifier = Modifier
                 .fillMaxWidth()
@@ -305,6 +327,81 @@ private fun MascotSection(state: HydrationState) {
                 fontSize = 11.sp,
                 modifier = Modifier.padding(top = 4.dp),
             )
+        }
+    }
+}
+
+
+/**
+ * Regularność dnia: pasek okien czasu (każde to 2 godziny aktywnego picia), najdłuższa przerwa i — gdy
+ * ktoś wlał w siebie za dużo naraz — ostrzeżenie. Suma dnia nie mówi, czy piło się równo.
+ */
+@Composable
+private fun RegularityCard(state: HydrationState) {
+    val now = java.time.LocalTime.now()
+    val nowMinute = now.hour * 60 + now.minute
+    val s = state.settings
+    val blocks = remember(state.intakes, s.activeStartHour, s.activeEndHour, nowMinute) {
+        com.kropi.hydration.data.Regularity.blocks(state.intakes, s.activeStartHour, s.activeEndHour, nowMinute)
+    }
+    if (blocks.isEmpty()) return
+    val summary = com.kropi.hydration.data.Regularity.summary(blocks)
+    val gap = com.kropi.hydration.data.Regularity.longestGapMinutes(state.intakes, s.activeStartHour, s.activeEndHour, nowMinute)
+    val recent = com.kropi.hydration.data.Regularity.recentMl(state.intakes, nowMinute)
+    val burst = recent > com.kropi.hydration.data.Regularity.BURST_LIMIT_ML
+    val longGap = gap >= com.kropi.hydration.data.Regularity.LONG_GAP_MINUTES
+    val barDescription = stringResource(R.string.reg_bar_cd, summary.hits, summary.finishedBlocks)
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text(
+            stringResource(R.string.reg_title).uppercase(),
+            color = KropiColors.aqua,
+            fontSize = 11.sp,
+            letterSpacing = 2.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            modifier = Modifier.fillMaxWidth().semantics { contentDescription = barDescription },
+        ) {
+            blocks.forEach { block ->
+                val color = when {
+                    block.hit -> KropiColors.aqua
+                    block.finished -> Color(0xFFFF8A65).copy(alpha = 0.75f)
+                    block.current -> KropiColors.aqua.copy(alpha = 0.25f)
+                    else -> KropiColors.secondary
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(10.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(color),
+                )
+            }
+        }
+        Text(
+            if (summary.finishedBlocks == 0) stringResource(R.string.reg_summary_none)
+            else stringResource(R.string.reg_summary, summary.hits, summary.finishedBlocks),
+            color = KropiColors.foreground,
+            fontSize = 13.sp,
+            fontWeight = FontWeight.Bold,
+        )
+        Text(
+            stringResource(R.string.reg_gap, durationText(gap)) + if (longGap) " — " + stringResource(R.string.reg_gap_long) else "",
+            color = if (longGap) Color(0xFFFF8A65) else KropiColors.mutedForeground,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        )
+        if (burst) {
+            Text(
+                stringResource(R.string.reg_burst, formatMl(recent)),
+                color = Color(0xFFFF8A65),
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+        } else {
+            Text(stringResource(R.string.reg_tip), color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
         }
     }
 }

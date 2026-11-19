@@ -69,6 +69,8 @@ fun WidgetCard(
     onUndo: () -> Unit,
     onPoke: () -> Unit,
     modifier: Modifier,
+    /** Karta rośnie razem z treścią (duża czcionka, dłuższe teksty) zamiast mieć sztywną wysokość. */
+    wrapHeight: Boolean = false,
 ) {
     Box(
         modifier = modifier
@@ -78,8 +80,8 @@ fun WidgetCard(
     ) {
         when (variant) {
             WidgetVariant.SMALL -> SmallBody(state, onPoke)
-            WidgetVariant.MEDIUM -> MediumLargeBody(state, large = false, onAdd, onUndo, onPoke)
-            WidgetVariant.LARGE -> MediumLargeBody(state, large = true, onAdd, onUndo, onPoke)
+            WidgetVariant.MEDIUM -> MediumLargeBody(state, large = false, onAdd, onUndo, onPoke, wrapHeight)
+            WidgetVariant.LARGE -> MediumLargeBody(state, large = true, onAdd, onUndo, onPoke, wrapHeight)
         }
     }
 }
@@ -109,9 +111,10 @@ private fun MediumLargeBody(
     onAdd: (Int) -> Unit,
     onUndo: () -> Unit,
     onPoke: () -> Unit,
+    wrapHeight: Boolean = false,
 ) {
     val plan = state.plan()
-    Column(modifier = Modifier.fillMaxSize()) {
+    Column(modifier = if (wrapHeight) Modifier.fillMaxWidth() else Modifier.fillMaxSize()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Box(contentAlignment = Alignment.Center, modifier = Modifier.size(if (large) 88.dp else 68.dp)) {
                 ProgressRingCanvas(progress = state.progress.toFloat(), modifier = Modifier.fillMaxSize())
@@ -157,7 +160,7 @@ private fun MediumLargeBody(
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .weight(1f)
+                    .then(if (wrapHeight) Modifier.height(170.dp) else Modifier.weight(1f))
                     .clip(RoundedCornerShape(16.dp))
                     .background(KropiColors.background)
                     .padding(horizontal = 8.dp, vertical = 6.dp),

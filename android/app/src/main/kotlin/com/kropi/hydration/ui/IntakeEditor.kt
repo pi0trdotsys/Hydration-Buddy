@@ -1,5 +1,8 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.clickable
 import com.kropi.hydration.R
 import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
@@ -144,34 +147,53 @@ fun IntakeEditorSheet(
 
             // --- kiedy ---
             Label(stringResource(R.string.editor_kiedy))
-            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            val context = androidx.compose.ui.platform.LocalContext.current
+            fun pickDate() {
+                val d = LocalDate.ofEpochDay(epochDay)
+                android.app.DatePickerDialog(
+                    context,
+                    { _, y, m, day ->
+                        epochDay = LocalDate.of(y, m + 1, day).toEpochDay().coerceAtMost(today)
+                        minuteOfDay = clampTime(minuteOfDay)
+                    },
+                    d.year, d.monthValue - 1, d.dayOfMonth,
+                ).apply {
+                    datePicker.maxDate = LocalDate.ofEpochDay(today).plusDays(1).atStartOfDay(java.time.ZoneId.systemDefault()).toInstant().toEpochMilli() - 1
+                }.show()
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 ChipButton(stringResource(R.string.editor_dzis), epochDay == today) {
                     epochDay = today
                     minuteOfDay = clampTime(minuteOfDay)
                 }
                 ChipButton(stringResource(R.string.editor_wczoraj), epochDay == today - 1) { epochDay = today - 1 }
-                if (epochDay < today - 1) {
-                    ChipButton(LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofPattern("dd.MM")), true) {}
-                }
+                // Dowolny wcześniejszy dzień: systemowy kalendarz; wybrana data zostaje na chipie.
+                ChipButton(
+                    if (epochDay < today - 1) LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofPattern("dd.MM"))
+                    else stringResource(R.string.editor_other_day),
+                    epochDay < today - 1,
+                ) { pickDate() }
             }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StepperButton("−", stringResource(R.string.editor_hour)) { minuteOfDay = clampTime(minuteOfDay - 60) }
-                Text(
-                    String.format("%02d", minuteOfDay / 60),
-                    color = KropiColors.foreground,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                StepperButton("+", stringResource(R.string.editor_hour)) { minuteOfDay = clampTime(minuteOfDay + 60) }
-                Text(":", color = KropiColors.mutedForeground, fontSize = 22.sp)
-                StepperButton("−", stringResource(R.string.editor_minutes)) { minuteOfDay = clampTime(minuteOfDay - 5) }
-                Text(
-                    String.format("%02d", minuteOfDay % 60),
-                    color = KropiColors.foreground,
-                    fontSize = 22.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                StepperButton("+", stringResource(R.string.editor_minutes)) { minuteOfDay = clampTime(minuteOfDay + 5) }
+            val timeText = String.format(java.util.Locale.ROOT, "%02d:%02d", minuteOfDay / 60, minuteOfDay % 60)
+            val timeDescription = stringResource(R.string.a11y_pick_time, timeText)
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                // Jedno dotknięcie otwiera systemowy zegar — zamiast klikania +/- po godzinach i minutach.
+                androidx.compose.foundation.layout.Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(KropiColors.secondary)
+                        .clickable(role = androidx.compose.ui.semantics.Role.Button) {
+                            android.app.TimePickerDialog(
+                                context,
+                                { _, h, m -> minuteOfDay = clampTime(h * 60 + m) },
+                                minuteOfDay / 60, minuteOfDay % 60, true,
+                            ).show()
+                        }
+                        .semantics { contentDescription = timeDescription }
+                        .padding(horizontal = 20.dp, vertical = 10.dp),
+                ) {
+                    Text(timeText, color = KropiColors.aqua, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+                }
                 if (epochDay == today && initial == null) {
                     ChipButton(stringResource(R.string.editor_teraz), minuteOfDay == nowMinute) { minuteOfDay = nowMinute }
                 }
