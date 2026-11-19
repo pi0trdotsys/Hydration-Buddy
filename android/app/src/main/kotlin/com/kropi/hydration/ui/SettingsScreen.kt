@@ -67,6 +67,7 @@ fun SettingsScreen(
         }
         item { BackgroundRestrictionsCard() }
         item { UpdateCard() }
+        item { HealthConnectCard(initial) }
         item { DataBackupCard() }
         // key(initial): po przywróceniu kopii formularz wczytuje nowe, zapisane ustawienia.
         item { key(initial) { SettingsSection(initial = initial, onSave = onSave, onTestNotification = onTestNotification) } }
@@ -388,7 +389,7 @@ private fun SettingsSection(
             Button(
                 onClick = {
                     onSave(
-                        HydrationSettings(
+                        initial.copy(
                             weightKg = weightKg,
                             temperature = temperature,
                             activity = activity,

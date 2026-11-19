@@ -52,6 +52,9 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
     override suspend fun doWork(): Result {
         val repo = HydrationRepository(applicationContext)
         val state = repo.current()
+        // Health Connect: dopisz zaległe wpisy i odśwież wagę/aktywność (każde z nich ma własne wyłączniki).
+        repo.syncHealth()
+        repo.refreshProfileFromHealth()
 
         updateAllWidgets(applicationContext)
 

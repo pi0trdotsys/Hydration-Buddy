@@ -314,3 +314,140 @@ fun UpdateCard() {
         }
     }
 }
+
+/**
+ * Health Connect: zapis wypitych napojów jako nawodnienie oraz waga i kroki, z których liczy się
+ * cel. Przełączniki działają od razu (jak karta kopii), a uprawnienia prosi system.
+ */
+@Composable
+fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val repository = remember { HydrationRepository(context.applicationContext) }
+    val availability = remember { com.kropi.hydration.health.HealthConnect.availability(context) }
+
+    var granted by remember { mutableStateOf(emptySet<String>()) }
+    var lastSync by remember { mutableStateOf<Pair<Long, Int>?>(null) }
+    var profileNote by remember { mutableStateOf<String?>(null) }
+
+    suspend fun reload() {
+        granted = com.kropi.hydration.health.HealthConnect.grantedPermissions(context)
+        lastSync = repository.lastHealthSync()
+    }
+    LaunchedEffect(settings) { reload() }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        androidx.health.connect.client.PermissionController.createRequestPermissionResultContract(),
+    ) { result ->
+        granted = result
+        scope.launch { reload() }
+    }
+
+    val allGranted = granted.containsAll(com.kropi.hydration.health.HealthConnect.PERMISSIONS)
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Health Connect", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        when (availability) {
+            com.kropi.hydration.health.HealthConnect.Availability.UNSUPPORTED -> Text(
+                "Ten telefon nie obsługuje Health Connect.",
+                color = KropiColors.mutedForeground,
+                fontSize = 12.sp,
+            )
+            com.kropi.hydration.health.HealthConnect.Availability.NEEDS_INSTALL_OR_UPDATE -> {
+                Text(
+                    "Zainstaluj lub zaktualizuj aplikację Health Connect, żeby połączyć Kropi.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 12.sp,
+                )
+                Button(
+                    onClick = {
+                        runCatching {
+                            context.startActivity(
+                                android.content.Intent(
+                                    android.content.Intent.ACTION_VIEW,
+                                    android.net.Uri.parse("market://details?id=com.google.android.apps.healthdata"),
+                                ).addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                            )
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+                    modifier = Modifier.fillMaxWidth(),
+                ) { Text("Otwórz w sklepie") }
+            }
+            com.kropi.hydration.health.HealthConnect.Availability.AVAILABLE -> {
+                Text(
+                    "Kropi może zapisywać to, co pijesz, do Health Connect (widzą to inne aplikacje zdrowotne) " +
+                        "oraz czytać stamtąd wagę i kroki, żeby dopasować cel.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+                if (!allGranted) {
+                    Button(
+                        onClick = { permissionLauncher.launch(com.kropi.hydration.health.HealthConnect.PERMISSIONS) },
+                        colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Połącz z Health Connect", fontWeight = FontWeight.Bold) }
+                }
+
+                HealthToggle(
+                    title = "Zapisuj nawodnienie",
+                    detail = lastSync?.let { (at, count) ->
+                        "Ostatnio ${WHEN.format(Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()))}, $count wpisów z 3 dni"
+                    } ?: "Napoje trafią do Health Connect jako nawodnienie (alkohol pomijamy).",
+                    checked = settings.healthWriteHydration,
+                    enabled = allGranted,
+                ) { on ->
+                    scope.launch {
+                        repository.saveSettings(settings.copy(healthWriteHydration = on))
+                        if (on) repository.syncHealth()
+                        reload()
+                    }
+                }
+                HealthToggle(
+                    title = "Waga i aktywność z Health Connect",
+                    detail = profileNote ?: "Ostatnia waga i średnia kroków z tygodnia ustawiają cel zamiast ręcznych wartości.",
+                    checked = settings.healthSyncProfile,
+                    enabled = allGranted,
+                ) { on ->
+                    scope.launch {
+                        repository.saveSettings(settings.copy(healthSyncProfile = on))
+                        if (on) profileNote = describeProfile(repository.refreshProfileFromHealth(force = true))
+                    }
+                }
+                if (allGranted && settings.healthSyncProfile) {
+                    Button(
+                        onClick = { scope.launch { profileNote = describeProfile(repository.refreshProfileFromHealth(force = true)) } },
+                        colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+                        modifier = Modifier.fillMaxWidth(),
+                    ) { Text("Pobierz teraz") }
+                }
+            }
+        }
+    }
+}
+
+private fun describeProfile(result: com.kropi.hydration.data.HealthProfileResult?): String = when {
+    result == null -> "Brak uprawnień do odczytu wagi i kroków."
+    result.weightKg == null && result.averageSteps == null -> "W Health Connect nie ma jeszcze wagi ani kroków."
+    else -> listOfNotNull(
+        result.weightKg?.let { "waga ${it.toInt()} kg" },
+        result.averageSteps?.let { "~$it kroków dziennie → aktywność ${result.activity?.label?.lowercase()}" },
+    ).joinToString(", ").replaceFirstChar { it.uppercase() }
+}
+
+@Composable
+private fun HealthToggle(title: String, detail: String, checked: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+        Column(modifier = Modifier.weight(1f)) {
+            Text(title, color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(detail, color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
+        }
+        Switch(
+            checked = checked && enabled,
+            onCheckedChange = onChange,
+            enabled = enabled,
+            colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+        )
+    }
+}

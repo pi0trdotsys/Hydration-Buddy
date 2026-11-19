@@ -16,6 +16,15 @@
     <!-- Kropi sam wysyła broadcasty wymagające tego uprawnienia. -->
     <uses-permission android:name="com.kropi.hydration.permission.READ_HYDRATION" />
 
+    <!-- Health Connect: zapis nawodnienia, odczyt wagi i kroków (do liczenia celu). -->
+    <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
+    <uses-permission android:name="android.permission.health.READ_WEIGHT" />
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
+
+    <queries>
+        <package android:name="com.google.android.apps.healthdata" />
+    </queries>
+
     <application
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
@@ -35,6 +44,27 @@
                 android:name="android.app.shortcuts"
                 android:resource="@xml/shortcuts" />
         </activity>
+
+        <!-- Health Connect pyta, po co Kropi chce tych uprawnień (Android 13-); na 14+ zastępuje to alias niżej. -->
+        <activity
+            android:name=".ui.HealthRationaleActivity"
+            android:exported="true"
+            android:theme="@style/Theme.Kropi">
+            <intent-filter>
+                <action android:name="androidx.health.ACTION_SHOW_PERMISSIONS_RATIONALE" />
+            </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name="ViewPermissionUsageActivity"
+            android:exported="true"
+            android:permission="android.permission.START_VIEW_PERMISSION_USAGE"
+            android:targetActivity=".ui.HealthRationaleActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW_PERMISSION_USAGE" />
+                <category android:name="android.intent.category.HEALTH_PERMISSIONS" />
+            </intent-filter>
+        </activity-alias>
 
         <!-- Bezokienkowa trampolina skrótów: dolewa wodę i od razu się zamyka. -->
         <activity

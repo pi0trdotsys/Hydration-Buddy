@@ -13,6 +13,7 @@ import com.kropi.hydration.backup.BackupFormat
 import com.kropi.hydration.backup.CsvHistory
 import com.kropi.hydration.export.ExportToday
 import com.kropi.hydration.export.HydrationExport
+import com.kropi.hydration.health.HealthConnect
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
@@ -76,6 +77,9 @@ object DayRecords {
         }
     }
 }
+
+/** Co udało się odczytać z Health Connect przy ostatnim odświeżeniu profilu. */
+data class HealthProfileResult(val weightKg: Float?, val averageSteps: Int?, val activity: ActivityLevel?)
 
 /** Zamknięty dzień: ile wyszło i jaki cel wtedy obowiązywał. */
 data class DayRecord(val epochDay: Long, val ml: Int, val goal: Int) {
@@ -248,6 +252,11 @@ private object Keys {
     val NET_HYDRATION = booleanPreferencesKey("net_hydration")
     val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     val WIDGET_DRINK = stringPreferencesKey("widget_drink")
+    val HEALTH_WRITE = booleanPreferencesKey("health_write_hydration")
+    val HEALTH_PROFILE = booleanPreferencesKey("health_sync_profile")
+    val HC_WRITTEN = stringPreferencesKey("hc_written_ids") // id wpisów zapisanych do Health Connect (ostatnie 3 dni)
+    val HC_LAST_SYNC_MS = longPreferencesKey("hc_last_sync_ms")
+    val HC_LAST_COUNT = intPreferencesKey("hc_last_count")
     val UNDO_ML = intPreferencesKey("undo_ml")
     val UNDO_DRINK = stringPreferencesKey("undo_drink")
     val UNDO_DAY = longPreferencesKey("undo_day")
@@ -292,6 +301,8 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
             ?: defaults.notificationTone,
         adaptivePlan = prefs[Keys.ADAPTIVE_PLAN] ?: defaults.adaptivePlan,
         netHydration = prefs[Keys.NET_HYDRATION] ?: defaults.netHydration,
+        healthWriteHydration = prefs[Keys.HEALTH_WRITE] ?: defaults.healthWriteHydration,
+        healthSyncProfile = prefs[Keys.HEALTH_PROFILE] ?: defaults.healthSyncProfile,
         snarkIntensity = prefs[Keys.SNARK_INTENSITY]?.let { runCatching { SnarkIntensity.valueOf(it) }.getOrNull() }
             ?: defaults.snarkIntensity,
         bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
@@ -416,6 +427,7 @@ class HydrationRepository(private val context: Context) {
     private suspend fun <T> mutate(block: suspend () -> T): T {
         val before = exportSnapshot()
         val result = block()
+        syncHealth()
         val after = exportSnapshot()
         if (after != before) {
             val now = System.currentTimeMillis()
@@ -688,9 +700,62 @@ class HydrationRepository(private val context: Context) {
                 prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
                 prefs[Keys.ADAPTIVE_PLAN] = settings.adaptivePlan
                 prefs[Keys.NET_HYDRATION] = settings.netHydration
+                prefs[Keys.HEALTH_WRITE] = settings.healthWriteHydration
+                prefs[Keys.HEALTH_PROFILE] = settings.healthSyncProfile
                 prefs[Keys.GOAL] = settings.effectiveGoalMl
             }
         }
+    }
+
+    /**
+     * Zapisuje wpisy z ostatnich 3 dni do Health Connect jako nawodnienie. Pamięta, które zapisał,
+     * więc usunięty albo zmieniony wpis znika z Health Connect przy najbliższej synchronizacji.
+     * Best effort: brak uprawnień, brak Health Connect czy błąd nie psują zapisu w Kropi.
+     */
+    suspend fun syncHealth() {
+        runCatching {
+            val prefs = context.hydrationStore.data.first()
+            if (prefs[Keys.HEALTH_WRITE] != true) return
+            if (!HealthConnect.canWriteHydration(context)) return
+            val from = LocalDate.now().toEpochDay() - 2
+            val intakes = dao.allIntakes().filter { it.epochDay >= from }.map { it.toIntake(net = true) }
+            val ids = intakes.filter { HealthMapping.hydrationMl(it.drink, it.ml) > 0 }.map { it.id }.toSet()
+            val written = prefs[Keys.HC_WRITTEN].orEmpty().split(",").mapNotNull { it.toLongOrNull() }.toSet()
+            val stale = written - ids
+            if (HealthConnect.deleteHydration(context, stale) && HealthConnect.upsertHydration(context, intakes)) {
+                context.hydrationStore.edit {
+                    it[Keys.HC_WRITTEN] = ids.joinToString(",")
+                    it[Keys.HC_LAST_SYNC_MS] = System.currentTimeMillis()
+                    it[Keys.HC_LAST_COUNT] = ids.size
+                }
+            }
+        }
+    }
+
+    /** Kiedy i ile wpisów trafiło do Health Connect przy ostatniej synchronizacji (null = jeszcze nigdy). */
+    suspend fun lastHealthSync(): Pair<Long, Int>? {
+        val prefs = context.hydrationStore.data.first()
+        val at = prefs[Keys.HC_LAST_SYNC_MS] ?: return null
+        return at to (prefs[Keys.HC_LAST_COUNT] ?: 0)
+    }
+
+    /**
+     * Pobiera z Health Connect wagę i średnią liczbę kroków, przelicza ją na poziom aktywności
+     * i zapisuje w ustawieniach (cel liczy się sam, o ile jest w trybie automatycznym).
+     * Zwraca to, co udało się odczytać, albo null, gdy synchronizacja profilu jest wyłączona.
+     */
+    suspend fun refreshProfileFromHealth(force: Boolean = false): HealthProfileResult? {
+        val settings = readSettings(context.hydrationStore.data.first())
+        if (!force && !settings.healthSyncProfile) return null
+        if (!HealthConnect.canReadProfile(context)) return null
+        val weight = HealthConnect.latestWeightKg(context)
+        val steps = HealthConnect.averageDailySteps(context)
+        val activity = steps?.let { HealthMapping.activityFromSteps(it) }
+        var updated = settings
+        if (weight != null) updated = updated.copy(weightKg = weight)
+        if (activity != null) updated = updated.copy(activity = activity)
+        if (updated != settings) saveSettings(updated)
+        return HealthProfileResult(weight, steps, activity)
     }
 
     /** Napój wybrany na widgecie (woda, jeśli nic nie wybrano). */

@@ -32,6 +32,10 @@ data class HydrationSettings(
     val adaptivePlan: Boolean = true,
     /** Liczy napoje wg współczynnika nawodnienia (kawa 80%, sok 85%…); wyłączone = każdy 1:1. */
     val netHydration: Boolean = true,
+    /** Zapisuj wypite napoje do Health Connect (jako nawodnienie). */
+    val healthWriteHydration: Boolean = false,
+    /** Waga i aktywność (kroki) z Health Connect zamiast ręcznych ustawień celu. */
+    val healthSyncProfile: Boolean = false,
     /** Cztery pojemności na kafelkach widgetu i w aplikacji — do przestawienia w Ustawieniach. */
     val bottlesMl: List<Int> = listOf(100, 250, 500, 750),
 ) {
