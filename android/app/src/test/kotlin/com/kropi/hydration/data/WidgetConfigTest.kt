@@ -90,3 +90,13 @@ class WidgetConfigTest {
         assertEquals(Drink.TEA.defaultMl, state.typicalMl(Drink.TEA))
     }
 }
+
+class WidgetStyleTest {
+    @Test
+    fun darkStyleSurvivesRoundTripAndDefaultsStaySystemFollowing() {
+        val bottles = listOf(100, 250, 500, 750)
+        val cfg = WidgetConfig.default(bottles, WidgetStyle.KROPI_DARK)
+        assertEquals(WidgetStyle.KROPI_DARK, WidgetConfig.decode(cfg.encode(), bottles).style)
+        assertEquals(WidgetStyle.KROPI, WidgetConfig.decode(null, bottles).style)
+    }
+}

@@ -3,6 +3,7 @@ package com.kropi.hydration.data
 /** Styl kolorów widgetu: własna paleta Kropi albo kolory z tapety (Material You). */
 enum class WidgetStyle(val label: String, val hint: String) {
     KROPI("Kropi", "Własna paleta, jasna lub ciemna zależnie od systemu."),
+    KROPI_DARK("Kropi ciemny", "Własna paleta, zawsze ciemna — tak wyglądał widget do tej pory."),
     MATERIAL_YOU("Material You", "Kolory z tapety (Android 12+); na starszych systemach paleta Kropi."),
 }
 

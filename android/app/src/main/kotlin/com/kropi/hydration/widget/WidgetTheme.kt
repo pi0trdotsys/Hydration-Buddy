@@ -46,7 +46,7 @@ fun WidgetTheme(style: WidgetStyle, content: @Composable () -> Unit) {
             CompositionLocalProvider(LocalPalette provides palette) { content() }
         }
     } else {
-        CompositionLocalProvider(LocalPalette provides kropiPalette(context)) { content() }
+        CompositionLocalProvider(LocalPalette provides kropiPalette(context, forceDark = style == WidgetStyle.KROPI_DARK)) { content() }
     }
 }
 
@@ -59,20 +59,23 @@ private fun pair(day: Color, night: Color) = ColorProvider(day = day, night = ni
 private val WARN_DARK = Color(0xFFFF8A65)
 private val WARN_LIGHT = Color(0xFFD84F1E)
 
-private fun kropiPalette(context: Context): WidgetPalette {
-    val night = isNight(context)
+private fun kropiPalette(context: Context, forceDark: Boolean): WidgetPalette {
+    val night = forceDark || isNight(context)
     val graphics = if (night) GraphicsPalette.DARK else GraphicsPalette.LIGHT
     val warn = if (night) WARN_DARK else WARN_LIGHT
+    // Przy „zawsze ciemnym" oba warianty pary są ciemne, więc motyw systemu nic nie zmienia.
+    fun pick(day: Long, nightColor: Long) = if (forceDark) pair(nightColor, nightColor) else pair(day, nightColor)
+    fun pick(day: Color, nightColor: Color) = if (forceDark) pair(nightColor, nightColor) else pair(day, nightColor)
     return WidgetPalette(
-        card = pair(0xFFF3FAFC, 0xFF071A27),
-        screen = pair(0xFFE3F0F4, 0xFF020F19),
-        secondary = pair(0xFFD3E4EA, 0xFF132938),
-        foreground = pair(0xFF06202C, 0xFFEEF7FA),
-        muted = pair(0xFF4F6A77, 0xFF91A9B3),
-        accent = pair(0xFF008C96, 0xFF00DFE8),
-        accentMuted = pair(Color(0xFF008C96).copy(alpha = 0.55f), Color(0xFF00DFE8).copy(alpha = 0.55f)),
-        accentSoft = pair(Color(0xFF00A3AD).copy(alpha = 0.22f), Color(0xFF00DFE8).copy(alpha = 0.28f)),
-        warn = pair(WARN_LIGHT, WARN_DARK),
+        card = pick(0xFFF3FAFC, 0xFF071A27),
+        screen = pick(0xFFE3F0F4, 0xFF020F19),
+        secondary = pick(0xFFD3E4EA, 0xFF132938),
+        foreground = pick(0xFF06202C, 0xFFEEF7FA),
+        muted = pick(0xFF4F6A77, 0xFF91A9B3),
+        accent = pick(0xFF008C96, 0xFF00DFE8),
+        accentMuted = pick(Color(0xFF008C96).copy(alpha = 0.55f), Color(0xFF00DFE8).copy(alpha = 0.55f)),
+        accentSoft = pick(Color(0xFF00A3AD).copy(alpha = 0.22f), Color(0xFF00DFE8).copy(alpha = 0.28f)),
+        warn = pick(WARN_LIGHT, WARN_DARK),
         graphics = graphics,
         warnGraphics = graphics.withAccent(warn.toArgb(), darken(warn.toArgb())),
     )
