@@ -81,6 +81,12 @@ fun HistoryScreen(
         if (uri != null) scope.launch { writeCsv(context, uri, state) }
     }
 
+    val entriesLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.CreateDocument("text/csv"),
+    ) { uri ->
+        if (uri != null) scope.launch { writeEntriesCsv(context, uri, state) }
+    }
+
     LazyColumn(
         modifier = Modifier.fillMaxWidth(),
         contentPadding = PaddingValues(20.dp),
@@ -170,7 +176,20 @@ fun HistoryScreen(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Eksportuj historię do CSV")
+                Text("Eksportuj dni do CSV")
+            }
+        }
+
+        item {
+            Button(
+                onClick = { entriesLauncher.launch("kropi-wpisy-${LocalDate.now()}.csv") },
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = KropiColors.secondary,
+                    contentColor = KropiColors.foreground,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text("Eksportuj wpisy do CSV (godzina, napój, notatka)")
             }
         }
 
@@ -384,6 +403,16 @@ private suspend fun writeCsv(context: android.content.Context, uri: android.net.
     }
 }
 
+
+private suspend fun writeEntriesCsv(context: android.content.Context, uri: android.net.Uri, state: HydrationState) {
+    withContext(Dispatchers.IO) {
+        runCatching {
+            context.contentResolver.openOutputStream(uri)?.bufferedWriter()?.use { writer ->
+                writer.write(com.kropi.hydration.backup.CsvEntries.build(state.allIntakes))
+            }
+        }
+    }
+}
 
 private val POLISH_LOCALE = Locale.forLanguageTag("pl-PL")
 private val WEEKDAYS = listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd")

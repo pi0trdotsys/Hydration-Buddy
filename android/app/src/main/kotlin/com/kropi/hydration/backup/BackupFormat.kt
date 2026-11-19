@@ -185,3 +185,28 @@ object CsvHistory {
         }.toList()
     }
 }
+
+
+/**
+ * Eksport pojedynczych wpisów (nie sum dni): data, godzina, napój, ile wlano, ile się liczy do celu
+ * i notatka. Średnik jako separator — tak samo jak w eksporcie dni, dobrze otwiera się w polskim Excelu.
+ */
+object CsvEntries {
+    const val HEADER = "data;godzina;napoj;wypite_ml;liczy_sie_ml;notatka"
+
+    fun build(intakes: List<com.kropi.hydration.data.Intake>): String = buildString {
+        appendLine(HEADER)
+        intakes.sortedWith(compareBy({ it.epochDay }, { it.minuteOfDay }, { it.id })).forEach { i ->
+            append(LocalDate.ofEpochDay(i.epochDay)).append(';')
+            append(String.format("%02d:%02d", i.hour, i.minute)).append(';')
+            append(field(i.drink.label)).append(';')
+            append(i.ml).append(';')
+            append(i.counted).append(';')
+            appendLine(field(i.note.orEmpty()))
+        }
+    }
+
+    /** Pole z separatorem, cudzysłowem albo łamaniem linii bierzemy w cudzysłów (RFC 4180). */
+    fun field(value: String): String =
+        if (value.any { it == ';' || it == '"' || it == '\n' || it == '\r' }) "\"" + value.replace("\"", "\"\"") + "\"" else value
+}
