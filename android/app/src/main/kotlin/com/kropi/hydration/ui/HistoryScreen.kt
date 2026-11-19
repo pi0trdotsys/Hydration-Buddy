@@ -30,6 +30,8 @@ import androidx.compose.ui.platform.LocalContext
 import com.kropi.hydration.data.HistoryDay
 import com.kropi.hydration.data.Intake
 import com.kropi.hydration.data.MonthCalendar
+import com.kropi.hydration.data.TrendCalculator
+import com.kropi.hydration.data.formatMl
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.runtime.getValue
@@ -129,6 +131,8 @@ fun HistoryScreen(
         item { WeekHistoryChart(history, max) }
 
         item { MonthCard(state, onAddEntryOn, onEditIntake) }
+
+        item { TrendsCard(state) }
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -563,3 +567,75 @@ private fun DayDetail(state: HydrationState, epochDay: Long, onAddEntryOn: (Long
         }
     }
 }
+
+
+/** Trendy: tydzień do tygodnia, miesiąc do miesiąca, pora pierwszej szklanki, mocne i słabe godziny i dni. */
+@Composable
+private fun TrendsCard(state: HydrationState) {
+    val trends = remember(state.records, state.total, state.allIntakes, state.settings.activeStartHour, state.settings.activeEndHour) {
+        TrendCalculator.compute(
+            records = state.records + state.today,
+            intakes = state.allIntakes,
+            today = LocalDate.now(),
+            windowStartHour = state.settings.activeStartHour,
+            windowEndHour = state.settings.activeEndHour,
+        )
+    }
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Trendy", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        if (!trends.hasAnything) {
+            Text(
+                "Za mało danych na wnioski — po kilku dniach zapisów pojawią się tu porównania i wzorce.",
+                color = KropiColors.mutedForeground,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+            )
+            return@GlassCard
+        }
+        trends.weekAvgMl?.let { avg ->
+            TrendRow("Ten tydzień", "${formatMl(avg)} dziennie", trends.weekDeltaPct, "vs poprzedni tydzień")
+        }
+        trends.monthAvgMl?.let { avg ->
+            TrendRow("Ostatnie 30 dni", "${formatMl(avg)} dziennie", trends.monthDeltaPct, "vs poprzednie 30 dni")
+        }
+        trends.avgFirstSipMinute?.let { minute ->
+            TrendRow("Pierwsza szklanka", String.format("średnio o %d:%02d", minute / 60, minute % 60), null, null)
+        }
+        if (trends.strongestHour != null && trends.weakestHour != null) {
+            TrendRow(
+                "Godziny",
+                "najwięcej ${hourRange(trends.strongestHour)} · najmniej ${hourRange(trends.weakestHour)}",
+                null,
+                null,
+            )
+        }
+        if (trends.bestWeekday != null && trends.worstWeekday != null) {
+            TrendRow(
+                "Dni tygodnia",
+                "najlepszy ${weekdayName(trends.bestWeekday)} · najsłabszy ${weekdayName(trends.worstWeekday)}",
+                null,
+                null,
+            )
+        }
+    }
+}
+
+@Composable
+private fun TrendRow(label: String, value: String, deltaPct: Int?, deltaLabel: String?) {
+    Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(label.uppercase(POLISH_LOCALE), color = KropiColors.mutedForeground, fontSize = 9.sp, letterSpacing = 1.5.sp)
+        Text(value, color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+        if (deltaPct != null && deltaLabel != null) {
+            val up = deltaPct >= 0
+            Text(
+                "${if (up) "▲ +" else "▼ "}$deltaPct% $deltaLabel",
+                color = if (up) KropiColors.aqua else Color(0xFFFF8A65),
+                fontSize = 11.sp,
+            )
+        }
+    }
+}
+
+private fun hourRange(hour: Int): String = String.format("%02d–%02d", hour, (hour + 1) % 24)
+
+private fun weekdayName(day: java.time.DayOfWeek): String = day.getDisplayName(TextStyle.FULL, POLISH_LOCALE)
