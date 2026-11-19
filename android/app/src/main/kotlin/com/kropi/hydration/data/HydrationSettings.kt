@@ -2,16 +2,20 @@ package com.kropi.hydration.data
 
 import kotlin.math.roundToInt
 
-enum class Temperature(val label: String, val emoji: String) {
-    COLD("Chłodno", "❄️"),
-    MILD("Umiarkowanie", "🌤️"),
-    HOT("Upał", "🔥"),
+enum class Temperature(private val labelPl: String, private val labelEn: String, val emoji: String) {
+    COLD("Chłodno", "Cool", "❄️"),
+    MILD("Umiarkowanie", "Mild", "🌤️"),
+    HOT("Upał", "Hot", "🔥");
+
+    val label: String get() = tr(labelPl, labelEn)
 }
 
-enum class ActivityLevel(val label: String, val emoji: String) {
-    LOW("Niska", "🛋️"),
-    MEDIUM("Średnia", "🚶"),
-    HIGH("Wysoka", "🏃"),
+enum class ActivityLevel(private val labelPl: String, private val labelEn: String, val emoji: String) {
+    LOW("Niska", "Low", "🛋️"),
+    MEDIUM("Średnia", "Medium", "🚶"),
+    HIGH("Wysoka", "High", "🏃");
+
+    val label: String get() = tr(labelPl, labelEn)
 }
 
 enum class GoalMode { AUTO, MANUAL }

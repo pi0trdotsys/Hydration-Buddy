@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -22,16 +24,16 @@ import com.kropi.hydration.data.MASCOT_LINES
 import com.kropi.hydration.data.SELF_CARE
 
 private val LEVEL_LABEL = mapOf(
-    Level.LOW to "Niski postęp (0–25%)",
-    Level.MID to "Średni postęp (26–60%)",
-    Level.HIGH to "Wysoki postęp (61–99%)",
-    Level.DONE to "Cel osiągnięty (100%)",
+    Level.LOW to R.string.insights_level_low,
+    Level.MID to R.string.insights_level_mid,
+    Level.HIGH to R.string.insights_level_high,
+    Level.DONE to R.string.insights_level_done,
 )
 
 private val DAYPART_LABEL = mapOf(
-    Daypart.MORNING to "Rano",
-    Daypart.DAY to "Dzień",
-    Daypart.EVENING to "Wieczór",
+    Daypart.MORNING to R.string.insights_part_morning,
+    Daypart.DAY to R.string.insights_part_day,
+    Daypart.EVENING to R.string.insights_part_evening,
 )
 
 /** Mirrors src/routes/insights.tsx — the full deterministic content browser. */
@@ -44,9 +46,9 @@ fun InsightsScreen() {
     ) {
         item {
             Column {
-                Text("Baza treści", color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.insights_baza_tresci), color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Wszystkie komunikaty, które aplikacja losuje deterministycznie na podstawie postępu i pory dnia.",
+                    stringResource(R.string.insights_wszystkie_komunikaty_ktore_aplikacja_losuje),
                     color = KropiColors.mutedForeground,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 4.dp),
@@ -54,11 +56,11 @@ fun InsightsScreen() {
             }
         }
 
-        item { SectionTitle("Self-care wg poziomu") }
+        item { SectionTitle(stringResource(R.string.insights_section_selfcare)) }
         items(Level.entries.toList()) { level ->
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    LEVEL_LABEL.getValue(level).uppercase(),
+                    stringResource(LEVEL_LABEL.getValue(level)).uppercase(),
                     color = KropiColors.aqua,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -68,11 +70,11 @@ fun InsightsScreen() {
             }
         }
 
-        item { SectionTitle("Wg pory dnia") }
+        item { SectionTitle(stringResource(R.string.insights_section_daypart)) }
         items(Daypart.entries.toList()) { part ->
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    DAYPART_LABEL.getValue(part).uppercase(),
+                    stringResource(DAYPART_LABEL.getValue(part)).uppercase(),
                     color = KropiColors.aqua,
                     fontSize = 11.sp,
                     fontWeight = FontWeight.Bold,
@@ -82,17 +84,17 @@ fun InsightsScreen() {
             }
         }
 
-        item { SectionTitle("Ciekawostki (${FACTS.size})") }
+        item { SectionTitle(stringResource(R.string.insights_section_facts, FACTS.size)) }
         itemsIndexed(FACTS) { i, fact ->
             InsightCard(eyebrow = "#${(i + 1).toString().padStart(2, '0')}", body = fact, modifier = Modifier.fillMaxWidth())
         }
 
-        item { SectionTitle("Kwestie Kropi") }
+        item { SectionTitle(stringResource(R.string.insights_section_mascot)) }
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Level.entries.forEach { level ->
                     MASCOT_LINES.getValue(level).forEach { line ->
-                        Text("„$line”", color = KropiColors.mutedForeground, fontSize = 13.sp)
+                        Text(stringResource(R.string.quote_wrap, line), color = KropiColors.mutedForeground, fontSize = 13.sp)
                     }
                 }
             }

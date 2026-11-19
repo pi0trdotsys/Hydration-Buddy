@@ -53,7 +53,7 @@ class HydrationTileService : TileService() {
             tile.subtitle = if (state.remaining > 0) {
                 "${state.total} / ${state.goal} ml"
             } else {
-                "Cel zrobiony 🎉"
+                getString(R.string.w_goal_done)
             }
         }
         tile.updateTile()

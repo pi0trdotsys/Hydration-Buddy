@@ -7,15 +7,15 @@ enum class Daypart { MORNING, DAY, EVENING }
 
 data class Bottle(val ml: Int, val label: String)
 
-val BOTTLES = listOf(
-    Bottle(100, "Łyk"),
-    Bottle(250, "Szklanka"),
-    Bottle(330, "Puszka"),
-    Bottle(500, "Butelka"),
-    Bottle(750, "Bidon"),
+val BOTTLES: List<Bottle> get() = listOf(
+    Bottle(100, tr("Łyk", "Sip")),
+    Bottle(250, tr("Szklanka", "Glass")),
+    Bottle(330, tr("Puszka", "Can")),
+    Bottle(500, tr("Butelka", "Bottle")),
+    Bottle(750, tr("Bidon", "Flask")),
 )
 
-val FACTS: List<String> = listOf(
+private val FACTS_PL: List<String> = listOf(
     "Mózg w ok. 73% składa się z wody — odwodnienie na poziomie 2% mierzalnie obniża koncentrację.",
     "Uczucie zmęczenia po południu to bardzo często odwodnienie rzędu 1–2%, a nie brak kofeiny.",
     "Pragnienie pojawia się dopiero, gdy stracisz ok. 1–2% masy ciała w wodzie — to już spóźniony sygnał.",
@@ -60,7 +60,7 @@ val FACTS: List<String> = listOf(
     "Twoje ciało nie magazynuje wody na zapas — dlatego liczy się rytm, nie jednorazowy rekord.",
 )
 
-val SELF_CARE: Map<Level, List<String>> = mapOf(
+private val SELF_CARE_PL: Map<Level, List<String>> = mapOf(
     Level.LOW to listOf(
         "Zrób przerwę, rozprostuj się i wypij szklankę — nie musisz nadrabiać wszystkiego naraz.",
         "Nie oceniaj się za wolny start. Jedna szklanka teraz zmienia cały wykres dnia.",
@@ -96,7 +96,7 @@ val SELF_CARE: Map<Level, List<String>> = mapOf(
     ),
 )
 
-val DAYPART_NOTES: Map<Daypart, List<String>> = mapOf(
+private val DAYPART_NOTES_PL: Map<Daypart, List<String>> = mapOf(
     Daypart.MORNING to listOf(
         "Poranek to najtańsza wygrana dnia — szklanka wody przed pierwszą kawą.",
         "Po nocy jesteś naturalnie odwodniony. Zacznij od 300–500 ml.",
@@ -114,7 +114,7 @@ val DAYPART_NOTES: Map<Daypart, List<String>> = mapOf(
     ),
 )
 
-val MASCOT_LINES: Map<Level, List<String>> = mapOf(
+private val MASCOT_LINES_PL: Map<Level, List<String>> = mapOf(
     Level.LOW to listOf(
         "Jestem trochę... skoncentrowana. Za bardzo.",
         "Halo? Tu kropla. Sucho tu.",
@@ -140,6 +140,137 @@ val MASCOT_LINES: Map<Level, List<String>> = mapOf(
         "Dziś jesteś oceanem.",
     ),
 )
+
+private val FACTS_EN: List<String> = listOf(
+    "The brain is about 73% water — dehydration of just 2% measurably lowers concentration.",
+    "Afternoon tiredness is very often 1–2% dehydration, not a lack of caffeine.",
+    "Thirst only shows up once you've lost about 1–2% of body weight in water — it's already a late signal.",
+    "Your kidneys filter around 180 litres of fluid a day to produce 1.5–2 litres of urine.",
+    "Coffee doesn't dehydrate you the way the myth says — up to about 4 cups a day your fluid balance stays positive.",
+    "About 20–30% of daily hydration comes from food: cucumber is 96% water, watermelon 92%.",
+    "A glass of water right after waking replaces what you lost through breathing and sweat overnight (up to 500 ml).",
+    "Pale yellow urine is a good sign. Dark amber means it's time for water.",
+    "During an hour of intense training you can lose 0.5–2 litres of sweat.",
+    "Water is the main component of synovial fluid — hydration genuinely affects how your joints feel.",
+    "Dehydration thickens the blood, so the heart has to work harder to deliver oxygen.",
+    "Headaches are one of the first and most common signs of a fluid shortage.",
+    "Dehydrated skin loses elasticity — test: pinch the back of your hand, it should snap back at once.",
+    "Electrolytes (sodium, potassium, magnesium) decide whether water actually reaches your cells.",
+    "For effort longer than 60–90 minutes it's worth adding a pinch of salt and a little carbohydrate to your water.",
+    "Your needs rise by roughly 500–750 ml for every hour of physical activity.",
+    "On a plane humidity drops below 20% — add a glass of water for every hour of flight.",
+    "We drink less in winter, even though dry, heated air increases water loss through breathing.",
+    "Water helps regulate body temperature — sweat is the most effective cooling system you have.",
+    "Fat metabolism (lipolysis) needs water; dehydration measurably slows it down.",
+    "Even mild dehydration worsens mood and makes training feel harder.",
+    "Drinking water before a meal increases fullness and helps you eat more slowly.",
+    "Sparkling water hydrates just as well as still — what matters is how much you drink.",
+    "Too much water at once (over ~1 l/h) can dilute sodium in the blood — drink regularly, not in bulk.",
+    "Herbal tea counts toward your daily fluid balance.",
+    "Alcohol suppresses vasopressin, so you lose more fluid than you take in.",
+    "Children and older people feel thirst less — for them a drinking routine matters more than body signals.",
+    "About 60% of an adult body is water; in a newborn it's up to 75%.",
+    "Water carries nutrients to every single cell.",
+    "Regular hydration lowers the risk of kidney stones by tens of percent.",
+    "A dry mouth is already a clear alarm signal, not a subtle hint.",
+    "Keeping a bottle in sight raises daily water intake more than any app.",
+    "Cool water (15–20°C) absorbs slightly faster and is drunk more willingly during exercise.",
+    "Sleep gets shorter and shallower when dehydrated — but a litre before bed means waking up at night.",
+    "Ideally: the last larger portion of water 1.5–2 hours before sleep.",
+    "Fluids are absorbed mainly in the small intestine, not the stomach.",
+    "Lemon water doesn't “cleanse the body”, but it often just makes you drink more.",
+    "Rule of thumb: about 30 ml of water per kilogram of body weight a day, plus exercise and heat.",
+    "Dehydration makes saliva stickier — hence the stale breath after a long break from drinking.",
+    "Losing 4% of the body's water can cut physical performance by well over ten percent.",
+    "Muscle is about 76% water — good hydration lowers the risk of cramps.",
+    "Your body doesn't store water in reserve — so rhythm matters, not a one-off record.",
+)
+
+private val SELF_CARE_EN: Map<Level, List<String>> = mapOf(
+    Level.LOW to listOf(
+        "Take a break, stretch and have a glass — you don't have to catch up on everything at once.",
+        "Don't judge yourself for a slow start. One glass now changes the whole chart of the day.",
+        "Put the bottle where you can see it. Your body will ask before you can forget.",
+        "Before you open another browser tab — open the bottle.",
+        "Heavy head? Start with water, coffee comes after.",
+        "A small goal for the next 30 minutes: 250 ml. That's enough.",
+        "Rest counts as hydration too. Sit down, breathe, sip slowly.",
+    ),
+    Level.MID to listOf(
+        "Good pace. Keep the hourly rhythm and the evening will be calmer.",
+        "You're halfway — the best moment not to let go.",
+        "Get up, walk to the kitchen, pour. Movement plus water is the cheapest reset.",
+        "Your body already feels the difference, even if your head hasn't noticed yet.",
+        "You don't have to be perfect. You have to be regular.",
+        "Consistency beats intensity. One more glass and we go on.",
+        "Check your shoulders — they're probably tense. Loosen up and have a drink.",
+    ),
+    Level.HIGH to listOf(
+        "Close to the goal. The last sips are the easiest — just do them.",
+        "Great job. Your kidneys are thanking you today.",
+        "Not much left. Finish calmly, no rush.",
+        "This is what a day looks like when you took care of yourself without grand gestures.",
+        "Almost at the finish. Take a deep breath and finish it off.",
+        "A well-looked-after body sleeps better. You're on the right track.",
+    ),
+    Level.DONE to listOf(
+        "Goal reached. You have nothing more to prove — drink only when thirsty now.",
+        "Done. That's exactly the small thing that makes a big difference.",
+        "100%. Remember this feeling — it'll be easier to repeat tomorrow.",
+        "Fully hydrated. Now take care of your sleep too.",
+        "Goal delivered. The rest of the day is a bonus.",
+    ),
+)
+
+private val DAYPART_NOTES_EN: Map<Daypart, List<String>> = mapOf(
+    Daypart.MORNING to listOf(
+        "Morning is the cheapest win of the day — a glass of water before the first coffee.",
+        "After the night you're naturally dehydrated. Start with 300–500 ml.",
+        "Water before breakfast kick-starts your metabolism more gently than caffeine.",
+    ),
+    Daypart.DAY to listOf(
+        "Midday: set an hourly rhythm instead of one big gulp.",
+        "Energy dip after lunch? Water first, conclusions later.",
+        "Every meeting is a chance to top up your bottle.",
+    ),
+    Daypart.EVENING to listOf(
+        "Slow down in the evening — smaller portions so you don't wake up at night.",
+        "The last larger portion is best 1.5–2 h before sleep.",
+        "Wrap up the day calmly. Hydration is a marathon, not a sprint.",
+    ),
+)
+
+private val MASCOT_LINES_EN: Map<Level, List<String>> = mapOf(
+    Level.LOW to listOf(
+        "I'm a bit... concentrated. Too much.",
+        "Hello? Drop here. It's dry in here.",
+        "One sip and I'm back in shape!",
+        "I have a plan: water. A simple plan.",
+    ),
+    Level.MID to listOf(
+        "Oh, it's getting wet! I like it.",
+        "Halfway there, glub glub.",
+        "We're flowing nicely.",
+        "I feel a wave of optimism.",
+    ),
+    Level.HIGH to listOf(
+        "Just a moment more and I'm swimming!",
+        "Almost a full bubble!",
+        "Don't stop, it's beautiful.",
+        "I can see the finish line, it's blue.",
+    ),
+    Level.DONE to listOf(
+        "SPLASH! Goal reached!",
+        "I'm fully myself. That means water.",
+        "A gurgle of victory!",
+        "Today you're an ocean.",
+    ),
+)
+
+val FACTS: List<String> get() = if (Lang.isEnglish) FACTS_EN else FACTS_PL
+val SELF_CARE: Map<Level, List<String>> get() = if (Lang.isEnglish) SELF_CARE_EN else SELF_CARE_PL
+val DAYPART_NOTES: Map<Daypart, List<String>> get() = if (Lang.isEnglish) DAYPART_NOTES_EN else DAYPART_NOTES_PL
+val MASCOT_LINES: Map<Level, List<String>> get() = if (Lang.isEnglish) MASCOT_LINES_EN else MASCOT_LINES_PL
 
 data class WeekDay(val day: String, val pct: Float)
 

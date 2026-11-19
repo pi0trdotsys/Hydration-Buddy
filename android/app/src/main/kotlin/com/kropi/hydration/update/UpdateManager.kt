@@ -1,5 +1,6 @@
 package com.kropi.hydration.update
 
+import com.kropi.hydration.R
 import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
@@ -163,18 +164,18 @@ object UpdateManager {
         val flags = if (Build.VERSION.SDK_INT >= 28) PackageManager.GET_SIGNING_CERTIFICATES else @Suppress("DEPRECATION") PackageManager.GET_SIGNATURES
         val archive = pm.getPackageArchiveInfo(apk.absolutePath, flags)
         when {
-            want.isNotEmpty() && want != sha256(apk) -> "Pobrany plik jest uszkodzony (zła suma kontrolna)."
-            archive == null -> "Plik nie jest aplikacją."
-            archive.packageName != c.packageName -> "To inna aplikacja."
-            codeOf(archive) <= installedVersionCode(c) -> "Masz już tę wersję."
+            want.isNotEmpty() && want != sha256(apk) -> c.getString(R.string.update_err_checksum)
+            archive == null -> c.getString(R.string.update_err_not_app)
+            archive.packageName != c.packageName -> c.getString(R.string.update_err_other_app)
+            codeOf(archive) <= installedVersionCode(c) -> c.getString(R.string.update_err_same_version)
             else -> {
                 val installed = pm.getPackageInfo(c.packageName, flags)
                 val a = signers(archive)
-                if (a.isEmpty() || signers(installed) != a) "Aktualizacja jest podpisana innym kluczem." else null
+                if (a.isEmpty() || signers(installed) != a) c.getString(R.string.update_err_signature) else null
             }
         }
     } catch (e: Exception) {
-        "Nie da się sprawdzić aktualizacji: ${e.message}"
+        c.getString(R.string.update_err_verify, e.message ?: "")
     }
 
     private fun signers(pi: PackageInfo): Set<String> {

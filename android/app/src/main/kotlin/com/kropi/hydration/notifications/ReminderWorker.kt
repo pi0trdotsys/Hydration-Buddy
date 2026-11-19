@@ -1,5 +1,7 @@
 package com.kropi.hydration.notifications
 
+import com.kropi.hydration.R
+import com.kropi.hydration.ui.daysText
 import android.Manifest
 import com.kropi.hydration.widget.updateAllWidgets
 import android.annotation.SuppressLint
@@ -100,18 +102,18 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val reached = state.remaining <= 0
 
         val title = when {
-            reached && snarky -> "🌙 Dzień zamknięty. Bez wpadki"
-            reached -> "🌙 Dzień zamknięty — cel zrobiony"
-            snarky -> "🌙 Podsumujmy ten dzień"
-            else -> "🌙 Podsumowanie dnia"
+            reached && snarky -> str(R.string.n_sum_title_reached_snarky)
+            reached -> str(R.string.n_sum_title_reached)
+            snarky -> str(R.string.n_sum_title_snarky)
+            else -> str(R.string.n_sum_title)
         }
-        val short = "${formatMl(state.total)} z ${formatMl(state.goal)} ($pct%), ${state.intakes.size} łyków."
+        val short = str(R.string.n_sum_short, formatMl(state.total), formatMl(state.goal), pct, applicationContext.resources.getQuantityString(R.plurals.n_sips, state.intakes.size, state.intakes.size))
         val full = buildString {
             appendLine(short)
             if (reached) {
-                appendLine("Seria: ${state.streak} dni z rzędu.")
+                appendLine(str(R.string.n_sum_streak, applicationContext.daysText(state.streak)))
             } else {
-                appendLine("Zabrakło ${formatMl(state.remaining)}. Seria: ${state.streak} dni z rzędu.")
+                appendLine(str(R.string.n_sum_missing_streak, formatMl(state.remaining), applicationContext.daysText(state.streak)))
             }
             appendLine()
             append(
@@ -197,13 +199,13 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             }
         } else {
             when {
-                plan.status == PlanStatus.DONE -> "💧 Cel na dziś zrobiony"
-                plan.status == PlanStatus.AFTER_HOURS -> "💧 Dzień się kończy"
-                state.progress >= 0.99 -> "💧 Ostatni akord"
-                gap >= state.settings.reminderGlassMl * 2 -> "💧 Kropi się martwi"
-                daypart == Daypart.MORNING -> "💧 Dzień dobry, czas na wodę"
-                daypart == Daypart.EVENING -> "💧 Wieczorne przypomnienie"
-                else -> "💧 Czas na łyk wody"
+                plan.status == PlanStatus.DONE -> str(R.string.n_rem_title_done)
+                plan.status == PlanStatus.AFTER_HOURS -> str(R.string.n_rem_title_after)
+                state.progress >= 0.99 -> str(R.string.n_rem_title_last)
+                gap >= state.settings.reminderGlassMl * 2 -> str(R.string.n_rem_title_worried)
+                daypart == Daypart.MORNING -> str(R.string.n_rem_title_morning)
+                daypart == Daypart.EVENING -> str(R.string.n_rem_title_evening)
+                else -> str(R.string.n_rem_title_default)
             }
         }
 
@@ -211,58 +213,50 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
         val short = when {
             plan.status == PlanStatus.DONE ->
                 if (snarky) {
-                    "Wypite ${formatMl(state.total)} z ${formatMl(state.goal)}. Nie mdlej z dumy."
+                    str(R.string.n_short_done_snarky, formatMl(state.total), formatMl(state.goal))
                 } else {
-                    "Wypite ${formatMl(state.total)} z ${formatMl(state.goal)}. Piękna robota."
+                    str(R.string.n_short_done, formatMl(state.total), formatMl(state.goal))
                 }
             next == null ->
-                "Okno picia zamknięte, a brakuje ${formatMl(plan.remainingMl)}. Dopij, ile dasz radę."
+                str(R.string.n_short_closed_nonext, formatMl(plan.remainingMl))
             plan.status == PlanStatus.AFTER_HOURS ->
-                "Okno picia zamknięte, a brakuje ${formatMl(plan.remainingMl)}. " +
-                    "Jeśli dasz radę, wypij ${formatMl(next.ml)} ok. ${next.time.hhmm()}."
+                str(R.string.n_short_after, formatMl(plan.remainingMl), formatMl(next.ml), next.time.hhmm())
             plan.sips.size == 1 ->
-                "Ostatnie ${formatMl(plan.portionMl)} o ${next.time.hhmm()} i cel ${formatMl(state.goal)} zaliczony."
+                str(R.string.n_short_last, formatMl(plan.portionMl), next.time.hhmm(), formatMl(state.goal))
             else ->
-                "Wypij ${formatMl(plan.portionMl)} o ${next.time.hhmm()} — i jeszcze ${plan.sips.size - 1}× " +
-                    "do ${plan.windowEnd.hhmm()}, a cel ${formatMl(state.goal)} będzie zrobiony."
+                str(R.string.n_short_more, formatMl(plan.portionMl), next.time.hhmm(), plan.sips.size - 1, plan.windowEnd.hhmm(), formatMl(state.goal))
         }
 
         val hoursSince = sinceLastMinutes / 60
         val minsSince = sinceLastMinutes % 60
-        val sinceText = if (hoursSince > 0) "${hoursSince}h ${minsSince}min" else "$minsSince min"
+        val sinceText = if (hoursSince > 0) str(R.string.n_since_hm, hoursSince, minsSince) else str(R.string.n_since_m, minsSince)
 
         val full = buildString {
-            appendLine("Wypite: ${formatMl(state.total)} z ${formatMl(state.goal)} ($pct%).")
+            appendLine(str(R.string.n_full_drunk, formatMl(state.total), formatMl(state.goal), pct))
             if (gap > 0) {
-                appendLine("O tej porze plan zakłada ${formatMl(state.targetSoFar)} — jesteś ${formatMl(gap)} pod kreską.")
+                appendLine(str(R.string.n_full_behind, formatMl(state.targetSoFar), formatMl(gap)))
             } else {
-                appendLine("Plan na tę porę to ${formatMl(state.targetSoFar)} — jesteś na bieżąco.")
+                appendLine(str(R.string.n_full_ontrack, formatMl(state.targetSoFar)))
             }
-            appendLine("Ostatni łyk: $sinceText temu.")
+            appendLine(str(R.string.n_full_last_sip, sinceText))
             appendLine()
 
             when (plan.status) {
-                PlanStatus.DONE -> appendLine("Cel dnia domknięty — dalsze picie to już bonus.")
+                PlanStatus.DONE -> appendLine(str(R.string.n_full_done))
                 PlanStatus.AFTER_HOURS -> {
-                    appendLine(
-                        "Okno picia (${state.settings.activeStartHour}:00–${plan.windowEnd.hhmm()}) już się zamknęło, " +
-                            "a brakuje ${formatMl(plan.remainingMl)}.",
-                    )
+                    appendLine(str(R.string.n_full_after_closed, state.settings.activeStartHour, plan.windowEnd.hhmm(), formatMl(plan.remainingMl)))
                     next?.let {
-                        appendLine("Jeśli dasz radę, wypij jeszcze ${formatMl(it.ml)} ok. ${it.time.hhmm()} — reszta jutro.")
+                        appendLine(str(R.string.n_full_after_try, formatMl(it.ml), it.time.hhmm()))
                     }
                 }
                 PlanStatus.TIGHT, PlanStatus.ON_TRACK -> {
-                    appendLine("Plan do ${plan.windowEnd.hhmm()} — ${plan.sips.size} × ${formatMl(plan.portionMl)}:")
+                    appendLine(str(R.string.n_full_plan, plan.windowEnd.hhmm(), plan.sips.size, formatMl(plan.portionMl)))
                     appendLine(plan.timesText())
                     plan.finishAt?.let {
-                        appendLine("Ostatnia porcja o ${it.hhmm()} domyka cel ${formatMl(state.goal)}.")
+                        appendLine(str(R.string.n_full_last_portion, it.hhmm(), formatMl(state.goal)))
                     }
                     if (plan.status == PlanStatus.TIGHT) {
-                        appendLine(
-                            "Zostało mało czasu, więc porcje są większe niż Twoja szklanka " +
-                                "(${formatMl(state.settings.reminderGlassMl)}). Pij spokojnie, nie na raz.",
-                        )
+                        appendLine(str(R.string.n_full_tight, formatMl(state.settings.reminderGlassMl)))
                     }
                 }
             }
@@ -280,6 +274,9 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
 
         return ReminderMessage(title, short, full)
     }
+
+    /** Tekst z zasobów w języku aplikacji; argumenty podstawiane w kolejności %1$s, %2$s… */
+    private fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String = applicationContext.getString(id, *args)
 
     private fun hasNotificationPermission(): Boolean {
         if (android.os.Build.VERSION.SDK_INT < android.os.Build.VERSION_CODES.TIRAMISU) return true

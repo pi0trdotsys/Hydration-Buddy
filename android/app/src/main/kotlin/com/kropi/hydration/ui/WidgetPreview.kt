@@ -1,5 +1,12 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.Role
+import androidx.compose.material3.minimumInteractiveComponentSize
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -87,7 +94,8 @@ private fun SmallBody(state: HydrationState, onPoke: () -> Unit) {
     ) {
         Box(contentAlignment = Alignment.Center, modifier = Modifier.size(84.dp)) {
             ProgressRingCanvas(progress = state.progress.toFloat(), modifier = Modifier.fillMaxSize())
-            MascotCanvas(level = state.level, modifier = Modifier.size(38.dp).clickable { onPoke() })
+            val mascotDescription = stringResource(R.string.a11y_mascot)
+            MascotCanvas(level = state.level, modifier = Modifier.size(38.dp).clickable(role = Role.Button) { onPoke() }.semantics { contentDescription = mascotDescription })
         }
         Text("$pct%", color = KropiColors.foreground, fontSize = 17.sp, fontWeight = FontWeight.Bold)
         Text("${state.total} / ${state.goal} ml", color = KropiColors.mutedForeground, fontSize = 10.sp)
@@ -117,7 +125,7 @@ private fun MediumLargeBody(
             Spacer(Modifier.width(14.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    "Nawodnienie • ${state.streak} dni",
+                    stringResource(R.string.preview_nawodnienie_dni, daysText(state.streak)),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                 )
@@ -128,13 +136,14 @@ private fun MediumLargeBody(
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (state.remaining > 0) "Zostało ${state.remaining} ml" else "Cel osiągnięty 🎉",
+                    if (state.remaining > 0) stringResource(R.string.preview_zostalo_ml, state.remaining) else stringResource(R.string.preview_cel_osiagniety),
                     color = KropiColors.aqua,
                     fontSize = 11.sp,
                 )
             }
             if (large) {
-                MascotCanvas(level = state.level, modifier = Modifier.size(72.dp).clickable { onPoke() })
+                val mascotDescription = stringResource(R.string.a11y_mascot)
+                MascotCanvas(level = state.level, modifier = Modifier.size(72.dp).clickable(role = Role.Button) { onPoke() }.semantics { contentDescription = mascotDescription })
             }
         }
 
@@ -166,20 +175,20 @@ private fun MediumLargeBody(
 private fun StatusPills(state: HydrationState, plan: HydrationPlan) {
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
         PreviewPill(
-            label = if (state.isBehindSchedule) "PONIŻEJ PLANU" else "PLAN NA TERAZ",
+            label = if (state.isBehindSchedule) stringResource(R.string.preview_ponizej_planu) else stringResource(R.string.preview_plan_na_teraz),
             value = formatMl(state.targetSoFar),
             accent = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.mutedForeground,
             modifier = Modifier.weight(1f),
         )
         PreviewPill(
             label = when (plan.status) {
-                PlanStatus.DONE -> "DZIŚ"
-                PlanStatus.AFTER_HOURS -> "PO GODZINACH"
-                else -> "NASTĘPNE"
+                PlanStatus.DONE -> stringResource(R.string.preview_dzis)
+                PlanStatus.AFTER_HOURS -> stringResource(R.string.preview_po_godzinach)
+                else -> stringResource(R.string.preview_nastepne)
             },
             value = when (plan.status) {
-                PlanStatus.DONE -> "Cel zrobiony 🎉"
-                else -> plan.next?.let { "${it.ml} ml o ${it.time.hhmm()}" } ?: "—"
+                PlanStatus.DONE -> stringResource(R.string.preview_cel_zrobiony)
+                else -> plan.next?.let { stringResource(R.string.w_next_sip, it.ml, it.time.hhmm()) } ?: "—"
             },
             accent = KropiColors.aqua,
             modifier = Modifier.weight(1f),
@@ -203,17 +212,17 @@ private fun PreviewPill(label: String, value: String, accent: Color, modifier: M
 @Composable
 private fun WidgetFooter(state: HydrationState, plan: HydrationPlan) {
     val last = state.intakes.lastOrNull()
-    val lastText = last?.let { String.format("%02d:%02d · %d ml", it.hour, it.minute, it.ml) } ?: "brak wpisów"
+    val lastText = last?.let { String.format("%02d:%02d · %d ml", it.hour, it.minute, it.ml) } ?: stringResource(R.string.w_no_entries)
     val planText = when (plan.status) {
-        PlanStatus.DONE -> "plan dnia wykonany"
-        PlanStatus.AFTER_HOURS -> "brakuje ${formatMl(plan.remainingMl)}"
-        else -> "jeszcze ${plan.sips.size} × ${plan.portionMl} ml do ${plan.windowEnd.hhmm()}"
+        PlanStatus.DONE -> stringResource(R.string.w_plan_done)
+        PlanStatus.AFTER_HOURS -> stringResource(R.string.w_missing, formatMl(plan.remainingMl))
+        else -> stringResource(R.string.w_remaining_sips, plan.sips.size, plan.portionMl, plan.windowEnd.hhmm())
     }
     // maxLines = 1 + Ellipsis: bez tego dłuższa stopka zawijała ostatnie „ml"
     // do drugiej linii i rozpychała kartę.
     Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "🔥 ${state.streak} dni  ·  $lastText",
+            stringResource(R.string.preview_dni, daysText(state.streak), lastText),
             color = KropiColors.mutedForeground,
             fontSize = 10.sp,
             maxLines = 1,
@@ -433,12 +442,18 @@ fun SizeLabel(text: String) {
 }
 
 @Composable
-fun ChipButton(label: String, selected: Boolean, onClick: () -> Unit) {
+fun ChipButton(label: String, selected: Boolean, description: String? = null, onClick: () -> Unit) {
     Box(
         modifier = Modifier
+            // Cel dotyku min. 48 dp (zalecenie dostępności) bez powiększania samej pigułki.
+            .minimumInteractiveComponentSize()
             .clip(RoundedCornerShape(999.dp))
             .background(if (selected) KropiColors.aqua else KropiColors.secondary)
-            .clickable { onClick() }
+            .clickable(role = Role.Button) { onClick() }
+            .semantics {
+                this.selected = selected
+                if (description != null) contentDescription = description
+            }
             .padding(horizontal = 14.dp, vertical = 8.dp),
     ) {
         Text(
@@ -455,7 +470,7 @@ fun HourStepper(label: String, hour: Int, onChange: (Int) -> Unit) {
     Column(horizontalAlignment = Alignment.CenterHorizontally) {
         Text(label, color = KropiColors.mutedForeground, fontSize = 11.sp)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            StepperButton("−") { onChange(hour - 1) }
+            StepperButton("−", label) { onChange(hour - 1) }
             Text(
                 String.format("%02d:00", hour),
                 color = KropiColors.foreground,
@@ -463,19 +478,27 @@ fun HourStepper(label: String, hour: Int, onChange: (Int) -> Unit) {
                 fontWeight = FontWeight.Bold,
                 modifier = Modifier.width(56.dp),
             )
-            StepperButton("+") { onChange(hour + 1) }
+            StepperButton("+", label) { onChange(hour + 1) }
         }
     }
 }
 
 @Composable
-fun StepperButton(symbol: String, onClick: () -> Unit) {
+fun StepperButton(symbol: String, label: String? = null, onClick: () -> Unit) {
+    // „−" i „+" same nic nie mówią czytnikowi ekranu — opis: co i w którą stronę zmienia.
+    val description = if (symbol == "+") {
+        if (label != null) stringResource(R.string.a11y_change_up, label) else stringResource(R.string.a11y_increase)
+    } else {
+        if (label != null) stringResource(R.string.a11y_change_down, label) else stringResource(R.string.a11y_decrease)
+    }
     Box(
         modifier = Modifier
-            .size(28.dp)
+            .minimumInteractiveComponentSize()
+            .size(32.dp)
             .clip(RoundedCornerShape(10.dp))
             .background(KropiColors.secondary)
-            .clickable { onClick() },
+            .clickable(role = Role.Button) { onClick() }
+            .semantics { contentDescription = description },
         contentAlignment = Alignment.Center,
     ) {
         Text(symbol, color = KropiColors.foreground, fontWeight = FontWeight.Bold)

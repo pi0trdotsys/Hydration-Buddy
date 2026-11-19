@@ -4,9 +4,13 @@ import com.kropi.hydration.data.Drink
 import com.kropi.hydration.data.Intake
 import org.junit.Assert.assertEquals
 import org.junit.Test
+import org.junit.Rule
+import com.kropi.hydration.testutil.polish
 import java.time.LocalDate
 
 class CsvEntriesTest {
+    @get:Rule val language = polish()
+
     private val day = LocalDate.of(2026, 11, 19).toEpochDay()
 
     private fun intake(id: Long, hour: Int, minute: Int, ml: Int, drink: Drink = Drink.WATER, note: String? = null, dayOffset: Long = 0) =

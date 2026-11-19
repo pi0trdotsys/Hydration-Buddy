@@ -58,7 +58,7 @@ godzinami i znacznikiem „teraz". Obok biegnie przerywana **linia planu** — o
 razu widać, czy jesteś nad nią, czy pod.
 
 Do tego dwie pigułki stanu: `PONIŻEJ PLANU / 507 ml` (na pomarańczowo, gdy
-odstajesz) i `NASTĘPNE / 250 ml o 12:30`. Na dole seria, ostatni zapisany łyk i
+odstajesz) i `NASTĘPNE / 250 ml o 12:30` z paskiem pokazującym, ile jeszcze możesz zwlekać. Na dole seria, ostatni zapisany łyk i
 ile porcji zostało do końca dnia.
 
 Cztery przyciski dolewania są na kafelku, więc **woda loguje się bez
@@ -88,6 +88,13 @@ maskotki w aplikacji.
 
 Wieczorem, po zamknięciu okna picia, przychodzi **podsumowanie dnia**: bilans,
 liczba łyków, seria i komentarz w wybranym tonie.
+
+## ◉ Cisza, gdy trzeba
+
+Przypomnienie nie przerywa spotkania: Kropi zagląda do kalendarza w telefonie
+(tylko lokalnie, za Twoją zgodą) i czeka, aż się skończy. To samo robi, gdy masz
+włączone „Nie przeszkadzać". Przypomnienie nie przepada — odezwie się po
+wszystkim.
 
 ## ◉ Uczy się Twoich godzin
 
@@ -119,6 +126,10 @@ Podajesz wagę, temperaturę otoczenia i poziom aktywności — Kropi liczy cel
 Tryb ręczny i suwak. Do tego **aktywne godziny picia**, np. 8–22: w tym oknie
 działają przypomnienia i liczy się tempo, poza nim Kropi daje spokój.
 
+Chcesz, żeby cel liczył się sam? Połącz Kropi z **Health Connect**: waga i średnia
+liczba kroków z tygodnia ustawiają cel, a to, co pijesz, trafia z powrotem do
+Health Connect jako nawodnienie (alkohol pomijamy).
+
 ## ◉ Historia, która nie kłamie
 
 Każdy zamknięty dzień ląduje w historii: ile wypite, jaki był cel, czy się
@@ -126,8 +137,11 @@ udało. Tydzień, **kalendarz miesiąca** (każdy dzień zabarwiony wg realizacj
 celu, strzałkami cofasz się do starszych miesięcy), **ostatnie 30 dni**,
 najlepszy dzień i **seria** — liczone z prawdziwych zapisów, nie z
 przykładowych danych. Dotknij dnia w kalendarzu, żeby zobaczyć jego łyki,
-poprawić je albo **dopisać zapomniany** — całość wyeksportujesz do **CSV**
-jednym dotknięciem, bez żadnych uprawnień do pamięci.
+poprawić je albo **dopisać zapomniany**. Karta **Trendy** porównuje tydzień z
+poprzednim, pokazuje, o której zwykle pijesz pierwszą szklankę, w których
+godzinach pijesz najwięcej i które dni tygodnia wychodzą Ci najlepiej. Całość
+(dni albo pojedyncze wpisy z napojem i notatką) wyeksportujesz do **CSV** jednym
+dotknięciem, bez żadnych uprawnień do pamięci.
 
 ## ◉ Nie tylko woda
 
@@ -165,6 +179,13 @@ aplikacje muszą być podpisane **tym samym kluczem** (patrz niżej).
 ---
 
 <br />
+
+## ◉ Po polsku i po angielsku
+
+Interfejs, powiadomienia, widgety i teksty maskotki są w dwóch językach. Język
+wybierzesz w ustawieniach Androida (**Aplikacje → Kropi → Język**) albo
+zostawisz taki jak w telefonie. Aplikacja uwzględnia czytniki ekranu: przyciski
+mają opisy dla TalkBacka, a elementy dotykowe mają co najmniej 48 dp.
 
 ## ▸ Instalacja
 

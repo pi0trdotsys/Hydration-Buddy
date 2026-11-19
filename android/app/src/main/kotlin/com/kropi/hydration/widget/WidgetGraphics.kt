@@ -225,6 +225,7 @@ object IntakeChart {
         val bottom = height - 13f * density * scale
         if (right - left < 8f * density || bottom - top < 8f * density) return
 
+        val nowLabel = com.kropi.hydration.data.tr("teraz", "now")
         val sorted = intakes.sortedBy { it.hour * 60 + it.minute }
         val firstMinute = sorted.firstOrNull()?.let { it.hour * 60 + it.minute }
         val lastMinute = sorted.lastOrNull()?.let { it.hour * 60 + it.minute }
@@ -264,7 +265,7 @@ object IntakeChart {
         linePaint.alpha = 255
         if (bottom - top > 70f * density) {
             textPaint.apply { color = MUTED; textSize = labelSize * 0.85f; textAlign = Paint.Align.RIGHT }
-            canvas.drawText("cel ${goalMl} ml", right, y(goalMl) - 3f * density, textPaint)
+            canvas.drawText(com.kropi.hydration.data.tr("cel $goalMl ml", "goal $goalMl ml"), right, y(goalMl) - 3f * density, textPaint)
             textPaint.textAlign = Paint.Align.CENTER
         }
 
@@ -335,7 +336,7 @@ object IntakeChart {
         // --- oś godzin; etykieta "teraz" wypiera kolidującą godzinę ---
         val baseline = height - 2f * density
         textPaint.apply { color = MUTED; textSize = labelSize }
-        val nowLabelHalf = textPaint.measureText("teraz") / 2f
+        val nowLabelHalf = textPaint.measureText(nowLabel) / 2f
         val spanHours = (endMinute - startMinute) / 60
         val hourStep = ((spanHours + 4) / 5).coerceAtLeast(1)
         var hour = startHour
@@ -349,7 +350,7 @@ object IntakeChart {
             hour += hourStep
         }
         textPaint.color = AQUA
-        canvas.drawText("teraz", clampLabel(nowX, nowLabelHalf), baseline, textPaint)
+        canvas.drawText(nowLabel, clampLabel(nowX, nowLabelHalf), baseline, textPaint)
     }
 }
 

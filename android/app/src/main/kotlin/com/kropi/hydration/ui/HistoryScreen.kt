@@ -1,5 +1,10 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.contentDescription
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -96,20 +101,20 @@ fun HistoryScreen(
         item {
             Column {
                 Text(
-                    "Tydzień $range",
+                    stringResource(R.string.history_tydzien, range),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     letterSpacing = 2.sp,
                 )
                 Text(
-                    "📅 Historia nawodnienia",
+                    stringResource(R.string.history_historia_nawodnienia),
                     color = KropiColors.foreground,
                     fontSize = 24.sp,
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.padding(top = 2.dp),
                 )
                 Text(
-                    "Podsumowanie wypitej wody w bieżącym tygodniu.",
+                    stringResource(R.string.history_podsumowanie_wypitej_wody_w_biezacym),
                     color = KropiColors.mutedForeground,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 2.dp),
@@ -120,13 +125,13 @@ fun HistoryScreen(
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    StatTile("Suma", "$total ml", modifier = Modifier.weight(1f))
-                    StatTile("Średnio", "$avg ml", modifier = Modifier.weight(1f))
+                    StatTile(stringResource(R.string.history_suma), "$total ml", modifier = Modifier.weight(1f))
+                    StatTile(stringResource(R.string.history_srednio), "$avg ml", modifier = Modifier.weight(1f))
                 }
                 Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-                    StatTile("Cel", "${history.first().goal} ml", modifier = Modifier.weight(1f))
+                    StatTile(stringResource(R.string.home_cel), "${history.first().goal} ml", modifier = Modifier.weight(1f))
                     StatTile(
-                        "Dni z celem",
+                        stringResource(R.string.history_dni_z_celem),
                         "$reachedDays / ${history.size}",
                         highlight = reachedDays > 0,
                         modifier = Modifier.weight(1f),
@@ -143,24 +148,23 @@ fun HistoryScreen(
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Ostatnie 30 dni", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.history_ostatnie_dni), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 if (month.size <= 1) {
                     Text(
-                        "Kropi zbiera dane od dziś — za kilka dni pojawi się tu realna średnia i seria.",
+                        stringResource(R.string.history_kropi_zbiera_dane_od_dzis),
                         color = KropiColors.mutedForeground,
                         fontSize = 12.sp,
                     )
                 } else {
                     Text(
-                        "Średnio ${month.sumOf { it.ml } / month.size} ml dziennie przez ${month.size} dni z zapisami. " +
-                            "Cel zaliczony $monthReached razy.",
+                        stringResource(R.string.history_srednio_ml_dziennie_przez_dni, month.sumOf { it.ml } / month.size, daysText(month.size), timesText(monthReached)),
                         color = KropiColors.mutedForeground,
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
                     )
                 }
                 Text(
-                    "Seria: ${state.streak} dni z rzędu z osiągniętym celem.",
+                    stringResource(R.string.history_seria_dni_z_rzedu_z, daysText(state.streak)),
                     color = if (state.streak > 0) KropiColors.aqua else KropiColors.mutedForeground,
                     fontSize = 12.sp,
                     fontWeight = FontWeight.Bold,
@@ -177,7 +181,7 @@ fun HistoryScreen(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Eksportuj dni do CSV")
+                Text(stringResource(R.string.history_eksportuj_dni_do_csv))
             }
         }
 
@@ -190,13 +194,13 @@ fun HistoryScreen(
                 ),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Eksportuj wpisy do CSV (godzina, napój, notatka)")
+                Text(stringResource(R.string.history_eksportuj_wpisy_do_csv_godzina))
             }
         }
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Szczegóły dni", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.history_szczegoly_dni), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 history.forEach { d -> DayRow(d) }
             }
         }
@@ -205,7 +209,7 @@ fun HistoryScreen(
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
-                Text("Najlepszy dzień", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.history_najlepszy_dzien), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     Box(
                         modifier = Modifier
@@ -219,7 +223,7 @@ fun HistoryScreen(
                     Column {
                         Text("${best.day}, ${best.date}", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                         Text(
-                            "${best.ml} ml — " + if (best.reached) "cel osiągnięty" else "blisko celu",
+                            "${best.ml} ml — " + if (best.reached) stringResource(R.string.history_cel_osiagniety) else stringResource(R.string.history_blisko_celu),
                             color = KropiColors.mutedForeground,
                             fontSize = 12.sp,
                         )
@@ -254,9 +258,9 @@ private fun DrinkBreakdownCard(state: HydrationState) {
     val totalMl = rows.sumOf { it.second }.coerceAtLeast(1)
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Co pijesz (30 dni)", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.history_co_pijesz_dni), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         if (rows.isEmpty()) {
-            Text("Brak wpisów.", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            Text(stringResource(R.string.history_brak_wpisow), color = KropiColors.mutedForeground, fontSize = 12.sp)
             return@GlassCard
         }
         rows.forEach { (drink, ml, counted) ->
@@ -264,7 +268,7 @@ private fun DrinkBreakdownCard(state: HydrationState) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text("${drink.emoji} ${drink.label}", color = KropiColors.foreground, fontSize = 13.sp, modifier = Modifier.weight(1f))
                     Text(
-                        if (counted != ml) "$ml ml (liczy się $counted)" else "$ml ml",
+                        if (counted != ml) stringResource(R.string.history_ml_liczy_sie, ml, counted) else "$ml ml",
                         color = KropiColors.mutedForeground,
                         fontSize = 12.sp,
                     )
@@ -306,8 +310,8 @@ private fun StatTile(label: String, value: String, highlight: Boolean = false, m
 private fun WeekHistoryChart(history: List<HistoryDay>, max: Int) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-            Text("Nawodnienie w tym tygodniu", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-            Text("ml / dzień", color = KropiColors.mutedForeground, fontSize = 11.sp)
+            Text(stringResource(R.string.history_nawodnienie_w_tym_tygodniu), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.history_ml_dzien), color = KropiColors.mutedForeground, fontSize = 11.sp)
         }
         Row(
             verticalAlignment = Alignment.Bottom,
@@ -377,7 +381,7 @@ private fun DayRow(d: HistoryDay) {
         Column(horizontalAlignment = Alignment.End) {
             Text("${(d.pct * 100).toInt()}%", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             if (d.reached) {
-                Text("Cel osiągnięty", color = KropiColors.aqua, fontSize = 10.sp)
+                Text(stringResource(R.string.history_cel_osiagniety_2), color = KropiColors.aqua, fontSize = 10.sp)
             }
         }
     }
@@ -415,8 +419,11 @@ private suspend fun writeEntriesCsv(context: android.content.Context, uri: andro
     }
 }
 
-private val POLISH_LOCALE = Locale.forLanguageTag("pl-PL")
-private val WEEKDAYS = listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd")
+private val POLISH_LOCALE: Locale get() = com.kropi.hydration.data.Lang.locale
+
+/** Dwuliterowe skróty dni od poniedziałku, w języku aplikacji (Pn, Wt… / Mo, Tu…). */
+private val WEEKDAYS: List<String>
+    get() = java.time.DayOfWeek.entries.map { it.getDisplayName(TextStyle.SHORT, POLISH_LOCALE).replaceFirstChar { c -> c.uppercase(POLISH_LOCALE) }.take(2) }
 
 /**
  * Kalendarz miesiąca: każdy dzień zabarwiony wg realizacji celu, strzałki do przeglądania
@@ -439,7 +446,7 @@ private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEdi
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
-            ChipButton("‹", false) { if (month > minMonth) month = month.minusMonths(1) }
+            ChipButton("‹", false, stringResource(R.string.a11y_prev_month)) { if (month > minMonth) month = month.minusMonths(1) }
             Text(
                 month.month.getDisplayName(TextStyle.FULL_STANDALONE, POLISH_LOCALE)
                     .replaceFirstChar { it.uppercase(POLISH_LOCALE) } + " ${month.year}",
@@ -449,7 +456,7 @@ private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEdi
                 textAlign = TextAlign.Center,
                 modifier = Modifier.weight(1f),
             )
-            ChipButton("›", false) { if (month < currentMonth) month = month.plusMonths(1) }
+            ChipButton("›", false, stringResource(R.string.a11y_next_month)) { if (month < currentMonth) month = month.plusMonths(1) }
         }
 
         Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
@@ -466,6 +473,7 @@ private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEdi
                         } else {
                             DayCell(
                                 day = cell.date.dayOfMonth,
+                                dateLabel = cell.date.format(java.time.format.DateTimeFormatter.ofLocalizedDate(java.time.format.FormatStyle.LONG).withLocale(POLISH_LOCALE)),
                                 pct = cell.record?.takeIf { it.ml > 0 }?.pct,
                                 reached = cell.record?.takeIf { it.ml > 0 }?.reached == true,
                                 isToday = cell.date == today,
@@ -481,8 +489,8 @@ private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEdi
         }
 
         Text(
-            if (summary.trackedDays == 0) "W tym miesiącu nie ma jeszcze zapisów."
-            else "Średnio ${summary.averageMl} ml przez ${summary.trackedDays} dni z zapisami, cel zaliczony ${summary.reachedDays} razy.",
+            if (summary.trackedDays == 0) stringResource(R.string.history_w_tym_miesiacu_nie_ma)
+            else stringResource(R.string.history_srednio_ml_przez_dni_z, summary.averageMl, daysText(summary.trackedDays), timesText(summary.reachedDays)),
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
             lineHeight = 17.sp,
@@ -495,6 +503,7 @@ private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEdi
 @Composable
 private fun DayCell(
     day: Int,
+    dateLabel: String,
     pct: Float?,
     reached: Boolean,
     isToday: Boolean,
@@ -508,6 +517,11 @@ private fun DayCell(
         reached -> KropiColors.aqua
         else -> KropiColors.aqua.copy(alpha = 0.2f + 0.5f * pct)
     }
+    val cellDescription = stringResource(
+        R.string.a11y_day_cell,
+        dateLabel,
+        if (pct == null) stringResource(R.string.history_brak_zapisow) else "${(pct * 100).toInt()}%",
+    )
     val border = when {
         isSelected -> Color.White
         isToday -> KropiColors.aqua
@@ -521,7 +535,11 @@ private fun DayCell(
             .clip(RoundedCornerShape(12.dp))
             .background(fill)
             .border(if (isSelected || isToday) 2.dp else 0.dp, border, RoundedCornerShape(12.dp))
-            .clickable(enabled = enabled, onClick = onClick),
+            .clickable(enabled = enabled, role = androidx.compose.ui.semantics.Role.Button, onClick = onClick)
+            .semantics {
+                contentDescription = cellDescription
+                selected = isSelected
+            },
     ) {
         Text(
             "$day",
@@ -559,13 +577,13 @@ private fun DayDetail(state: HydrationState, epochDay: Long, onAddEntryOn: (Long
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    if (record == null || record.ml == 0) "Brak zapisów"
+                    if (record == null || record.ml == 0) stringResource(R.string.history_brak_zapisow)
                     else "${record.ml} / ${record.goal} ml · ${Math.round(record.pct * 100)}%",
                     color = if (record?.reached == true) KropiColors.aqua else KropiColors.mutedForeground,
                     fontSize = 12.sp,
                 )
             }
-            ChipButton("＋ Dopisz", selected = true) { onAddEntryOn(epochDay) }
+            ChipButton(stringResource(R.string.history_dopisz), selected = true) { onAddEntryOn(epochDay) }
         }
         intakes.forEach { intake ->
             Row(
@@ -585,7 +603,7 @@ private fun DayDetail(state: HydrationState, epochDay: Long, onAddEntryOn: (Long
                 )
                 Text(
                     listOfNotNull(
-                        if (intake.counted != intake.ml) "liczy się ${intake.counted}" else null,
+                        if (intake.counted != intake.ml) stringResource(R.string.history_liczy_sie, intake.counted) else null,
                         intake.note,
                     ).joinToString(" · "),
                     color = KropiColors.mutedForeground,
@@ -613,10 +631,10 @@ private fun TrendsCard(state: HydrationState) {
         )
     }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Trendy", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.history_trendy), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         if (!trends.hasAnything) {
             Text(
-                "Za mało danych na wnioski — po kilku dniach zapisów pojawią się tu porównania i wzorce.",
+                stringResource(R.string.history_za_malo_danych_na_wnioski),
                 color = KropiColors.mutedForeground,
                 fontSize = 12.sp,
                 lineHeight = 17.sp,
@@ -624,26 +642,26 @@ private fun TrendsCard(state: HydrationState) {
             return@GlassCard
         }
         trends.weekAvgMl?.let { avg ->
-            TrendRow("Ten tydzień", "${formatMl(avg)} dziennie", trends.weekDeltaPct, "vs poprzedni tydzień")
+            TrendRow(stringResource(R.string.history_ten_tydzien), stringResource(R.string.history_dziennie, formatMl(avg)), trends.weekDeltaPct, stringResource(R.string.history_vs_poprzedni_tydzien))
         }
         trends.monthAvgMl?.let { avg ->
-            TrendRow("Ostatnie 30 dni", "${formatMl(avg)} dziennie", trends.monthDeltaPct, "vs poprzednie 30 dni")
+            TrendRow(stringResource(R.string.history_ostatnie_dni), stringResource(R.string.history_dziennie, formatMl(avg)), trends.monthDeltaPct, stringResource(R.string.history_vs_poprzednie_dni))
         }
         trends.avgFirstSipMinute?.let { minute ->
-            TrendRow("Pierwsza szklanka", String.format("średnio o %d:%02d", minute / 60, minute % 60), null, null)
+            TrendRow(stringResource(R.string.history_pierwsza_szklanka), stringResource(R.string.history_srednio_o_d_d, (minute / 60).toString(), String.format("%02d", minute % 60)), null, null)
         }
         if (trends.strongestHour != null && trends.weakestHour != null) {
             TrendRow(
-                "Godziny",
-                "najwięcej ${hourRange(trends.strongestHour)} · najmniej ${hourRange(trends.weakestHour)}",
+                stringResource(R.string.history_godziny),
+                stringResource(R.string.history_najwiecej_najmniej, hourRange(trends.strongestHour), hourRange(trends.weakestHour)),
                 null,
                 null,
             )
         }
         if (trends.bestWeekday != null && trends.worstWeekday != null) {
             TrendRow(
-                "Dni tygodnia",
-                "najlepszy ${weekdayName(trends.bestWeekday)} · najsłabszy ${weekdayName(trends.worstWeekday)}",
+                stringResource(R.string.history_dni_tygodnia),
+                stringResource(R.string.history_najlepszy_najslabszy, weekdayName(trends.bestWeekday), weekdayName(trends.worstWeekday)),
                 null,
                 null,
             )

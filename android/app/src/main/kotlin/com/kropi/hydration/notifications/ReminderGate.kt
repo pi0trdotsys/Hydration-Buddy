@@ -13,9 +13,11 @@ import androidx.core.content.ContextCompat
  * po spotkaniu.
  */
 object ReminderGate {
-    enum class Reason(val label: String) {
-        DND("Nie przeszkadzać"),
-        MEETING("spotkanie w kalendarzu"),
+    enum class Reason(private val labelPl: String, private val labelEn: String) {
+        DND("Nie przeszkadzać", "Do not disturb"),
+        MEETING("spotkanie w kalendarzu", "a calendar meeting");
+
+        val label: String get() = com.kropi.hydration.data.tr(labelPl, labelEn)
     }
 
     fun holdReason(dndActive: Boolean, inMeeting: Boolean, respectDnd: Boolean, quietDuringMeetings: Boolean): Reason? = when {

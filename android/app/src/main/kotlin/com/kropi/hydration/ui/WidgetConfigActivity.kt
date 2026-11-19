@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import android.app.Activity
 import com.kropi.hydration.widget.updateAllWidgets
 import android.appwidget.AppWidgetManager
@@ -124,9 +126,9 @@ private fun androidx.compose.foundation.layout.ColumnScope.ConfigBody(
             .verticalScroll(rememberScrollState())
             .padding(20.dp),
     ) {
-        Text("Ustawienia widgetu", color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.wcfg_ustawienia_widgetu), color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
 
-        Text("Styl kolorów", color = KropiColors.mutedForeground, fontSize = 12.sp)
+        Text(stringResource(R.string.wcfg_styl_kolorow), color = KropiColors.mutedForeground, fontSize = 12.sp)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             WidgetStyle.entries.forEach { style ->
                 ChipButton(style.label, config.style == style) { onChange(config.copy(style = style)) }
@@ -139,21 +141,21 @@ private fun androidx.compose.foundation.layout.ColumnScope.ConfigBody(
         )
 
         if (hasButtons) {
-            Text("Gotowe zestawy", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            Text(stringResource(R.string.wcfg_gotowe_zestawy), color = KropiColors.mutedForeground, fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                ChipButton("💧 Woda", false) {
+                ChipButton(stringResource(R.string.wcfg_woda), false) {
                     scope.launch {
                         val bottles = defaultBottles().current().settings.bottlesMl
                         onChange(config.copy(slots = WidgetConfig.default(bottles).slots))
                     }
                 }
-                ChipButton("☕ Kawa i herbata", false) {
+                ChipButton(stringResource(R.string.wcfg_kawa_i_herbata), false) {
                     onChange(config.copy(slots = listOf(
                         ButtonSpec(Drink.COFFEE, 200), ButtonSpec(Drink.COFFEE, 300),
                         ButtonSpec(Drink.TEA, 250), ButtonSpec(Drink.TEA, 400),
                     )))
                 }
-                ChipButton("🧃 Mieszane", false) {
+                ChipButton(stringResource(R.string.wcfg_mieszane), false) {
                     onChange(config.copy(slots = listOf(
                         ButtonSpec(Drink.WATER, 250), ButtonSpec(Drink.COFFEE, 200),
                         ButtonSpec(Drink.TEA, 250), ButtonSpec(Drink.JUICE, 200),
@@ -177,12 +179,12 @@ private fun androidx.compose.foundation.layout.ColumnScope.ConfigBody(
             onClick = onCancel,
             colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
             modifier = Modifier.weight(1f),
-        ) { Text("Anuluj") }
+        ) { Text(stringResource(R.string.data_anuluj)) }
         Button(
             onClick = { onSave(config) },
             colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
             modifier = Modifier.weight(2f),
-        ) { Text("Zapisz", fontWeight = FontWeight.Bold) }
+        ) { Text(stringResource(R.string.settings_zapisz), fontWeight = FontWeight.Bold) }
     }
 }
 
@@ -190,23 +192,23 @@ private fun androidx.compose.foundation.layout.ColumnScope.ConfigBody(
 @Composable
 private fun SlotEditor(number: Int, spec: ButtonSpec, onChange: (ButtonSpec) -> Unit) {
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Przycisk $number", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.wcfg_przycisk, number), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-            ChipButton("Z paska", spec.drink == null) { onChange(spec.copy(drink = null)) }
+            ChipButton(stringResource(R.string.wcfg_z_paska), spec.drink == null) { onChange(spec.copy(drink = null)) }
             Drink.entries.forEach { d ->
                 ChipButton("${d.emoji} ${d.label}", spec.drink == d) { onChange(spec.copy(drink = d)) }
             }
         }
         Text(
-            if (spec.drink == null) "Zapisuje napój zaznaczony na pasku widgetu (domyślnie wodę)."
-            else "Zawsze zapisuje: ${spec.drink.label.lowercase()}.",
+            if (spec.drink == null) stringResource(R.string.wcfg_zapisuje_napoj_zaznaczony_na_pasku)
+            else stringResource(R.string.wcfg_zawsze_zapisuje, spec.drink.label.lowercase()),
             color = KropiColors.mutedForeground,
             fontSize = 11.sp,
         )
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            StepperButton("−") { onChange(spec.copy(ml = (spec.ml - 10).coerceAtLeast(ButtonSpec.MIN_ML))) }
+            StepperButton("−", stringResource(R.string.wcfg_przycisk, number)) { onChange(spec.copy(ml = (spec.ml - 10).coerceAtLeast(ButtonSpec.MIN_ML))) }
             Text("${spec.ml} ml", color = KropiColors.foreground, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.width(90.dp))
-            StepperButton("+") { onChange(spec.copy(ml = (spec.ml + 10).coerceAtMost(ButtonSpec.MAX_ML))) }
+            StepperButton("+", stringResource(R.string.wcfg_przycisk, number)) { onChange(spec.copy(ml = (spec.ml + 10).coerceAtMost(ButtonSpec.MAX_ML))) }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
             SLOT_AMOUNTS.forEach { ml -> ChipButton("$ml", spec.ml == ml) { onChange(spec.copy(ml = ml)) } }

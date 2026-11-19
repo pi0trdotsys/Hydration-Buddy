@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.res.stringResource
+import com.kropi.hydration.R
 import android.Manifest
 import com.kropi.hydration.widget.updateAllWidgets
 import android.appwidget.AppWidgetManager
@@ -145,7 +147,7 @@ class MainActivity : ComponentActivity() {
                                     selected = tab == t,
                                     onClick = { tab = t },
                                     icon = { Text(t.emoji, fontSize = 18.sp) },
-                                    label = { Text(t.label, fontSize = 10.sp) },
+                                    label = { Text(stringResource(t.labelRes), fontSize = 10.sp) },
                                     colors = NavigationBarItemDefaults.colors(
                                         selectedIconColor = KropiColors.aqua,
                                         selectedTextColor = KropiColors.aqua,
@@ -218,10 +220,10 @@ class MainActivity : ComponentActivity() {
 /** Cel edytora: null w [intake] = nowy wpis. */
 private class EditorTarget(val intake: com.kropi.hydration.data.Intake?, val epochDay: Long?)
 
-private enum class Tab(val label: String, val emoji: String) {
-    HOME("Główny", "🏠"),
-    WIDGET("Widget", "🔲"),
-    HISTORY("Historia", "📅"),
-    INSIGHTS("Treści", "💡"),
-    SETTINGS("Ustawienia", "⚙️"),
+private enum class Tab(@androidx.annotation.StringRes val labelRes: Int, val emoji: String) {
+    HOME(R.string.tab_home, "🏠"),
+    WIDGET(R.string.tab_widget, "🔲"),
+    HISTORY(R.string.tab_history, "📅"),
+    INSIGHTS(R.string.tab_insights, "💡"),
+    SETTINGS(R.string.tab_settings, "⚙️"),
 }

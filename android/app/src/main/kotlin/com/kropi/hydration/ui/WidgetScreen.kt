@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -39,13 +41,13 @@ fun WidgetScreen(
         item {
             Column {
                 Text(
-                    "Widget — skalowalny",
+                    stringResource(R.string.widget_widget_skalowalny),
                     color = KropiColors.foreground,
                     fontSize = 26.sp,
                     fontWeight = FontWeight.Bold,
                 )
                 Text(
-                    "Jeden komponent, trzy rozmiary. Ten sam stan co na ekranie głównym.",
+                    stringResource(R.string.widget_jeden_komponent_trzy_rozmiary_ten),
                     color = KropiColors.mutedForeground,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 4.dp),
@@ -58,18 +60,18 @@ fun WidgetScreen(
                     onClick = onPin,
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                 ) {
-                    Text("Dodaj widget do ekranu głównego", fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.widget_dodaj_widget_do_ekranu_glownego), fontWeight = FontWeight.Bold)
                 }
                 Button(
                     onClick = onPinGlass,
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
-                ) { Text("Dodaj widget „dolej szklankę” (1×1)") }
+                ) { Text(stringResource(R.string.widget_dodaj_widget_dolej_szklanke)) }
                 Button(
                     onClick = onPinWeek,
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
-                ) { Text("Dodaj widget tygodniowy (4×2)") }
+                ) { Text(stringResource(R.string.widget_dodaj_widget_tygodniowy)) }
                 Text(
-                    "Przytrzymaj widget na ekranie głównym i wybierz „Konfiguruj”, żeby zmienić jego styl i przyciski.",
+                    stringResource(R.string.widget_przytrzymaj_widget_na_ekranie_glownym),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                 )
@@ -77,17 +79,17 @@ fun WidgetScreen(
         }
         item {
             Text(
-                "Powinieneś/aś już wypić: ${state.targetSoFar} ml",
+                stringResource(R.string.widget_powinienes_as_juz_wypic_ml, state.targetSoFar),
                 color = if (state.isBehindSchedule) Color(0xFFFF8A65) else KropiColors.aqua,
                 fontSize = 13.sp,
                 fontWeight = FontWeight.Bold,
             )
         }
-        item { SizeLabel("Mały (1×1)") }
+        item { SizeLabel(stringResource(R.string.widget_maly)) }
         item { WidgetCard(state, WidgetVariant.SMALL, onAdd, onUndo, onPoke, Modifier.size(140.dp)) }
-        item { SizeLabel("Średni (2×1)") }
+        item { SizeLabel(stringResource(R.string.widget_sredni)) }
         item { WidgetCard(state, WidgetVariant.MEDIUM, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(216.dp)) }
-        item { SizeLabel("Duży (2×2)") }
+        item { SizeLabel(stringResource(R.string.widget_duzy)) }
         item { WidgetCard(state, WidgetVariant.LARGE, onAdd, onUndo, onPoke, Modifier.fillMaxWidth().height(400.dp)) }
     }
 }

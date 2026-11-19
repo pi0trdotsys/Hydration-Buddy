@@ -1,5 +1,9 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -92,7 +96,7 @@ fun OnboardingScreen(
                         )
                     }
                 }
-                TextButton(onClick = onSkip) { Text("Pomiń", color = KropiColors.mutedForeground) }
+                TextButton(onClick = onSkip) { Text(stringResource(R.string.onb_pomin), color = KropiColors.mutedForeground) }
             }
 
             Column(
@@ -119,7 +123,7 @@ fun OnboardingScreen(
                         onClick = { step -= 1 },
                         colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                         modifier = Modifier.weight(1f).height(52.dp),
-                    ) { Text("Wstecz") }
+                    ) { Text(stringResource(R.string.onb_wstecz)) }
                 }
                 Button(
                     onClick = {
@@ -145,7 +149,7 @@ fun OnboardingScreen(
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                     modifier = Modifier.weight(2f).height(52.dp),
-                ) { Text(if (step < STEPS - 1) "Dalej" else "Zaczynamy", fontWeight = FontWeight.Bold) }
+                ) { Text(if (step < STEPS - 1) stringResource(R.string.onb_dalej) else stringResource(R.string.onb_zaczynamy), fontWeight = FontWeight.Bold) }
             }
         }
     }
@@ -169,20 +173,19 @@ private fun WelcomeStep() {
     ) {
         MascotCanvas(level = Level.MID, modifier = Modifier.size(140.dp))
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("Cześć, jestem Kropi", color = KropiColors.foreground, fontSize = 28.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.onb_czesc_jestem_kropi), color = KropiColors.foreground, fontSize = 28.sp, fontWeight = FontWeight.Bold)
             Text(
-                "Nie przypominam „pij wodę” co godzinę. Liczę, ile jeszcze brakuje i o której " +
-                    "najłatwiej to wypić — a potem zostawiam Cię w spokoju.",
+                stringResource(R.string.onb_nie_przypominam_pij_wode_co),
                 color = KropiColors.mutedForeground,
                 fontSize = 15.sp,
                 lineHeight = 22.sp,
             )
         }
         GlassCard(modifier = Modifier.fillMaxWidth()) {
-            Text("Zajmie to minutę:", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            Text("① Cel pod Twoją wagę i tryb dnia", color = KropiColors.mutedForeground, fontSize = 13.sp)
-            Text("② Godziny, w których pijesz", color = KropiColors.mutedForeground, fontSize = 13.sp)
-            Text("③ Przypomnienia i widget", color = KropiColors.mutedForeground, fontSize = 13.sp)
+            Text(stringResource(R.string.onb_zajmie_to_minute), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.onb_cel_pod_twoja_wage_i), color = KropiColors.mutedForeground, fontSize = 13.sp)
+            Text(stringResource(R.string.onb_godziny_w_ktorych_pijesz), color = KropiColors.mutedForeground, fontSize = 13.sp)
+            Text(stringResource(R.string.onb_przypomnienia_i_widget), color = KropiColors.mutedForeground, fontSize = 13.sp)
         }
     }
 }
@@ -194,9 +197,9 @@ private fun BodyStep(
     temperature: Temperature, onTemperature: (Temperature) -> Unit,
     goal: Int,
 ) {
-    StepHeader("Krok 1 z 3", "Twój cel", "Liczymy go z wagi, aktywności i pogody. Zawsze możesz go zmienić w Ustawieniach.")
+    StepHeader(stringResource(R.string.onb_krok_z), stringResource(R.string.onb_twoj_cel), stringResource(R.string.onb_liczymy_go_z_wagi_aktywnosci))
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Waga: ${weightKg.toInt()} kg", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_waga_kg, weightKg.toInt()), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Slider(
             value = weightKg,
             onValueChange = { onWeight(Math.round(it).toFloat()) },
@@ -204,16 +207,16 @@ private fun BodyStep(
             colors = SliderDefaults.colors(thumbColor = KropiColors.aqua, activeTrackColor = KropiColors.aqua),
         )
     }
-    Text("Aktywność fizyczna", color = KropiColors.mutedForeground, fontSize = 12.sp)
+    Text(stringResource(R.string.settings_aktywnosc_fizyczna), color = KropiColors.mutedForeground, fontSize = 12.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ActivityLevel.entries.forEach { a -> ChipButton("${a.emoji} ${a.label}", activity == a) { onActivity(a) } }
     }
-    Text("Temperatura otoczenia", color = KropiColors.mutedForeground, fontSize = 12.sp)
+    Text(stringResource(R.string.settings_temperatura_otoczenia), color = KropiColors.mutedForeground, fontSize = 12.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Temperature.entries.forEach { t -> ChipButton("${t.emoji} ${t.label}", temperature == t) { onTemperature(t) } }
     }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Cel na dzień", color = KropiColors.mutedForeground, fontSize = 12.sp)
+        Text(stringResource(R.string.onb_cel_na_dzien), color = KropiColors.mutedForeground, fontSize = 12.sp)
         Text(formatMl(goal), color = KropiColors.aqua, fontSize = 32.sp, fontWeight = FontWeight.Bold)
     }
 }
@@ -223,23 +226,23 @@ private fun DayStep(
     startHour: Int, endHour: Int, glassMl: Int, tone: NotificationTone,
     onStart: (Int) -> Unit, onEnd: (Int) -> Unit, onGlass: (Int) -> Unit, onTone: (NotificationTone) -> Unit,
 ) {
-    StepHeader("Krok 2 z 3", "Twój dzień", "Kropi rozkłada picie tylko w godzinach, w których jesteś aktywny/a.")
+    StepHeader(stringResource(R.string.onb_krok_z_2), stringResource(R.string.onb_twoj_dzien), stringResource(R.string.onb_kropi_rozklada_picie_tylko_w))
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        HourRow("Pierwsza szklanka", startHour, { onStart(startHour - 1) }, { onStart(startHour + 1) })
-        HourRow("Ostatnia szklanka", endHour, { onEnd(endHour - 1) }, { onEnd(endHour + 1) })
+        HourRow(stringResource(R.string.history_pierwsza_szklanka), startHour, { onStart(startHour - 1) }, { onStart(startHour + 1) })
+        HourRow(stringResource(R.string.onb_ostatnia_szklanka), endHour, { onEnd(endHour - 1) }, { onEnd(endHour + 1) })
     }
-    Text("Jedna porcja", color = KropiColors.mutedForeground, fontSize = 12.sp)
+    Text(stringResource(R.string.onb_jedna_porcja), color = KropiColors.mutedForeground, fontSize = 12.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         GLASS_CHOICES.forEach { ml -> ChipButton("$ml", glassMl == ml) { onGlass(ml) } }
     }
-    Text("Ton przypomnień", color = KropiColors.mutedForeground, fontSize = 12.sp)
+    Text(stringResource(R.string.onb_ton_przypomnien), color = KropiColors.mutedForeground, fontSize = 12.sp)
     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         NotificationTone.entries.forEach { t -> ChipButton("${t.emoji} ${t.label}", tone == t) { onTone(t) } }
     }
     Text(
         when (tone) {
-            NotificationTone.CARING -> "Kropi przypomina spokojnie, ze zdaniem self-care."
-            NotificationTone.SNARKY -> "Kropi dogryza i nie owija w bawełnę. Liczby i plan są te same."
+            NotificationTone.CARING -> stringResource(R.string.settings_kropi_przypomina_spokojnie_ze_zdaniem)
+            NotificationTone.SNARKY -> stringResource(R.string.settings_kropi_dogryza_i_nie_owija)
         },
         color = KropiColors.mutedForeground,
         fontSize = 12.sp,
@@ -250,7 +253,7 @@ private fun DayStep(
 private fun HourRow(label: String, hour: Int, onMinus: () -> Unit, onPlus: () -> Unit) {
     Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
         Text(label, color = KropiColors.foreground, fontSize = 14.sp, modifier = Modifier.weight(1f))
-        StepperButton("−", onMinus)
+        StepperButton("−", label, onMinus)
         Text(
             String.format("%02d:00", hour),
             color = KropiColors.foreground,
@@ -258,7 +261,7 @@ private fun HourRow(label: String, hour: Int, onMinus: () -> Unit, onPlus: () ->
             fontWeight = FontWeight.Bold,
             modifier = Modifier.padding(horizontal = 12.dp),
         )
-        StepperButton("+", onPlus)
+        StepperButton("+", label, onPlus)
     }
 }
 
@@ -271,14 +274,16 @@ private fun RemindersStep(
 ) {
     val context = LocalContext.current
     var batteryOk by remember { mutableStateOf(isIgnoringBatteryOptimizations(context)) }
-    StepHeader("Krok 3 z 3", "Ostatnie szlify", "Żeby przypomnienia i widget działały, system musi pozwolić Kropi pracować w tle.")
+    StepHeader(stringResource(R.string.onb_krok_z_3), stringResource(R.string.onb_ostatnie_szlify), stringResource(R.string.onb_zeby_przypomnienia_i_widget_dzialaly))
     GlassCard(modifier = Modifier.fillMaxWidth()) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Przypomnienia", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
-                Text("Powiadomienie, gdy jesteś za planem", color = KropiColors.mutedForeground, fontSize = 11.sp)
+                Text(stringResource(R.string.settings_przypomnienia), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.onb_powiadomienie_gdy_jestes_za_planem), color = KropiColors.mutedForeground, fontSize = 11.sp)
             }
+            val switchLabel1 = stringResource(R.string.onb_powiadomienie_gdy_jestes_za_planem)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel1 },
                 checked = reminders,
                 onCheckedChange = { on ->
                     onReminders(on)
@@ -289,9 +294,9 @@ private fun RemindersStep(
         }
     }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Bez ograniczeń baterii", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_bez_ograniczen_baterii), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Bez tego telefon potrafi uśpić Kropi i widget odświeży się dopiero po otwarciu aplikacji.",
+            stringResource(R.string.onb_bez_tego_telefon_potrafi_uspic),
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
             lineHeight = 17.sp,
@@ -304,19 +309,19 @@ private fun RemindersStep(
             enabled = !batteryOk,
             colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
             modifier = Modifier.fillMaxWidth(),
-        ) { Text(if (batteryOk) "Włączone ✓" else "Zezwól") }
+        ) { Text(if (batteryOk) stringResource(R.string.onb_wlaczone) else stringResource(R.string.onb_zezwol)) }
         if (isProbablyMiui()) {
             Button(
                 onClick = { openMiuiAutostartSettings(context) },
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("Otwórz autostart (MIUI)") }
+            ) { Text(stringResource(R.string.onb_otworz_autostart_miui)) }
         }
     }
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Widget na ekranie głównym", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.onb_widget_na_ekranie_glownym), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Cztery przyciski — woda bez otwierania aplikacji.",
+            stringResource(R.string.onb_cztery_przyciski_woda_bez_otwierania),
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
         )
@@ -324,6 +329,6 @@ private fun RemindersStep(
             onClick = onPinWidget,
             colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
             modifier = Modifier.fillMaxWidth(),
-        ) { Text("Dodaj widget") }
+        ) { Text(stringResource(R.string.onb_dodaj_widget)) }
     }
 }

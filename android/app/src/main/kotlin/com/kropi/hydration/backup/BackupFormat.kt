@@ -192,7 +192,8 @@ object CsvHistory {
  * i notatka. Średnik jako separator — tak samo jak w eksporcie dni, dobrze otwiera się w polskim Excelu.
  */
 object CsvEntries {
-    const val HEADER = "data;godzina;napoj;wypite_ml;liczy_sie_ml;notatka"
+    /** Nagłówek w języku aplikacji; eksport dni (import) zostaje po polsku, bo musi dać się wczytać z powrotem. */
+    val HEADER: String get() = com.kropi.hydration.data.tr("data;godzina;napoj;wypite_ml;liczy_sie_ml;notatka", "date;time;drink;drunk_ml;counted_ml;note")
 
     fun build(intakes: List<com.kropi.hydration.data.Intake>): String = buildString {
         appendLine(HEADER)

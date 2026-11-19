@@ -7,14 +7,16 @@ package com.kropi.hydration.data
  * nawadniają), ale pozwalają odróżnić szklankę wody od szklanki soku czy piwa.
  * Użytkownik może je wyłączyć w Ustawieniach — wtedy każdy napój liczy się 1:1.
  */
-enum class Drink(val label: String, val emoji: String, val factor: Float, val defaultMl: Int) {
-    WATER("Woda", "💧", 1.0f, 250),
-    TEA("Herbata", "🍵", 0.9f, 250),
-    COFFEE("Kawa", "☕", 0.8f, 200),
-    JUICE("Sok", "🧃", 0.85f, 200),
-    MILK("Mleko", "🥛", 0.9f, 250),
-    SODA("Napój gazowany", "🥤", 0.7f, 330),
-    ALCOHOL("Alkohol", "🍺", 0.0f, 330);
+enum class Drink(private val labelPl: String, private val labelEn: String, val emoji: String, val factor: Float, val defaultMl: Int) {
+    WATER("Woda", "Water", "💧", 1.0f, 250),
+    TEA("Herbata", "Tea", "🍵", 0.9f, 250),
+    COFFEE("Kawa", "Coffee", "☕", 0.8f, 200),
+    JUICE("Sok", "Juice", "🧃", 0.85f, 200),
+    MILK("Mleko", "Milk", "🥛", 0.9f, 250),
+    SODA("Napój gazowany", "Soda", "🥤", 0.7f, 330),
+    ALCOHOL("Alkohol", "Alcohol", "🍺", 0.0f, 330);
+
+    val label: String get() = tr(labelPl, labelEn)
 
     /** „liczy się w 80%" — do podpisów w UI. */
     val percent: Int get() = Math.round(factor * 100)

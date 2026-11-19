@@ -1,5 +1,9 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
@@ -56,9 +60,9 @@ fun SettingsScreen(
     ) {
         item {
             Column {
-                Text("Ustawienia", color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_ustawienia), color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Cel dzienny, aktywne godziny i przypomnienia o piciu wody.",
+                    stringResource(R.string.settings_cel_dzienny_aktywne_godziny_i),
                     color = KropiColors.mutedForeground,
                     fontSize = 13.sp,
                     modifier = Modifier.padding(top = 4.dp),
@@ -88,10 +92,9 @@ private fun BackgroundRestrictionsCard() {
     var ignoringBatteryOpt by remember { mutableStateOf(isIgnoringBatteryOptimizations(context)) }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Szybsze powiadomienia i widget", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_szybsze_powiadomienia_i_widget), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Jeśli dolanie wody z widgetu widać dopiero po otwarciu aplikacji, to system usypia Kropi w tle. " +
-                "Wyłącz dla niej optymalizację baterii" + (if (isMiui) " i włącz autostart" else "") + ", żeby widget odświeżał się od razu.",
+            stringResource(R.string.settings_jesli_dolanie_wody_z_widgetu, if (isMiui) stringResource(R.string.settings_and_autostart) else ""),
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
             lineHeight = 17.sp,
@@ -99,14 +102,16 @@ private fun BackgroundRestrictionsCard() {
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Bez ograniczeń baterii", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_bez_ograniczen_baterii), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    if (ignoringBatteryOpt) "Włączone" else "Dotknij, aby zezwolić",
+                    if (ignoringBatteryOpt) stringResource(R.string.settings_wlaczone) else stringResource(R.string.settings_dotknij_aby_zezwolic),
                     color = if (ignoringBatteryOpt) KropiColors.aqua else KropiColors.mutedForeground,
                     fontSize = 11.sp,
                 )
             }
+            val switchLabel1 = stringResource(R.string.settings_bez_ograniczen_baterii)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel1 },
                 checked = ignoringBatteryOpt,
                 onCheckedChange = {
                     if (!ignoringBatteryOpt) requestIgnoreBatteryOptimizations(context)
@@ -122,7 +127,7 @@ private fun BackgroundRestrictionsCard() {
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                 modifier = Modifier.fillMaxWidth(),
             ) {
-                Text("Otwórz ustawienia autostartu (MIUI)")
+                Text(stringResource(R.string.settings_otworz_ustawienia_autostartu_miui))
             }
         }
     }
@@ -223,14 +228,16 @@ private fun SettingsSection(
         // --- reminders toggle ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Przypomnienia", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_przypomnienia), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Fancy powiadomienie, gdy dawno nie piłeś/aś wody",
+                    stringResource(R.string.settings_fancy_powiadomienie_gdy_dawno_nie),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                 )
             }
+            val switchLabel2 = stringResource(R.string.settings_fancy_powiadomienie_gdy_dawno_nie)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel2 },
                 checked = remindersEnabled,
                 onCheckedChange = { remindersEnabled = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
@@ -240,15 +247,17 @@ private fun SettingsSection(
         // --- cisza: Nie przeszkadzać i spotkania ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Szanuj „Nie przeszkadzać”", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_szanuj_nie_przeszkadzac), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Gdy telefon ma włączony ten tryb, przypomnienie czeka i odezwie się, gdy się skończy.",
+                    stringResource(R.string.settings_gdy_telefon_ma_wlaczony_ten),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                 )
             }
+            val switchLabel3 = stringResource(R.string.settings_gdy_telefon_ma_wlaczony_ten)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel3 },
                 checked = respectDnd,
                 onCheckedChange = { respectDnd = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
@@ -256,15 +265,17 @@ private fun SettingsSection(
         }
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Cisza podczas spotkań", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_cisza_podczas_spotkan), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Kropi zagląda do kalendarza na telefonie (tylko lokalnie) i nie przypomina, gdy trwa spotkanie.",
+                    stringResource(R.string.settings_kropi_zaglada_do_kalendarza_na),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                 )
             }
+            val switchLabel4 = stringResource(R.string.settings_kropi_zaglada_do_kalendarza_na)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel4 },
                 checked = quietMeetings,
                 onCheckedChange = { on ->
                     if (!on) {
@@ -280,14 +291,14 @@ private fun SettingsSection(
         }
         if (respectDnd || quietMeetings) {
             Text(
-                holdNow?.let { "Teraz przypomnienia czekają: ${it.label}." } ?: "Teraz nic nie wstrzymuje przypomnień.",
+                holdNow?.let { stringResource(R.string.settings_teraz_przypomnienia_czekaja, it.label) } ?: stringResource(R.string.settings_teraz_nic_nie_wstrzymuje_przypomnien),
                 color = if (holdNow != null) KropiColors.aqua else KropiColors.mutedForeground,
                 fontSize = 11.sp,
             )
         }
 
         // --- ton powiadomień ---
-        Text("Ton powiadomień", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_ton_powiadomien), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             NotificationTone.entries.forEach { t ->
                 ChipButton("${t.emoji} ${t.label}", tone == t) { tone = t }
@@ -295,15 +306,15 @@ private fun SettingsSection(
         }
         Text(
             when (tone) {
-                NotificationTone.CARING -> "Kropi przypomina spokojnie, ze zdaniem self-care."
-                NotificationTone.SNARKY -> "Kropi dogryza i nie owija w bawełnę. Liczby i plan są te same."
+                NotificationTone.CARING -> stringResource(R.string.settings_kropi_przypomina_spokojnie_ze_zdaniem)
+                NotificationTone.SNARKY -> stringResource(R.string.settings_kropi_dogryza_i_nie_owija)
             },
             color = KropiColors.mutedForeground,
             fontSize = 11.sp,
         )
 
         if (tone == NotificationTone.SNARKY) {
-            Text("Ostrość docinków", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.settings_ostrosc_docinkow), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SnarkIntensity.entries.forEach { level ->
                     ChipButton("${level.emoji} ${level.label}", intensity == level) { intensity = level }
@@ -315,16 +326,17 @@ private fun SettingsSection(
         // --- plan dopasowany do nawyków ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Plan pod Twoje godziny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_plan_pod_twoje_godziny), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Kropi uczy się, o której naprawdę pijesz, i tam przesuwa porcje. " +
-                        "Wyłączone — rozkłada je równo co tyle samo.",
+                    stringResource(R.string.settings_kropi_uczy_sie_o_ktorej),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                 )
             }
+            val switchLabel5 = stringResource(R.string.settings_kropi_uczy_sie_o_ktorej)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel5 },
                 checked = adaptivePlan,
                 onCheckedChange = { adaptivePlan = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
@@ -334,16 +346,17 @@ private fun SettingsSection(
         // --- napoje wg współczynnika nawodnienia ---
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Nawodnienie netto", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_nawodnienie_netto), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                 Text(
-                    "Kawa, sok czy napój gazowany liczą się do celu częściowo (np. kawa 80%), a alkohol wcale. " +
-                        "Wyłączone — każdy napój liczy się 1:1.",
+                    stringResource(R.string.settings_kawa_sok_czy_napoj_gazowany),
                     color = KropiColors.mutedForeground,
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                 )
             }
+            val switchLabel6 = stringResource(R.string.settings_kawa_sok_czy_napoj_gazowany)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel6 },
                 checked = netHydration,
                 onCheckedChange = { netHydration = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
@@ -351,15 +364,15 @@ private fun SettingsSection(
         }
 
         // --- goal mode ---
-        Text("Cel dzienny", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_cel_dzienny), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            ChipButton("Automatyczny", goalMode == GoalMode.AUTO) { goalMode = GoalMode.AUTO }
-            ChipButton("Ręczny", goalMode == GoalMode.MANUAL) { goalMode = GoalMode.MANUAL }
+            ChipButton(stringResource(R.string.settings_automatyczny), goalMode == GoalMode.AUTO) { goalMode = GoalMode.AUTO }
+            ChipButton(stringResource(R.string.settings_reczny), goalMode == GoalMode.MANUAL) { goalMode = GoalMode.MANUAL }
         }
 
         if (goalMode == GoalMode.AUTO) {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Waga: ${weightKg.toInt()} kg", color = KropiColors.mutedForeground, fontSize = 12.sp)
+                Text(stringResource(R.string.settings_waga_kg, weightKg.toInt()), color = KropiColors.mutedForeground, fontSize = 12.sp)
                 androidx.compose.material3.Slider(
                     value = weightKg,
                     onValueChange = { weightKg = it },
@@ -367,13 +380,13 @@ private fun SettingsSection(
                     colors = androidx.compose.material3.SliderDefaults.colors(thumbColor = KropiColors.aqua, activeTrackColor = KropiColors.aqua),
                 )
             }
-            Text("Temperatura otoczenia", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            Text(stringResource(R.string.settings_temperatura_otoczenia), color = KropiColors.mutedForeground, fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 Temperature.entries.forEach { t ->
                     ChipButton("${t.emoji} ${t.label}", temperature == t) { temperature = t }
                 }
             }
-            Text("Aktywność fizyczna", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            Text(stringResource(R.string.settings_aktywnosc_fizyczna), color = KropiColors.mutedForeground, fontSize = 12.sp)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 ActivityLevel.entries.forEach { a ->
                     ChipButton("${a.emoji} ${a.label}", activity == a) { activity = a }
@@ -381,7 +394,7 @@ private fun SettingsSection(
             }
         } else {
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                Text("Cel: ${manualGoal.toInt()} ml", color = KropiColors.mutedForeground, fontSize = 12.sp)
+                Text(stringResource(R.string.settings_cel_ml, manualGoal.toInt()), color = KropiColors.mutedForeground, fontSize = 12.sp)
                 androidx.compose.material3.Slider(
                     value = manualGoal,
                     onValueChange = { manualGoal = it },
@@ -399,7 +412,7 @@ private fun SettingsSection(
                 .padding(10.dp),
         ) {
             Text(
-                "Dzienny cel: $effectiveGoal ml" + if (goalMode == GoalMode.AUTO) " (wyliczony)" else "",
+                stringResource(R.string.settings_dzienny_cel_ml, effectiveGoal) + if (goalMode == GoalMode.AUTO) stringResource(R.string.settings_calculated_suffix) else "",
                 color = KropiColors.aqua,
                 fontSize = 12.sp,
                 fontWeight = FontWeight.Bold,
@@ -407,16 +420,16 @@ private fun SettingsSection(
         }
 
         // --- active hours ---
-        Text("Aktywne godziny picia", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_aktywne_godziny_picia), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             HourStepper("Od", startHour) { startHour = it.coerceIn(0, endHour - 1) }
             HourStepper("Do", endHour) { endHour = it.coerceIn(startHour + 1, 23) }
         }
 
         // --- pojemności na kafelkach ---
-        Text("Pojemności na widgecie", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_pojemnosci_na_widgecie), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Cztery przyciski dolewania — na widgecie, w podglądzie i na ekranie głównym.",
+            stringResource(R.string.settings_cztery_przyciski_dolewania_na_widgecie),
             color = KropiColors.mutedForeground,
             fontSize = 11.sp,
         )
@@ -428,10 +441,10 @@ private fun SettingsSection(
                 ) {
                     Text("$ml ml", color = KropiColors.foreground, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.padding(top = 4.dp)) {
-                        StepperButton("−") {
+                        StepperButton("−", stringResource(R.string.wcfg_przycisk, index + 1)) {
                             bottles = bottles.toMutableList().also { it[index] = (ml - 50).coerceAtLeast(50) }
                         }
-                        StepperButton("+") {
+                        StepperButton("+", stringResource(R.string.wcfg_przycisk, index + 1)) {
                             bottles = bottles.toMutableList().also { it[index] = (ml + 50).coerceAtMost(2000) }
                         }
                     }
@@ -440,7 +453,7 @@ private fun SettingsSection(
         }
 
         // --- reminder glass size ---
-        Text("Rozmiar szklanki w przypomnieniach", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.settings_rozmiar_szklanki_w_przypomnieniach), color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf(100, 250, 330, 500).forEach { ml ->
                 ChipButton("$ml ml", glassMl == ml) { glassMl = ml }
@@ -474,14 +487,14 @@ private fun SettingsSection(
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                 modifier = Modifier.weight(1f),
             ) {
-                Text("Zapisz", fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.settings_zapisz), fontWeight = FontWeight.Bold)
             }
             Button(
                 onClick = onTestNotification,
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                 modifier = Modifier.weight(1f),
             ) {
-                Text("Testuj powiadomienie")
+                Text(stringResource(R.string.settings_testuj_powiadomienie))
             }
         }
     }

@@ -36,6 +36,7 @@ import androidx.glance.layout.padding
 import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
+import com.kropi.hydration.R
 import com.kropi.hydration.data.HistoryDay
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
@@ -111,13 +112,13 @@ private fun WeekContent(state: HydrationState) {
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, modifier = GlanceModifier.fillMaxWidth().height(headerHeight)) {
             Text(
-                "OSTATNIE 7 DNI",
+                str(R.string.w_last7_caps),
                 style = TextStyle(color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Medium),
                 maxLines = 1,
                 modifier = GlanceModifier.defaultWeight(),
             )
             Text(
-                "🔥 ${state.streak} dni",
+                str(R.string.w_streak_short, ctxDays(state.streak)),
                 style = TextStyle(color = if (state.streak > 0) Aqua else Muted, fontSize = 10.sp, fontWeight = FontWeight.Bold),
                 maxLines = 1,
             )
@@ -127,8 +128,8 @@ private fun WeekContent(state: HydrationState) {
         }
         Box(modifier = GlanceModifier.padding(top = 6.dp)) {
             Text(
-                if (tracked.isEmpty()) "Za kilka dni pojawi się tu średnia."
-                else "Średnio $average ml · cel zaliczony $reached / ${days.size}",
+                if (tracked.isEmpty()) str(R.string.w_week_empty)
+                else str(R.string.w_week_summary, average, reached, days.size),
                 style = TextStyle(color = Muted, fontSize = 9.sp),
                 maxLines = 1,
                 modifier = GlanceModifier.fillMaxWidth(),
@@ -154,7 +155,7 @@ private fun WeekBars(days: List<HistoryDay>, width: Dp, height: Dp) {
     }
     Image(
         provider = ImageProvider(bitmap),
-        contentDescription = "Nawodnienie w ostatnich 7 dniach",
+        contentDescription = str(R.string.w_week_cd),
         contentScale = ContentScale.Fit,
         modifier = GlanceModifier.fillMaxWidth().height(height),
     )

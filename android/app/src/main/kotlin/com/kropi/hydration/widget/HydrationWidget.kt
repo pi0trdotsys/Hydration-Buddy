@@ -1,5 +1,7 @@
 package com.kropi.hydration.widget
 
+import androidx.glance.semantics.semantics
+import androidx.glance.semantics.contentDescription
 import android.content.Context
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +45,8 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.kropi.hydration.R
+import com.kropi.hydration.ui.daysText
 import com.kropi.hydration.data.ButtonSpec
 import com.kropi.hydration.data.Drink
 import com.kropi.hydration.data.WidgetConfig
@@ -67,6 +71,14 @@ internal val Secondary: ColorProvider @androidx.compose.runtime.Composable get()
 internal val CardBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.card
 internal val ScreenBg: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.screen
 internal val Warn: ColorProvider @androidx.compose.runtime.Composable get() = LocalPalette.current.warn
+
+/** Tekst z zasobów w języku aplikacji — Glance nie ma stringResource, więc przez kontekst widgetu. */
+@androidx.compose.runtime.Composable
+internal fun str(@androidx.annotation.StringRes id: Int, vararg args: Any): String =
+    androidx.glance.LocalContext.current.getString(id, *args)
+
+@androidx.compose.runtime.Composable
+internal fun ctxDays(n: Int): String = androidx.glance.LocalContext.current.daysText(n)
 
 private enum class Variant { TINY, BAR, COMPACT, FULL }
 
@@ -177,8 +189,8 @@ private fun BarContent(state: HydrationState, config: WidgetConfig) {
             )
             Text(
                 when (plan.status) {
-                    PlanStatus.DONE -> "Cel zrobiony 🎉"
-                    else -> plan.next?.let { "nast. ${it.ml} ml o ${it.time.hhmm()}" } ?: "—"
+                    PlanStatus.DONE -> str(R.string.w_goal_done)
+                    else -> plan.next?.let { str(R.string.w_next_sip_short, it.ml, it.time.hhmm()) } ?: "—"
                 },
                 style = TextStyle(color = if (state.isBehindSchedule) Warn else Muted, fontSize = 9.sp),
                 maxLines = 1,
@@ -192,13 +204,15 @@ private fun BarContent(state: HydrationState, config: WidgetConfig) {
 
 @androidx.compose.runtime.Composable
 private fun FixedBottleChip(spec: ButtonSpec, size: Dp) {
+    val specDescription = describeSpec(spec)
     Box(
         modifier = GlanceModifier
             .width(size)
             .height(size)
             .background(Secondary)
             .cornerRadius(14.dp)
-            .clickable(actionRunCallback<AddWaterAction>(addParams(spec))),
+            .clickable(actionRunCallback<AddWaterAction>(addParams(spec)))
+            .semantics { contentDescription = specDescription },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -207,6 +221,11 @@ private fun FixedBottleChip(spec: ButtonSpec, size: Dp) {
         )
     }
 }
+
+/** Opis przycisku dolewania dla czytnika ekranu: „Dolej 250 ml" albo „Kawa 200 ml". */
+@androidx.compose.runtime.Composable
+private fun describeSpec(spec: ButtonSpec): String =
+    if (spec.isPlain) str(R.string.a11y_add_ml, spec.ml) else str(R.string.a11y_add_drink_ml, spec.drink!!.label, spec.ml)
 
 /** Parametry dolania: ilość i — dla przycisku z przypisanym napojem — ten napój. */
 private fun addParams(spec: ButtonSpec): androidx.glance.action.ActionParameters =
@@ -272,7 +291,7 @@ private fun Header(state: HydrationState, plan: HydrationPlan, ringSize: Dp, tit
         Spacer(GlanceModifier.width(12.dp))
         Column(modifier = GlanceModifier.defaultWeight()) {
             Text(
-                "NAWODNIENIE",
+                str(R.string.w_hydration_caps),
                 style = TextStyle(color = Muted, fontSize = 8.sp, fontWeight = FontWeight.Medium),
                 maxLines = 1,
             )
@@ -283,10 +302,10 @@ private fun Header(state: HydrationState, plan: HydrationPlan, ringSize: Dp, tit
             )
             Text(
                 when {
-                    state.remaining <= 0 -> "Cel osiągnięty 🎉"
+                    state.remaining <= 0 -> str(R.string.w_goal_reached)
                     // Za planem widget przestaje być tylko tablicą wyników i mówi, co zrobić teraz.
-                    behind -> "Wypij teraz ${formatMl(plan.portionMl)}"
-                    else -> "Zostało ${formatMl(state.remaining)}"
+                    behind -> str(R.string.w_drink_now, formatMl(plan.portionMl))
+                    else -> str(R.string.w_left, formatMl(state.remaining))
                 },
                 style = TextStyle(color = if (behind) Warn else Aqua, fontSize = 11.sp, fontWeight = FontWeight.Medium),
                 maxLines = 1,
@@ -320,7 +339,7 @@ private fun StatusRow(state: HydrationState, plan: HydrationPlan, rowWidth: Dp) 
     val barWidth = ((rowWidth - 6.dp) / 2 - 18.dp).coerceAtLeast(30.dp)
     Row(modifier = GlanceModifier.fillMaxWidth().height(STATUS_HEIGHT)) {
         Pill(
-            label = if (state.isBehindSchedule) "PONIŻEJ PLANU" else "PLAN NA TERAZ",
+            label = if (state.isBehindSchedule) str(R.string.w_behind_plan) else str(R.string.w_plan_now),
             value = formatMl(state.targetSoFar),
             accent = if (state.isBehindSchedule) Warn else Muted,
             modifier = GlanceModifier.defaultWeight(),
@@ -328,13 +347,13 @@ private fun StatusRow(state: HydrationState, plan: HydrationPlan, rowWidth: Dp) 
         Spacer(GlanceModifier.width(6.dp))
         Pill(
             label = when (plan.status) {
-                PlanStatus.DONE -> "DZIŚ"
-                PlanStatus.AFTER_HOURS -> "PO GODZINACH"
-                else -> "NASTĘPNE"
+                PlanStatus.DONE -> str(R.string.w_today_caps)
+                PlanStatus.AFTER_HOURS -> str(R.string.w_after_hours_caps)
+                else -> str(R.string.w_next_caps)
             },
             value = when (plan.status) {
-                PlanStatus.DONE -> "Cel zrobiony 🎉"
-                else -> plan.next?.let { "${it.ml} ml o ${it.time.hhmm()}" } ?: "—"
+                PlanStatus.DONE -> str(R.string.w_goal_done)
+                else -> plan.next?.let { str(R.string.w_next_sip, it.ml, it.time.hhmm()) } ?: "—"
             },
             accent = Aqua,
             modifier = GlanceModifier.defaultWeight(),
@@ -376,7 +395,7 @@ private fun Pill(
                 val bar = remember(progress, widthPx, graphics) { countdownBarBitmap(widthPx, heightPx, progress, graphics) }
                 Image(
                     provider = ImageProvider(bar),
-                    contentDescription = "Odliczanie do następnej szklanki",
+                    contentDescription = str(R.string.w_countdown_cd),
                     modifier = GlanceModifier.width(barWidth).height(3.dp),
                 )
             }
@@ -387,6 +406,7 @@ private fun Pill(
 /** Wykres w „ekranie" — ciemniejsze tło odcina go od karty i porządkuje układ. */
 @androidx.compose.runtime.Composable
 private fun ChartPanel(state: HydrationState, width: Dp, height: Dp) {
+    val chartDescription = str(R.string.a11y_today_entries)
     Box(
         modifier = GlanceModifier
             .fillMaxWidth()
@@ -395,6 +415,7 @@ private fun ChartPanel(state: HydrationState, width: Dp, height: Dp) {
             .cornerRadius(16.dp)
             // Dotknięcie wykresu otwiera listę dzisiejszych wpisów: można je poprawić, usunąć albo dopisać nowy.
             .clickable(actionStartActivity(quickEntryIntent(androidx.glance.LocalContext.current, day = true)))
+            .semantics { contentDescription = chartDescription }
             .padding(horizontal = 8.dp, vertical = 6.dp),
     ) {
         IntakeChartImage(state, width = width - 16.dp, height = height - 12.dp)
@@ -405,15 +426,15 @@ private fun ChartPanel(state: HydrationState, width: Dp, height: Dp) {
 @androidx.compose.runtime.Composable
 private fun Footer(state: HydrationState, plan: HydrationPlan) {
     val last = state.intakes.lastOrNull()
-    val lastText = last?.let { String.format("%02d:%02d · %d ml", it.hour, it.minute, it.ml) } ?: "brak wpisów"
+    val lastText = last?.let { String.format("%02d:%02d · %d ml", it.hour, it.minute, it.ml) } ?: str(R.string.w_no_entries)
     val planText = when (plan.status) {
-        PlanStatus.DONE -> "plan dnia wykonany"
-        PlanStatus.AFTER_HOURS -> "brakuje ${formatMl(plan.remainingMl)}"
-        else -> "jeszcze ${plan.sips.size} × ${plan.portionMl} ml do ${plan.windowEnd.hhmm()}"
+        PlanStatus.DONE -> str(R.string.w_plan_done)
+        PlanStatus.AFTER_HOURS -> str(R.string.w_missing, formatMl(plan.remainingMl))
+        else -> str(R.string.w_remaining_sips, plan.sips.size, plan.portionMl, plan.windowEnd.hhmm())
     }
     Row(modifier = GlanceModifier.fillMaxWidth().height(18.dp), verticalAlignment = Alignment.CenterVertically) {
         Text(
-            "🔥 ${state.streak} dni  ·  $lastText",
+            str(R.string.preview_dni, ctxDays(state.streak), lastText),
             style = TextStyle(color = Muted, fontSize = 9.sp),
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight(),
@@ -453,7 +474,7 @@ private fun IntakeChartImage(state: HydrationState, width: Dp, height: Dp) {
     }
     Image(
         provider = ImageProvider(bitmap),
-        contentDescription = "Wypita woda w czasie: ${state.total} ml z ${state.goal} ml",
+        contentDescription = str(R.string.w_chart_cd, state.total, state.goal),
         contentScale = ContentScale.Fit,
         modifier = GlanceModifier.fillMaxSize(),
     )
@@ -475,7 +496,7 @@ internal fun RingWithMascot(progress: Float, level: Level, ringSize: Dp, mascotS
         )
         Image(
             provider = ImageProvider(remember(mascotPx, level, pal.graphics) { WidgetGraphics.mascot(mascotPx, level, pal.graphics) }),
-            contentDescription = "Kropi",
+            contentDescription = str(R.string.w_mascot_cd),
             modifier = GlanceModifier.size(mascotSize).clickable(actionRunCallback<PokeMascotAction>()),
         )
     }
@@ -511,7 +532,7 @@ private fun MascotImage(level: Level, sizeDp: Dp) {
     val graphics = LocalPalette.current.graphics
     Image(
         provider = ImageProvider(remember(px, level, graphics) { WidgetGraphics.mascot(px, level, graphics) }),
-        contentDescription = "Kropi",
+        contentDescription = str(R.string.w_mascot_cd),
         modifier = GlanceModifier.size(sizeDp).clickable(actionRunCallback<PokeMascotAction>()),
     )
 }
@@ -529,6 +550,7 @@ private fun BottleRow(height: Dp, slots: List<ButtonSpec>, undo: com.kropi.hydra
 
 @androidx.compose.runtime.Composable
 private fun RowScope.BottleChip(spec: ButtonSpec, height: Dp) {
+    val specDescription = describeSpec(spec)
     val fill = (spec.ml / 750f).coerceIn(0.15f, 1f)
     Box(
         modifier = GlanceModifier
@@ -537,6 +559,7 @@ private fun RowScope.BottleChip(spec: ButtonSpec, height: Dp) {
             .background(if (spec.isPlain) Secondary else AquaSoft)
             .cornerRadius(14.dp)
             .clickable(actionRunCallback<AddWaterAction>(addParams(spec)))
+            .semantics { contentDescription = specDescription }
             .padding(vertical = 5.dp),
         contentAlignment = Alignment.Center,
     ) {
@@ -575,13 +598,15 @@ private fun BottleGlyph(fill: Float) {
 private fun UndoChip(height: Dp, undone: com.kropi.hydration.data.UndoInfo?) {
     // Zaraz po cofnięciu strzałka zmienia się w „przywróć" — pomyłkowe dotknięcie nic nie kosztuje.
     val restoring = undone != null
+    val undoDescription = str(if (restoring) R.string.a11y_restore else R.string.a11y_undo)
     Box(
         modifier = GlanceModifier
             .width(38.dp)
             .height(height)
             .background(if (restoring) AquaSoft else Secondary)
             .cornerRadius(14.dp)
-            .clickable(if (restoring) actionRunCallback<RestoreUndoAction>() else actionRunCallback<UndoWaterAction>()),
+            .clickable(if (restoring) actionRunCallback<RestoreUndoAction>() else actionRunCallback<UndoWaterAction>())
+            .semantics { contentDescription = undoDescription },
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -607,6 +632,9 @@ private fun quickEntryIntent(context: Context, day: Boolean): android.content.In
 private fun ToolRow(state: HydrationState, width: Dp) {
     val selected = state.widgetDrink
     val undone = state.undo?.takeIf { it.isFresh() }
+    val pickDescriptions = Drink.entries.associateWith { str(R.string.a11y_pick_drink, it.label) }
+    val cycleDescription = str(R.string.a11y_cycle_drink, selected.label)
+    val addEntryDescription = str(R.string.a11y_add_entry)
     if (undone != null) {
         UndoBanner(undone)
         return
@@ -627,7 +655,8 @@ private fun ToolRow(state: HydrationState, width: Dp) {
                             .fillMaxSize()
                             .background(if (drink == selected) AquaSoft else Secondary)
                             .cornerRadius(10.dp)
-                            .clickable(actionRunCallback<SetDrinkAction>(actionParametersOf(DrinkKey to drink.name))),
+                            .clickable(actionRunCallback<SetDrinkAction>(actionParametersOf(DrinkKey to drink.name)))
+                            .semantics { contentDescription = pickDescriptions.getValue(drink) },
                         contentAlignment = Alignment.Center,
                     ) {
                         Text(drink.emoji, style = TextStyle(fontSize = 13.sp))
@@ -641,7 +670,8 @@ private fun ToolRow(state: HydrationState, width: Dp) {
                         .fillMaxSize()
                         .background(if (selected == Drink.WATER) Secondary else AquaSoft)
                         .cornerRadius(10.dp)
-                        .clickable(actionRunCallback<CycleDrinkAction>()),
+                        .clickable(actionRunCallback<CycleDrinkAction>())
+                        .semantics { contentDescription = cycleDescription },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
@@ -655,13 +685,15 @@ private fun ToolRow(state: HydrationState, width: Dp) {
         if (selected != Drink.WATER) {
             // „Typowa porcja" wybranego napoju — jedno dotknięcie zapisuje ostatnio użytą ilość.
             val typical = state.typicalMl(selected)
+            val typicalDescription = str(R.string.a11y_add_drink_ml, selected.label, typical)
             Box(modifier = GlanceModifier.width(60.dp).fillMaxHeight().padding(end = 4.dp)) {
                 Box(
                     modifier = GlanceModifier
                         .fillMaxSize()
                         .background(AquaSoft)
                         .cornerRadius(10.dp)
-                        .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to typical))),
+                        .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to typical)))
+                        .semantics { contentDescription = typicalDescription },
                     contentAlignment = Alignment.Center,
                 ) {
                     Text("＋$typical", style = TextStyle(color = Foreground, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
@@ -674,7 +706,8 @@ private fun ToolRow(state: HydrationState, width: Dp) {
                 .fillMaxHeight()
                 .background(Secondary)
                 .cornerRadius(10.dp)
-                .clickable(actionStartActivity(quickEntryIntent(androidx.glance.LocalContext.current, day = false))),
+                .clickable(actionStartActivity(quickEntryIntent(androidx.glance.LocalContext.current, day = false)))
+                .semantics { contentDescription = addEntryDescription },
             contentAlignment = Alignment.Center,
         ) {
             Text("＋ wpis", style = TextStyle(color = Aqua, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
@@ -690,13 +723,13 @@ private fun UndoBanner(undone: com.kropi.hydration.data.UndoInfo) {
         modifier = GlanceModifier.fillMaxWidth().height(30.dp).background(AquaSoft).cornerRadius(10.dp).padding(horizontal = 10.dp),
     ) {
         Text(
-            "↺ Cofnięto ${undone.drink.emoji} ${undone.ml} ml",
+            str(R.string.w_undone, undone.drink.emoji, undone.ml),
             style = TextStyle(color = Foreground, fontSize = 11.sp, fontWeight = FontWeight.Medium),
             maxLines = 1,
             modifier = GlanceModifier.defaultWeight(),
         )
         Text(
-            "PRZYWRÓĆ",
+            str(R.string.w_restore_caps),
             style = TextStyle(color = Aqua, fontSize = 11.sp, fontWeight = FontWeight.Bold),
             maxLines = 1,
             modifier = GlanceModifier.clickable(actionRunCallback<RestoreUndoAction>()).padding(start = 8.dp),

@@ -96,6 +96,12 @@ In the evening, once your drinking window closes, a **daily wrap-up** arrives:
 the balance, how many sips, your streak, and a comment in whichever tone you
 picked.
 
+## ◉ Quiet when it should be
+
+A reminder won't interrupt a meeting: Kropi peeks at the calendar on your phone
+(locally only, with your permission) and waits until it ends. It does the same
+while "Do not disturb" is on. The reminder isn't lost — it speaks up afterwards.
+
 ## ◉ It learns your hours
 
 Kropi remembers when you **actually** drink and moves the portions there,
@@ -128,6 +134,10 @@ effort). Prefer your own number? Manual mode with a slider. On top of that,
 **active drinking hours**, say 8 am to 10 pm: reminders and pace only count
 inside that window, outside it Kropi leaves you alone.
 
+Want the goal to work itself out? Connect Kropi to **Health Connect**: your
+weight and the week's average steps set the goal, and what you drink goes back
+to Health Connect as hydration (alcohol is skipped).
+
 ## ◉ History that doesn't lie
 
 Every closed day goes into history: how much you drank, what the goal was,
@@ -135,8 +145,10 @@ whether you made it. The week, a **month calendar** (every day tinted by how
 close you got, arrows take you back through older months), the **last 30
 days**, your best day and your **streak** — all computed from real entries, not
 from sample data. Tap a day in the calendar to see its sips, fix them or **add
-a forgotten one**; the whole thing exports to **CSV** without any storage
-permissions.
+a forgotten one**; a **Trends** card compares this week with the last, shows when you usually
+have your first glass, which hours you drink the most in and which weekdays go
+best. Everything (days, or single entries with drink and note) exports to **CSV**
+without any storage permissions.
 
 ## ◉ Not just water
 
@@ -175,6 +187,13 @@ condition: both apps must be signed with the **same key** (see below).
 ---
 
 <br />
+
+## ◉ Polish and English
+
+The interface, notifications, widgets and the mascot's lines come in two languages.
+Pick one in Android's settings (**Apps → Kropi → Language**) or leave it to follow
+the phone. Screen readers are supported: buttons have TalkBack labels and touch
+targets are at least 48 dp.
 
 ## ▸ Install
 

@@ -1,5 +1,6 @@
 package com.kropi.hydration.backup
 
+import com.kropi.hydration.R
 import android.content.ContentUris
 import android.content.ContentValues
 import android.content.Context
@@ -67,7 +68,7 @@ object BackupStore {
 
     private fun write(c: Context, dir: Dir, name: String, text: String): String {
         val data = text.toByteArray(Charsets.UTF_8)
-        val shown = "Pobrane/${BackupRules.ROOT}/${dir.path}/$name"
+        val shown = "${c.getString(R.string.backup_downloads_folder)}/${BackupRules.ROOT}/${dir.path}/$name"
         if (Build.VERSION.SDK_INT >= 29) {
             val cr = c.contentResolver
             val collection = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL_PRIMARY)

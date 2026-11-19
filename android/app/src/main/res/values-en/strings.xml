@@ -1,0 +1,16 @@
+<resources>
+    <string name="app_name">Kropi — Hydration</string>
+    <string name="widget_label">Kropi — hydration widget</string>
+    <string name="widget_description">Scalable hydration widget: progress ring, tappable bottles and the Kropi mascot.</string>
+    <string name="widget_glass_label">Kropi — pour a glass</string>
+    <string name="widget_glass_description">One tap pours a glass of water; the ring shows the day\'s progress.</string>
+    <string name="widget_week_label">Kropi — week</string>
+    <string name="widget_week_description">The last seven days, your streak and average hydration; tapping opens History.</string>
+    <string name="tile_label">Kropi — pour water</string>
+    <string name="shortcut_glass_short">Glass</string>
+    <string name="shortcut_glass_long">Pour a glass of water</string>
+    <string name="shortcut_bottle_short">500 ml</string>
+    <string name="shortcut_bottle_long">Pour 500 ml of water</string>
+    <string name="permission_read_hydration_label">Read hydration from Kropi</string>
+    <string name="permission_read_hydration_desc">Lets an app read today\'s amount of water drunk and the goal from Kropi.</string>
+</resources>

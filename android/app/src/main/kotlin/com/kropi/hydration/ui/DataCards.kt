@@ -1,5 +1,9 @@
 package com.kropi.hydration.ui
 
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.activity.compose.rememberLauncherForActivityResult
 import com.kropi.hydration.widget.updateAllWidgets
 import androidx.activity.result.contract.ActivityResultContracts
@@ -74,7 +78,7 @@ fun DataBackupCard() {
         repo.restore(snapshot)
         updateAllWidgets(context)
         NotificationScheduler.schedule(context)
-        message = "Przywrócono kopię. Widget i przypomnienia już ją widzą."
+        message = context.getString(R.string.backup_restored)
     }
 
     val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
@@ -82,15 +86,15 @@ fun DataBackupCard() {
         scope.launch {
             val text = withContext(Dispatchers.IO) { runCatching { BackupStore.readUri(context, uri) }.getOrNull() }
             when {
-                text == null -> message = "Nie udało się odczytać pliku."
+                text == null -> message = context.getString(R.string.backup_read_failed)
                 CsvHistory.looksLikeCsv(text) -> {
                     val added = repo.importHistory(CsvHistory.parse(text))
-                    message = if (added > 0) "Dodano $added dni do historii z CSV." else "W historii jest już wszystko z tego CSV."
+                    message = if (added > 0) context.resources.getQuantityString(R.plurals.csv_days_added, added, added) else context.getString(R.string.csv_nothing_new)
                 }
                 else -> {
                     val snapshot = BackupFormat.decode(text)
-                    if (snapshot == null) message = "To nie jest kopia ani eksport Kropi."
-                    else pending = "z wybranego pliku" to snapshot
+                    if (snapshot == null) message = context.getString(R.string.backup_not_ours)
+                    else pending = context.getString(R.string.backup_from_file) to snapshot
                 }
             }
         }
@@ -101,23 +105,22 @@ fun DataBackupCard() {
     pending?.let { (label, snapshot) ->
         AlertDialog(
             onDismissRequest = { pending = null },
-            title = { Text("Przywrócić kopię?") },
-            text = { Text("Dane $label zastąpią to, co jest teraz w Kropi (łyki, historia, ustawienia).") },
+            title = { Text(stringResource(R.string.data_przywrocic_kopie)) },
+            text = { Text(stringResource(R.string.data_dane_zastapia_to_co_jest, label)) },
             confirmButton = {
                 TextButton(onClick = {
                     pending = null
                     scope.launch { applyRestore(snapshot) }
-                }) { Text("Przywróć") }
+                }) { Text(stringResource(R.string.data_przywroc)) }
             },
-            dismissButton = { TextButton(onClick = { pending = null }) { Text("Anuluj") } },
+            dismissButton = { TextButton(onClick = { pending = null }) { Text(stringResource(R.string.data_anuluj)) } },
         )
     }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Kopie zapasowe", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.data_kopie_zapasowe), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Pliki lądują w Pobrane/Kropi/Kopie. Przed odinstalowaniem aplikacji zrób kopię, " +
-                "a po instalacji wybierz ją przez „Przywróć z pliku…”.",
+            stringResource(R.string.data_pliki_laduja_w_pobrane_kropi),
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
             lineHeight = 17.sp,
@@ -128,26 +131,28 @@ fun DataBackupCard() {
                 onClick = {
                     scope.launch {
                         message = runCatching { withContext(Dispatchers.IO) { BackupStore.saveManual(context, repo) } }
-                            .fold({ "Zapisano: $it" }, { "Nie udało się zapisać kopii: ${it.message}" })
+                            .fold({ context.getString(R.string.backup_saved, it) }, { context.getString(R.string.backup_save_failed, it.message ?: "") })
                         refresh()
                     }
                 },
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                 modifier = Modifier.weight(1f),
-            ) { Text("Zapisz kopię", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.data_zapisz_kopie), fontWeight = FontWeight.Bold) }
             Button(
                 onClick = { picker.launch(arrayOf("application/json", "text/csv", "text/comma-separated-values", "text/plain", "*/*")) },
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                 modifier = Modifier.weight(1f),
-            ) { Text("Przywróć z pliku…") }
+            ) { Text(stringResource(R.string.data_przywroc_z_pliku)) }
         }
 
         Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
             Column(modifier = Modifier.weight(1f)) {
-                Text("Kopia codziennie", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
-                Text("Automatycznie, ostatnie 14 dni", color = KropiColors.mutedForeground, fontSize = 11.sp)
+                Text(stringResource(R.string.data_kopia_codziennie), color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                Text(stringResource(R.string.data_automatycznie_ostatnie_dni), color = KropiColors.mutedForeground, fontSize = 11.sp)
             }
+            val switchLabel1 = stringResource(R.string.data_automatycznie_ostatnie_dni)
             Switch(
+                modifier = Modifier.semantics { contentDescription = switchLabel1 },
                 checked = auto,
                 onCheckedChange = {
                     auto = it
@@ -160,7 +165,7 @@ fun DataBackupCard() {
         message?.let { Text(it, color = KropiColors.aqua, fontSize = 12.sp, lineHeight = 17.sp) }
 
         if (entries.isEmpty()) {
-            Text("Brak kopii w tej instalacji.", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            Text(stringResource(R.string.data_brak_kopii_w_tej_instalacji), color = KropiColors.mutedForeground, fontSize = 12.sp)
         }
         entries.take(6).forEach { entry ->
             Row(
@@ -173,8 +178,10 @@ fun DataBackupCard() {
             ) {
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
-                        (if (entry.auto) "Automatyczna · " else "Zapisana · ") +
+                        stringResource(
+                            if (entry.auto) R.string.backup_entry_auto else R.string.backup_entry_manual,
                             Instant.ofEpochMilli(entry.modifiedMs).atZone(ZoneId.systemDefault()).format(WHEN),
+                        ),
                         color = KropiColors.foreground,
                         fontSize = 12.sp,
                         fontWeight = FontWeight.Medium,
@@ -185,20 +192,20 @@ fun DataBackupCard() {
                     scope.launch {
                         val text = withContext(Dispatchers.IO) { runCatching { BackupStore.read(context, entry.id) }.getOrNull() }
                         val snapshot = text?.let { BackupFormat.decode(it) }
-                        if (snapshot == null) message = "Ta kopia jest uszkodzona."
-                        else pending = "z ${Instant.ofEpochMilli(entry.modifiedMs).atZone(ZoneId.systemDefault()).format(WHEN)}" to snapshot
+                        if (snapshot == null) message = context.getString(R.string.backup_corrupt)
+                        else pending = context.getString(R.string.backup_from_date, Instant.ofEpochMilli(entry.modifiedMs).atZone(ZoneId.systemDefault()).format(WHEN)) to snapshot
                     }
-                }) { Text("Przywróć", color = KropiColors.aqua, fontSize = 12.sp) }
+                }) { Text(stringResource(R.string.data_przywroc), color = KropiColors.aqua, fontSize = 12.sp) }
                 TextButton(onClick = {
                     scope.launch {
                         withContext(Dispatchers.IO) { BackupStore.delete(context, entry.id) }
                         refresh()
                     }
-                }) { Text("Usuń", color = KropiColors.mutedForeground, fontSize = 12.sp) }
+                }) { Text(stringResource(R.string.data_usun), color = KropiColors.mutedForeground, fontSize = 12.sp) }
             }
         }
         if (entries.size > 6) {
-            Text("…i ${entries.size - 6} starszych w Pobrane/Kropi/Kopie", color = KropiColors.mutedForeground, fontSize = 11.sp)
+            Text(stringResource(R.string.data_i_starszych_w_pobrane_kropi, entries.size - 6), color = KropiColors.mutedForeground, fontSize = 11.sp)
         }
     }
 }
@@ -222,31 +229,31 @@ fun UpdateCard() {
     fun check(silent: Boolean) {
         scope.launch {
             busy = true
-            if (!silent) status = "Sprawdzam GitHuba…"
+            if (!silent) status = context.getString(R.string.update_checking)
             runCatching { withContext(Dispatchers.IO) { UpdateManager.checkNow(context) } }
                 .onSuccess {
                     release = it
                     status = when {
-                        it != null -> "Jest nowsza wersja: ${it.version}."
+                        it != null -> context.getString(R.string.update_new, it.version)
                         silent -> null
-                        else -> "Masz najnowszą wersję."
+                        else -> context.getString(R.string.update_latest)
                     }
                 }
-                .onFailure { if (!silent) status = "Nie udało się sprawdzić (brak internetu?)." }
+                .onFailure { if (!silent) status = context.getString(R.string.update_check_failed) }
             busy = false
         }
     }
 
     fun install(r: UpdateLogic.Release) {
         if (!UpdateManager.canInstall(context)) {
-            status = "Zezwól Kropi na instalowanie aplikacji, a potem dotknij ponownie."
+            status = context.getString(R.string.update_allow_install)
             UpdateManager.openInstallPermission(context)
             return
         }
         scope.launch {
             busy = true
             progress = 0f
-            status = "Pobieram ${r.apkName}…"
+            status = context.getString(R.string.update_downloading, r.apkName)
             val outcome = runCatching {
                 withContext(Dispatchers.IO) {
                     val apk = UpdateManager.download(context, r) { received, total ->
@@ -257,12 +264,12 @@ fun UpdateCard() {
             }
             outcome.onSuccess { (problem, apk) ->
                 if (problem == null) {
-                    status = "Gotowe — potwierdź instalację w oknie systemu."
+                    status = context.getString(R.string.update_ready)
                     UpdateManager.install(context, apk)
                 } else {
                     status = problem
                 }
-            }.onFailure { status = "Pobieranie nie powiodło się: ${it.message}" }
+            }.onFailure { status = context.getString(R.string.update_download_failed, it.message ?: "") }
             progress = null
             busy = false
         }
@@ -273,10 +280,10 @@ fun UpdateCard() {
     }
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Aktualizacje", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.data_aktualizacje), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         Text(
-            "Zainstalowana wersja: ${UpdateManager.installedVersionName(context)}" +
-                if (hint.isNotEmpty() && release == null) " · czeka $hint" else "",
+            stringResource(R.string.data_zainstalowana_wersja, UpdateManager.installedVersionName(context)) +
+                if (hint.isNotEmpty() && release == null) stringResource(R.string.update_waiting_suffix, hint) else "",
             color = KropiColors.mutedForeground,
             fontSize = 12.sp,
         )
@@ -303,14 +310,14 @@ fun UpdateCard() {
                     enabled = !busy,
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                     modifier = Modifier.weight(1f),
-                ) { Text("Pobierz i zainstaluj", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.data_pobierz_i_zainstaluj), fontWeight = FontWeight.Bold) }
             }
             Button(
                 onClick = { check(silent = false) },
                 enabled = !busy,
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                 modifier = Modifier.weight(1f),
-            ) { Text("Sprawdź aktualizacje") }
+            ) { Text(stringResource(R.string.data_sprawdz_aktualizacje)) }
         }
     }
 }
@@ -346,16 +353,16 @@ fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
     val allGranted = granted.containsAll(com.kropi.hydration.health.HealthConnect.PERMISSIONS)
 
     GlassCard(modifier = Modifier.fillMaxWidth()) {
-        Text("Health Connect", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        Text(stringResource(R.string.data_health_connect), color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
         when (availability) {
             com.kropi.hydration.health.HealthConnect.Availability.UNSUPPORTED -> Text(
-                "Ten telefon nie obsługuje Health Connect.",
+                stringResource(R.string.data_ten_telefon_nie_obsluguje_health),
                 color = KropiColors.mutedForeground,
                 fontSize = 12.sp,
             )
             com.kropi.hydration.health.HealthConnect.Availability.NEEDS_INSTALL_OR_UPDATE -> {
                 Text(
-                    "Zainstaluj lub zaktualizuj aplikację Health Connect, żeby połączyć Kropi.",
+                    stringResource(R.string.data_zainstaluj_lub_zaktualizuj_aplikacje_health),
                     color = KropiColors.mutedForeground,
                     fontSize = 12.sp,
                 )
@@ -372,12 +379,11 @@ fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
                     },
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                     modifier = Modifier.fillMaxWidth(),
-                ) { Text("Otwórz w sklepie") }
+                ) { Text(stringResource(R.string.data_otworz_w_sklepie)) }
             }
             com.kropi.hydration.health.HealthConnect.Availability.AVAILABLE -> {
                 Text(
-                    "Kropi może zapisywać to, co pijesz, do Health Connect (widzą to inne aplikacje zdrowotne) " +
-                        "oraz czytać stamtąd wagę i kroki, żeby dopasować cel.",
+                    stringResource(R.string.data_kropi_moze_zapisywac_to_co),
                     color = KropiColors.mutedForeground,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
@@ -387,14 +393,14 @@ fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
                         onClick = { permissionLauncher.launch(com.kropi.hydration.health.HealthConnect.PERMISSIONS) },
                         colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Połącz z Health Connect", fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.data_polacz_z_health_connect), fontWeight = FontWeight.Bold) }
                 }
 
                 HealthToggle(
-                    title = "Zapisuj nawodnienie",
+                    title = stringResource(R.string.data_zapisuj_nawodnienie),
                     detail = lastSync?.let { (at, count) ->
-                        "Ostatnio ${WHEN.format(Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault()))}, $count wpisów z 3 dni"
-                    } ?: "Napoje trafią do Health Connect jako nawodnienie (alkohol pomijamy).",
+                        stringResource(R.string.data_ostatnio_wpisow_z_dni, WHEN.format(Instant.ofEpochMilli(at).atZone(ZoneId.systemDefault())), context.entriesText(count))
+                    } ?: stringResource(R.string.data_napoje_trafia_do_health_connect),
                     checked = settings.healthWriteHydration,
                     enabled = allGranted,
                 ) { on ->
@@ -405,34 +411,36 @@ fun HealthConnectCard(settings: com.kropi.hydration.data.HydrationSettings) {
                     }
                 }
                 HealthToggle(
-                    title = "Waga i aktywność z Health Connect",
-                    detail = profileNote ?: "Ostatnia waga i średnia kroków z tygodnia ustawiają cel zamiast ręcznych wartości.",
+                    title = stringResource(R.string.data_waga_i_aktywnosc_z_health),
+                    detail = profileNote ?: stringResource(R.string.data_ostatnia_waga_i_srednia_krokow),
                     checked = settings.healthSyncProfile,
                     enabled = allGranted,
                 ) { on ->
                     scope.launch {
                         repository.saveSettings(settings.copy(healthSyncProfile = on))
-                        if (on) profileNote = describeProfile(repository.refreshProfileFromHealth(force = true))
+                        if (on) profileNote = describeProfile(context, repository.refreshProfileFromHealth(force = true))
                     }
                 }
                 if (allGranted && settings.healthSyncProfile) {
                     Button(
-                        onClick = { scope.launch { profileNote = describeProfile(repository.refreshProfileFromHealth(force = true)) } },
+                        onClick = { scope.launch { profileNote = describeProfile(context, repository.refreshProfileFromHealth(force = true)) } },
                         colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                         modifier = Modifier.fillMaxWidth(),
-                    ) { Text("Pobierz teraz") }
+                    ) { Text(stringResource(R.string.data_pobierz_teraz)) }
                 }
             }
         }
     }
 }
 
-private fun describeProfile(result: com.kropi.hydration.data.HealthProfileResult?): String = when {
-    result == null -> "Brak uprawnień do odczytu wagi i kroków."
-    result.weightKg == null && result.averageSteps == null -> "W Health Connect nie ma jeszcze wagi ani kroków."
+private fun describeProfile(context: android.content.Context, result: com.kropi.hydration.data.HealthProfileResult?): String = when {
+    result == null -> context.getString(R.string.health_no_permission)
+    result.weightKg == null && result.averageSteps == null -> context.getString(R.string.health_nothing_yet)
     else -> listOfNotNull(
-        result.weightKg?.let { "waga ${it.toInt()} kg" },
-        result.averageSteps?.let { "~$it kroków dziennie → aktywność ${result.activity?.label?.lowercase()}" },
+        result.weightKg?.let { context.getString(R.string.health_weight, it.toInt().toString()) },
+        result.averageSteps?.let {
+            context.getString(R.string.health_steps, it.toString(), result.activity?.label?.lowercase() ?: "")
+        },
     ).joinToString(", ").replaceFirstChar { it.uppercase() }
 }
 
@@ -443,7 +451,9 @@ private fun HealthToggle(title: String, detail: String, checked: Boolean, enable
             Text(title, color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             Text(detail, color = KropiColors.mutedForeground, fontSize = 11.sp, lineHeight = 15.sp)
         }
+        val switchLabel2 = stringResource(R.string.data_pobierz_teraz)
         Switch(
+            modifier = Modifier.semantics { contentDescription = switchLabel2 },
             checked = checked && enabled,
             onCheckedChange = onChange,
             enabled = enabled,

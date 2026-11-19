@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -101,16 +103,16 @@ fun IntakeEditorSheet(
                 .imePadding(),
         ) {
             Text(
-                if (initial == null) "Dodaj wpis" else "Edytuj wpis",
+                if (initial == null) stringResource(R.string.editor_dodaj_wpis) else stringResource(R.string.editor_edytuj_wpis),
                 color = KropiColors.foreground,
                 fontSize = 20.sp,
                 fontWeight = FontWeight.Bold,
             )
 
             // --- ilość ---
-            Label("Ilość")
+            Label(stringResource(R.string.editor_ilosc))
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StepperButton("−") { amountTouched = true; ml = (ml - 10).coerceAtLeast(10) }
+                StepperButton("−", stringResource(R.string.editor_ilosc)) { amountTouched = true; ml = (ml - 10).coerceAtLeast(10) }
                 Text(
                     "$ml ml",
                     color = KropiColors.foreground,
@@ -118,14 +120,14 @@ fun IntakeEditorSheet(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(110.dp),
                 )
-                StepperButton("+") { amountTouched = true; ml = (ml + 10).coerceAtMost(MAX_ML) }
+                StepperButton("+", stringResource(R.string.editor_ilosc)) { amountTouched = true; ml = (ml + 10).coerceAtMost(MAX_ML) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 QUICK_AMOUNTS.forEach { amount -> ChipButton("$amount", ml == amount) { amountTouched = true; ml = amount } }
             }
 
             // --- napój ---
-            Label("Napój")
+            Label(stringResource(R.string.editor_napoj))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
                 Drink.entries.forEach { d -> ChipButton("${d.emoji} ${d.label}", drink == d) {
                     drink = d
@@ -134,54 +136,54 @@ fun IntakeEditorSheet(
             }
             val counted = drink.counted(ml, netHydration)
             Text(
-                if (!netHydration || drink.factor >= 1f) "Liczy się: $ml ml"
-                else "Liczy się: $counted ml (${drink.percent}% z $ml ml)",
+                if (!netHydration || drink.factor >= 1f) stringResource(R.string.editor_liczy_sie_ml, ml)
+                else stringResource(R.string.editor_liczy_sie_ml_z_ml, counted, drink.percent, ml),
                 color = KropiColors.aqua,
                 fontSize = 12.sp,
             )
 
             // --- kiedy ---
-            Label("Kiedy")
+            Label(stringResource(R.string.editor_kiedy))
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                ChipButton("Dziś", epochDay == today) {
+                ChipButton(stringResource(R.string.editor_dzis), epochDay == today) {
                     epochDay = today
                     minuteOfDay = clampTime(minuteOfDay)
                 }
-                ChipButton("Wczoraj", epochDay == today - 1) { epochDay = today - 1 }
+                ChipButton(stringResource(R.string.editor_wczoraj), epochDay == today - 1) { epochDay = today - 1 }
                 if (epochDay < today - 1) {
                     ChipButton(LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofPattern("dd.MM")), true) {}
                 }
             }
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                StepperButton("−") { minuteOfDay = clampTime(minuteOfDay - 60) }
+                StepperButton("−", stringResource(R.string.editor_hour)) { minuteOfDay = clampTime(minuteOfDay - 60) }
                 Text(
                     String.format("%02d", minuteOfDay / 60),
                     color = KropiColors.foreground,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                StepperButton("+") { minuteOfDay = clampTime(minuteOfDay + 60) }
+                StepperButton("+", stringResource(R.string.editor_hour)) { minuteOfDay = clampTime(minuteOfDay + 60) }
                 Text(":", color = KropiColors.mutedForeground, fontSize = 22.sp)
-                StepperButton("−") { minuteOfDay = clampTime(minuteOfDay - 5) }
+                StepperButton("−", stringResource(R.string.editor_minutes)) { minuteOfDay = clampTime(minuteOfDay - 5) }
                 Text(
                     String.format("%02d", minuteOfDay % 60),
                     color = KropiColors.foreground,
                     fontSize = 22.sp,
                     fontWeight = FontWeight.Bold,
                 )
-                StepperButton("+") { minuteOfDay = clampTime(minuteOfDay + 5) }
+                StepperButton("+", stringResource(R.string.editor_minutes)) { minuteOfDay = clampTime(minuteOfDay + 5) }
                 if (epochDay == today && initial == null) {
-                    ChipButton("Teraz", minuteOfDay == nowMinute) { minuteOfDay = nowMinute }
+                    ChipButton(stringResource(R.string.editor_teraz), minuteOfDay == nowMinute) { minuteOfDay = nowMinute }
                 }
             }
 
             // --- notatka ---
-            Label("Notatka (opcjonalnie)")
+            Label(stringResource(R.string.editor_notatka_opcjonalnie))
             OutlinedTextField(
                 value = note,
                 onValueChange = { note = it.take(60) },
                 singleLine = true,
-                placeholder = { Text("np. po bieganiu", color = KropiColors.mutedForeground) },
+                placeholder = { Text(stringResource(R.string.editor_np_po_bieganiu), color = KropiColors.mutedForeground) },
                 keyboardOptions = KeyboardOptions.Default,
                 colors = OutlinedTextFieldDefaults.colors(
                     focusedTextColor = KropiColors.foreground,
@@ -198,16 +200,16 @@ fun IntakeEditorSheet(
                     onClick = { onSave(ml, drink, note.trim().ifEmpty { null }, epochDay, clampTime(minuteOfDay)) },
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                     modifier = Modifier.weight(1f),
-                ) { Text("Zapisz", fontWeight = FontWeight.Bold) }
+                ) { Text(stringResource(R.string.settings_zapisz), fontWeight = FontWeight.Bold) }
                 Button(
                     onClick = onDismiss,
                     colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
                     modifier = Modifier.weight(1f),
-                ) { Text("Anuluj") }
+                ) { Text(stringResource(R.string.data_anuluj)) }
             }
             if (onDelete != null) {
                 TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
-                    Text("Usuń wpis", color = Color(0xFFFF8A65))
+                    Text(stringResource(R.string.editor_usun_wpis), color = Color(0xFFFF8A65))
                 }
             }
         }

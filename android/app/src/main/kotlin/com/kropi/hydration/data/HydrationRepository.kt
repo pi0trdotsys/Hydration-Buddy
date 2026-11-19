@@ -218,12 +218,10 @@ data class HydrationState(
         }
 }
 
-private val POLISH = java.util.Locale.forLanguageTag("pl-PL")
-
 /** „Pn", „Wt", … — dwuliterowy skrót dnia, jak w makiecie. */
 private fun dayInitials(date: LocalDate): String =
-    date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, POLISH)
-        .replaceFirstChar { it.uppercase(POLISH) }
+    date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Lang.locale)
+        .replaceFirstChar { it.uppercase(Lang.locale) }
         .take(2)
 
 private object Keys {

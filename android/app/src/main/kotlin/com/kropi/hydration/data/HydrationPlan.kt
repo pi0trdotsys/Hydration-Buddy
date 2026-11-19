@@ -136,7 +136,7 @@ fun HydrationPlan.timesText(limit: Int = 5): String {
     return when {
         truncated -> shown.joinToString(", ") + " … " + sips.last().time.hhmm()
         shown.size == 1 -> shown.first()
-        else -> shown.dropLast(1).joinToString(", ") + " i " + shown.last()
+        else -> shown.dropLast(1).joinToString(", ") + tr(" i ", " and ") + shown.last()
     }
 }
 
@@ -146,34 +146,54 @@ fun HydrationPlan.timesText(limit: Int = 5): String {
  * najbliższa porcja. Współdzielona przez widget Glance i jego podgląd w aplikacji.
  */
 fun HydrationState.paceLine(plan: HydrationPlan): String = when (plan.status) {
-    PlanStatus.DONE -> "Plan dnia wykonany"
-    PlanStatus.AFTER_HOURS -> "Po godzinach • brakuje ${formatMl(remaining)}"
-    else -> "Do teraz: ${formatMl(targetSoFar)} • nast. ${plan.next?.time?.hhmm()}"
+    PlanStatus.DONE -> tr("Plan dnia wykonany", "Day's plan done")
+    PlanStatus.AFTER_HOURS -> tr("Po godzinach • brakuje ${formatMl(remaining)}", "After hours • ${formatMl(remaining)} short")
+    else -> tr("Do teraz: ${formatMl(targetSoFar)} • nast. ${plan.next?.time?.hhmm()}", "So far: ${formatMl(targetSoFar)} • next ${plan.next?.time?.hhmm()}")
 }
 
 /** Podpis pod wykresem: ile porcji, po ile i o której domykają cel. */
 fun HydrationPlan.summaryLine(): String = when (status) {
-    PlanStatus.DONE -> "Cel osiągnięty — dalej pij, ile masz ochotę 🎉"
-    PlanStatus.AFTER_HOURS -> "Okno picia zamknięte. Brakuje ${formatMl(remainingMl)} — dopij, ile dasz radę."
-    else -> "${sips.size} × ${formatMl(portionMl)} o ${timesText(limit = 2)} → cel ${formatMl(goalMl)}"
+    PlanStatus.DONE -> tr("Cel osiągnięty — dalej pij, ile masz ochotę 🎉", "Goal reached — drink as much as you like from here 🎉")
+    PlanStatus.AFTER_HOURS -> tr(
+        "Okno picia zamknięte. Brakuje ${formatMl(remainingMl)} — dopij, ile dasz radę.",
+        "The drinking window is closed. ${formatMl(remainingMl)} short — drink what you can.",
+    )
+    else -> tr(
+        "${sips.size} × ${formatMl(portionMl)} o ${timesText(limit = 2)} → cel ${formatMl(goalMl)}",
+        "${sips.size} × ${formatMl(portionMl)} at ${timesText(limit = 2)} → goal ${formatMl(goalMl)}",
+    )
 }
 
 /** Pełny opis planu na kartę w aplikacji: ile porcji, o której i co to daje. */
 fun HydrationPlan.detailText(): String = when (status) {
-    PlanStatus.DONE ->
+    PlanStatus.DONE -> tr(
         "Cel ${formatMl(goalMl)} masz z głowy — wypite ${formatMl(totalMl)}. " +
-            "Kolejne łyki liczą się już tylko na plus."
-    PlanStatus.AFTER_HOURS ->
+            "Kolejne łyki liczą się już tylko na plus.",
+        "You've got the ${formatMl(goalMl)} goal in the bag — ${formatMl(totalMl)} drunk. " +
+            "Any further sips only count as a bonus.",
+    )
+    PlanStatus.AFTER_HOURS -> tr(
         "Okno picia zamknięte o ${windowEnd.hhmm()}, a do celu brakuje ${formatMl(remainingMl)}. " +
-            "Dopij tyle, ile Ci pasuje — picie litra tuż przed snem i tak skończy się nocną pobudką."
-    PlanStatus.TIGHT ->
+            "Dopij tyle, ile Ci pasuje — picie litra tuż przed snem i tak skończy się nocną pobudką.",
+        "The drinking window closed at ${windowEnd.hhmm()} and you're ${formatMl(remainingMl)} short. " +
+            "Drink what suits you — a litre right before bed will only end in a night-time wake-up.",
+    )
+    PlanStatus.TIGHT -> tr(
         "Do ${windowEnd.hhmm()} zostało mało czasu, więc porcje są większe niż Twoja szklanka: " +
             "${sips.size} × ${formatMl(portionMl)} o ${timesText()}. " +
-            "Pij spokojnie — to dalej domyka cel ${formatMl(goalMl)}."
-    PlanStatus.ON_TRACK ->
+            "Pij spokojnie — to dalej domyka cel ${formatMl(goalMl)}.",
+        "There's little time left before ${windowEnd.hhmm()}, so portions are bigger than your glass: " +
+            "${sips.size} × ${formatMl(portionMl)} at ${timesText()}. " +
+            "Take it easy — it still closes the ${formatMl(goalMl)} goal.",
+    )
+    PlanStatus.ON_TRACK -> tr(
         "Brakuje ${formatMl(remainingMl)}. Wypij ${sips.size} × ${formatMl(portionMl)} " +
             "o ${timesText()} — ostatnia porcja o ${finishAt?.hhmm()} domyka cel ${formatMl(goalMl)} " +
-            "przed ${windowEnd.hhmm()}."
+            "przed ${windowEnd.hhmm()}.",
+        "${formatMl(remainingMl)} to go. Drink ${sips.size} × ${formatMl(portionMl)} " +
+            "at ${timesText()} — the last portion at ${finishAt?.hhmm()} closes the ${formatMl(goalMl)} goal " +
+            "before ${windowEnd.hhmm()}.",
+    )
 }
 
 /**

@@ -1,5 +1,6 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
 import android.os.Bundle
 import com.kropi.hydration.widget.updateAllWidgets
 import android.widget.Toast
@@ -34,7 +35,7 @@ class QuickAddActivity : ComponentActivity() {
             val total = state.total + ml
             Toast.makeText(
                 this@QuickAddActivity,
-                "Dolane ${formatMl(ml)} — razem ${formatMl(total)} z ${formatMl(state.goal)}",
+                getString(R.string.quickadd_toast, formatMl(ml), formatMl(total), formatMl(state.goal)),
                 Toast.LENGTH_SHORT,
             ).show()
             finish()

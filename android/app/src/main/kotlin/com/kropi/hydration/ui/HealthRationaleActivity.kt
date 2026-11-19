@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -27,11 +29,9 @@ class HealthRationaleActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.spacedBy(14.dp),
                     modifier = Modifier.fillMaxSize().background(KropiColors.background).padding(24.dp),
                 ) {
-                    Text("Dlaczego Health Connect?", color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
+                    Text(stringResource(R.string.hcr_dlaczego_health_connect), color = KropiColors.foreground, fontSize = 24.sp, fontWeight = FontWeight.Bold)
                     Text(
-                        "• Zapis nawodnienia: Kropi zapisuje wypite napoje, żeby inne aplikacje zdrowotne widziały to, co pijesz.\n" +
-                            "• Odczyt wagi i kroków: z nich Kropi liczy dzienny cel nawodnienia (waga i poziom aktywności).\n\n" +
-                            "Dane zostają na telefonie. Kropi nigdzie ich nie wysyła, a zgodę możesz w każdej chwili cofnąć w ustawieniach Health Connect.",
+                        stringResource(R.string.hcr_zapis_nawodnienia_kropi_zapisuje_wypite),
                         color = KropiColors.mutedForeground,
                         fontSize = 14.sp,
                         lineHeight = 21.sp,
@@ -39,7 +39,7 @@ class HealthRationaleActivity : ComponentActivity() {
                     Button(
                         onClick = { finish() },
                         colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
-                    ) { Text("Rozumiem", fontWeight = FontWeight.Bold) }
+                    ) { Text(stringResource(R.string.hcr_rozumiem), fontWeight = FontWeight.Bold) }
                 }
             }
         }

@@ -1,5 +1,7 @@
 package com.kropi.hydration.ui
 
+import com.kropi.hydration.R
+import androidx.compose.ui.res.stringResource
 import android.os.Bundle
 import com.kropi.hydration.widget.updateAllWidgets
 import androidx.activity.ComponentActivity
@@ -133,14 +135,14 @@ private fun DayEntriesSheet(state: HydrationState, onEdit: (Intake) -> Unit, onA
                 .padding(bottom = 16.dp)
                 .navigationBarsPadding(),
         ) {
-            Text("Dzisiejsze wpisy", color = KropiColors.foreground, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+            Text(stringResource(R.string.quick_dzisiejsze_wpisy), color = KropiColors.foreground, fontSize = 20.sp, fontWeight = FontWeight.Bold)
             Text(
-                "${state.total} / ${state.goal} ml · dotknij wpis, żeby go poprawić albo usunąć",
+                stringResource(R.string.quick_ml_dotknij_wpis_zeby_go, state.total, state.goal),
                 color = KropiColors.mutedForeground,
                 fontSize = 12.sp,
             )
             if (state.intakes.isEmpty()) {
-                Text("Brak wpisów.", color = KropiColors.mutedForeground, fontSize = 13.sp)
+                Text(stringResource(R.string.history_brak_wpisow), color = KropiColors.mutedForeground, fontSize = 13.sp)
             }
             state.intakes.sortedWith(compareByDescending<Intake> { it.minuteOfDay }.thenByDescending { it.id }).forEach { intake ->
                 Row(
@@ -161,7 +163,7 @@ private fun DayEntriesSheet(state: HydrationState, onEdit: (Intake) -> Unit, onA
                     )
                     Text(
                         listOfNotNull(
-                            if (intake.counted != intake.ml) "liczy się ${intake.counted}" else null,
+                            if (intake.counted != intake.ml) stringResource(R.string.history_liczy_sie, intake.counted) else null,
                             intake.note,
                         ).joinToString(" · "),
                         color = KropiColors.mutedForeground,
@@ -176,7 +178,7 @@ private fun DayEntriesSheet(state: HydrationState, onEdit: (Intake) -> Unit, onA
                 onClick = onAdd,
                 colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
                 modifier = Modifier.fillMaxWidth(),
-            ) { Text("＋ Dodaj wpis", fontWeight = FontWeight.Bold) }
+            ) { Text(stringResource(R.string.home_dodaj_wpis), fontWeight = FontWeight.Bold) }
         }
     }
 }

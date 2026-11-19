@@ -32,8 +32,8 @@ object NotificationHelper {
         val manager = context.getSystemService(NotificationManager::class.java)
         if (manager.getNotificationChannel(UPDATE_CHANNEL_ID) != null) return
         manager.createNotificationChannel(
-            NotificationChannel(UPDATE_CHANNEL_ID, "Aktualizacje Kropi", NotificationManager.IMPORTANCE_DEFAULT).apply {
-                description = "Informuje, że w GitHubie czeka nowa wersja Kropi"
+            NotificationChannel(UPDATE_CHANNEL_ID, context.getString(R.string.notif_update_channel_name), NotificationManager.IMPORTANCE_DEFAULT).apply {
+                description = context.getString(R.string.notif_update_channel_desc)
             },
         )
     }
@@ -47,8 +47,8 @@ object NotificationHelper {
         return NotificationCompat.Builder(context, UPDATE_CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
             .setColor(0xFF00DFE8.toInt())
-            .setContentTitle("Kropi $version jest gotowe")
-            .setContentText("Otwórz Ustawienia → Aktualizacje, żeby pobrać i zainstalować.")
+            .setContentTitle(context.getString(R.string.notif_update_title, version))
+            .setContentText(context.getString(R.string.notif_update_text))
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .setCategory(NotificationCompat.CATEGORY_RECOMMENDATION)
             .setAutoCancel(true)
@@ -69,10 +69,10 @@ object NotificationHelper {
 
         val channel = NotificationChannel(
             CHANNEL_ID,
-            "Przypomnienia o nawodnieniu",
+            context.getString(R.string.notif_reminder_channel_name),
             NotificationManager.IMPORTANCE_HIGH,
         ).apply {
-            description = "Kropi przypomina o piciu wody w ciągu dnia"
+            description = context.getString(R.string.notif_reminder_channel_desc)
             enableLights(true)
             lightColor = 0xFF00DFE8.toInt()
             enableVibration(true)
@@ -152,7 +152,7 @@ object NotificationHelper {
             .setColor(0xFF00DFE8.toInt())
             .setContentTitle(title)
             .setContentText(shortText)
-            .setSubText("$pct% • cel ${formatMl(state.goal)}")
+            .setSubText(context.getString(R.string.notif_subtext, pct.toString(), formatMl(state.goal)))
             .setStyle(
                 NotificationCompat.BigTextStyle()
                     .setBigContentTitle(title)
@@ -163,8 +163,8 @@ object NotificationHelper {
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
             .setAutoCancel(true)
             .setContentIntent(openAppIntent)
-            .addAction(0, "💧 Wypiłem/-am ${formatMl(portionMl)}", drinkPendingIntent)
-            .addAction(0, "Za 20 min", snoozePendingIntent)
+            .addAction(0, context.getString(R.string.notif_action_drank, formatMl(portionMl)), drinkPendingIntent)
+            .addAction(0, context.getString(R.string.notif_action_snooze), snoozePendingIntent)
             .build()
     }
 }

@@ -24,7 +24,7 @@ import java.time.LocalDate
 
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
-@Config(sdk = [34], qualifiers = "w411dp-h2400dp-xhdpi")
+@Config(sdk = [34], qualifiers = "pl-w411dp-h2400dp-xhdpi")
 class HistoryCalendarTest {
     @get:Rule val rule = createComposeRule()
 

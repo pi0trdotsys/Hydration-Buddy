@@ -1,5 +1,8 @@
 package com.kropi.hydration.widget
 
+import com.kropi.hydration.R
+import androidx.glance.semantics.semantics
+import androidx.glance.semantics.contentDescription
 import android.content.Context
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
@@ -75,6 +78,7 @@ private fun GlassContent(state: HydrationState) {
     val size = LocalSize.current
     val glass = state.settings.reminderGlassMl
     val behind = state.isBehindSchedule && state.remaining > 0
+    val rootDescription = str(R.string.a11y_glass_widget, glass, (state.progress * 100).toInt())
     // Pierścień dostaje całe miejsce poza paddingiem i linijką „+250 ml" pod spodem.
     val ringSize = (minOf(size.width, size.height) - 20.dp - 16.dp).coerceAtLeast(36.dp)
 
@@ -85,7 +89,8 @@ private fun GlassContent(state: HydrationState) {
             .cornerRadius(24.dp)
             .padding(10.dp)
             // Cały kafelek to jeden przycisk: szklanka wody, bez względu na napój wybrany w głównym widgecie.
-            .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to glass, DrinkKey to Drink.WATER.name))),
+            .clickable(actionRunCallback<AddWaterAction>(actionParametersOf(MlKey to glass, DrinkKey to Drink.WATER.name)))
+            .semantics { contentDescription = rootDescription },
         contentAlignment = Alignment.Center,
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
