@@ -193,6 +193,7 @@ private fun SettingsSection(
     var bottles by remember { mutableStateOf(initial.bottlesMl) }
     var intensity by remember { mutableStateOf(initial.snarkIntensity) }
     var adaptivePlan by remember { mutableStateOf(initial.adaptivePlan) }
+    var netHydration by remember { mutableStateOf(initial.netHydration) }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -263,6 +264,25 @@ private fun SettingsSection(
             Switch(
                 checked = adaptivePlan,
                 onCheckedChange = { adaptivePlan = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+            )
+        }
+
+        // --- napoje wg współczynnika nawodnienia ---
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Nawodnienie netto", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Kawa, sok czy napój gazowany liczą się do celu częściowo (np. kawa 80%), a alkohol wcale. " +
+                        "Wyłączone — każdy napój liczy się 1:1.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Switch(
+                checked = netHydration,
+                onCheckedChange = { netHydration = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
             )
         }
@@ -382,6 +402,7 @@ private fun SettingsSection(
                             bottlesMl = bottles,
                             snarkIntensity = intensity,
                             adaptivePlan = adaptivePlan,
+                            netHydration = netHydration,
                         ),
                     )
                 },

@@ -134,6 +134,15 @@ whether you made it. The week, the **last 30 days**, your best day and your
 one tap away from being deleted on the day's timeline, and the whole thing
 exports to **CSV** without any storage permissions.
 
+## ◉ Not just water
+
+Tap an entry on the timeline or **"＋ Dodaj wpis"** to log a sip after the
+fact (today or yesterday, any time), change the amount or add a note. Every
+entry has a **drink type**: tea, coffee, juice and milk count toward the goal
+partially (coffee 80%, say), soda 70%, alcohol not at all. Prefer 1:1 for
+everything? Turn off "Net hydration" in Settings. History shows **what you
+drink** over the last 30 days.
+
 ## ◉ Backups and updates
 
 Same as Szpila: a **daily copy** (last 14) and on-demand copies go to

@@ -125,6 +125,15 @@ prawdziwych zapisów, nie z przykładowych danych. Pomyłkę kasujesz krzyżykie
 na osi czasu dnia, a całość wyeksportujesz do **CSV** jednym dotknięciem, bez
 żadnych uprawnień do pamięci.
 
+## ◉ Nie tylko woda
+
+Dotknij wpisu na osi czasu albo **„＋ Dodaj wpis"**, żeby dopisać łyk wstecz
+(dziś lub wczoraj, o dowolnej godzinie), zmienić ilość albo dodać notatkę.
+Każdy wpis ma **rodzaj napoju**: herbata, kawa, sok czy mleko liczą się do celu
+częściowo (kawa np. 80%), napój gazowany 70%, alkohol wcale. Wolisz liczyć
+wszystko 1:1? Wyłącz „Nawodnienie netto" w Ustawieniach. Historia pokazuje,
+**co pijesz** w ostatnich 30 dniach.
+
 ## ◉ Kopie zapasowe i aktualizacje
 
 Jak w Szpili: **kopia codziennie** (ostatnie 14) i kopia na żądanie ląduje w

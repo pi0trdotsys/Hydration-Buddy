@@ -26,6 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.kropi.hydration.data.HydrationState
+import com.kropi.hydration.data.Intake
 import com.kropi.hydration.data.detailText
 import com.kropi.hydration.data.plan
 import com.kropi.hydration.data.WeekDay
@@ -43,7 +44,9 @@ fun HomeScreen(
     onUndo: () -> Unit,
     onPoke: () -> Unit,
     onSetGoal: (Int) -> Unit,
-    onDeleteIntake: (Int) -> Unit,
+    onAddEntry: () -> Unit,
+    onEditIntake: (Intake) -> Unit,
+    onDeleteIntake: (Long) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -70,13 +73,17 @@ fun HomeScreen(
         item { InsightCard(eyebrow = "Ciekawostka", body = state.fact) }
         item {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Text(
-                    "💧 Dzisiejsze łyki",
-                    color = KropiColors.foreground,
-                    fontSize = 17.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                IntakeTimeline(state, onDeleteIntake)
+                Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                    Text(
+                        "💧 Dzisiejsze łyki",
+                        color = KropiColors.foreground,
+                        fontSize = 17.sp,
+                        fontWeight = FontWeight.Bold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    ChipButton("＋ Dodaj wpis", selected = true, onClick = onAddEntry)
+                }
+                IntakeTimeline(state, onEditIntake, onDeleteIntake)
             }
         }
         item {
@@ -138,7 +145,7 @@ private fun HomeHeader(goal: Int, onSetGoal: (Int) -> Unit) {
 }
 
 @Composable
-private fun IntakeTimeline(state: HydrationState, onDelete: (Int) -> Unit) {
+private fun IntakeTimeline(state: HydrationState, onEdit: (Intake) -> Unit, onDelete: (Long) -> Unit) {
     if (state.intakes.isEmpty()) {
         GlassCard(modifier = Modifier.fillMaxWidth()) {
             Text(
@@ -150,15 +157,17 @@ private fun IntakeTimeline(state: HydrationState, onDelete: (Int) -> Unit) {
         return
     }
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        state.intakes.withIndex().reversed().forEach { (index, intake) ->
+        state.intakes.reversed().forEach { intake ->
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(KropiColors.card)
+                    .clickable { onEdit(intake) }
                     .padding(horizontal = 16.dp, vertical = 10.dp),
             ) {
+                Text(intake.drink.emoji, fontSize = 16.sp, modifier = Modifier.padding(end = 8.dp))
                 Text(
                     String.format("%02d:%02d", intake.hour, intake.minute),
                     color = KropiColors.mutedForeground,
@@ -180,13 +189,22 @@ private fun IntakeTimeline(state: HydrationState, onDelete: (Int) -> Unit) {
                             .background(KropiColors.aqua.copy(alpha = 0.8f)),
                     )
                 }
-                Text(
-                    "${intake.ml} ml",
-                    color = KropiColors.foreground,
-                    fontSize = 13.sp,
-                    fontWeight = FontWeight.Bold,
-                    modifier = Modifier.padding(start = 12.dp),
-                )
+                Column(horizontalAlignment = Alignment.End, modifier = Modifier.padding(start = 12.dp)) {
+                    Text(
+                        "${intake.ml} ml",
+                        color = KropiColors.foreground,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.Bold,
+                    )
+                    // Napój liczony poniżej 100% albo notatka — drobny druk pod ilością.
+                    val sub = listOfNotNull(
+                        if (intake.counted != intake.ml) "liczy się ${intake.counted}" else null,
+                        intake.note,
+                    ).joinToString(" · ")
+                    if (sub.isNotEmpty()) {
+                        Text(sub, color = KropiColors.mutedForeground, fontSize = 10.sp, maxLines = 1)
+                    }
+                }
                 Text(
                     "✕",
                     color = KropiColors.mutedForeground,
@@ -194,7 +212,7 @@ private fun IntakeTimeline(state: HydrationState, onDelete: (Int) -> Unit) {
                     modifier = Modifier
                         .padding(start = 10.dp)
                         .clip(RoundedCornerShape(999.dp))
-                        .clickable { onDelete(index) }
+                        .clickable { onDelete(intake.id) }
                         .padding(horizontal = 6.dp, vertical = 2.dp),
                 )
             }

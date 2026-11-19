@@ -2,7 +2,6 @@ package com.kropi.hydration.data
 
 import android.content.Context
 import androidx.datastore.preferences.core.booleanPreferencesKey
-import androidx.datastore.preferences.core.MutablePreferences
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.floatPreferencesKey
@@ -15,8 +14,11 @@ import com.kropi.hydration.backup.CsvHistory
 import com.kropi.hydration.export.ExportToday
 import com.kropi.hydration.export.HydrationExport
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.flow.onStart
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.LocalTime
@@ -24,7 +26,55 @@ import kotlin.math.roundToInt
 
 val Context.hydrationStore by preferencesDataStore(name = "hydration")
 
-data class Intake(val hour: Int, val minute: Int, val ml: Int)
+/**
+ * Jeden łyk w postaci, z jaką pracuje UI. [ml] to ile wlano do szklanki, a
+ * [counted] — ile z tego zalicza się do celu (zależy od napoju i od tego, czy
+ * włączone jest liczenie wg współczynnika nawodnienia).
+ */
+data class Intake(
+    val id: Long,
+    val epochDay: Long,
+    val hour: Int,
+    val minute: Int,
+    val ml: Int,
+    val drink: Drink,
+    val note: String?,
+    val counted: Int,
+) {
+    val minuteOfDay: Int get() = hour * 60 + minute
+}
+
+fun IntakeEntity.toIntake(net: Boolean): Intake {
+    val kind = Drink.of(drink)
+    return Intake(
+        id = id,
+        epochDay = epochDay,
+        hour = (minuteOfDay / 60).coerceIn(0, 23),
+        minute = minuteOfDay % 60,
+        ml = ml,
+        drink = kind,
+        note = note,
+        counted = kind.counted(ml, net),
+    )
+}
+
+/** Zamknięte dni z historii: suma „liczonych" ml z łyków i cel obowiązujący wtedy. */
+object DayRecords {
+    fun build(
+        intakes: List<IntakeEntity>,
+        goals: List<DayGoalEntity>,
+        currentDay: Long,
+        fallbackGoal: Int,
+        net: Boolean,
+    ): List<DayRecord> {
+        val byDay = intakes.groupBy { it.epochDay }
+        val goalByDay = goals.associate { it.epochDay to it.goal }
+        return (byDay.keys + goalByDay.keys).filter { it < currentDay }.sorted().map { day ->
+            val ml = byDay[day].orEmpty().sumOf { Drink.of(it.drink).counted(it.ml, net) }
+            DayRecord(day, ml, goalByDay[day] ?: fallbackGoal)
+        }
+    }
+}
 
 /** Zamknięty dzień: ile wyszło i jaki cel wtedy obowiązywał. */
 data class DayRecord(val epochDay: Long, val ml: Int, val goal: Int) {
@@ -42,8 +92,10 @@ data class HydrationState(
     val settings: HydrationSettings,
     /** Epoch ms ostatniej zmiany dzisiejszej sumy/celu (0 = nieznane, sprzed eksportu). */
     val lastChangeEpochMs: Long = 0L,
+    /** Łyki z ostatnich ~30 dni (razem z dzisiejszymi) — do statystyk napojów. */
+    val recentIntakes: List<Intake> = emptyList(),
 ) {
-    val total: Int get() = intakes.sumOf { it.ml }
+    val total: Int get() = intakes.sumOf { it.counted }
     val progress: Double get() = (total.toDouble() / goal).coerceIn(0.0, 1.0)
     val remaining: Int get() = (goal - total).coerceAtLeast(0)
     val level: Level get() = levelFor(total.toDouble() / goal)
@@ -147,11 +199,11 @@ private fun dayInitials(date: LocalDate): String =
 
 private object Keys {
     val GOAL = intPreferencesKey("goal")
+    // Dawne miejsce łyków i historii (do 1.7) — czytane już tylko przy migracji do bazy.
     val INTAKES = stringPreferencesKey("intakes") // "h:m:ml,h:m:ml,..."
     val HISTORY = stringPreferencesKey("history") // "epochDay:ml:goal,..."
     val LAST_EPOCH_DAY = longPreferencesKey("last_epoch_day")
     val POKE_SEED = intPreferencesKey("poke_seed")
-    val LAST_INTAKE_EPOCH_MINUTE = longPreferencesKey("last_intake_epoch_minute")
     val SNOOZE_UNTIL_EPOCH_MINUTE = longPreferencesKey("snooze_until_epoch_minute")
 
     val WEIGHT_KG = floatPreferencesKey("weight_kg")
@@ -168,6 +220,7 @@ private object Keys {
     val SNARK_INTENSITY = stringPreferencesKey("snark_intensity")
     val LAST_SUMMARY_EPOCH_DAY = longPreferencesKey("last_summary_epoch_day")
     val ADAPTIVE_PLAN = booleanPreferencesKey("adaptive_plan")
+    val NET_HYDRATION = booleanPreferencesKey("net_hydration")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
     val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
 }
@@ -190,6 +243,7 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
         notificationTone = prefs[Keys.NOTIFICATION_TONE]?.let { runCatching { NotificationTone.valueOf(it) }.getOrNull() }
             ?: defaults.notificationTone,
         adaptivePlan = prefs[Keys.ADAPTIVE_PLAN] ?: defaults.adaptivePlan,
+        netHydration = prefs[Keys.NET_HYDRATION] ?: defaults.netHydration,
         snarkIntensity = prefs[Keys.SNARK_INTENSITY]?.let { runCatching { SnarkIntensity.valueOf(it) }.getOrNull() }
             ?: defaults.snarkIntensity,
         bottlesMl = prefs[Keys.BOTTLES_ML]?.split(",")?.mapNotNull { it.toIntOrNull() }?.takeIf { it.size == 4 }
@@ -214,56 +268,49 @@ private fun decodeProfile(raw: String?): List<Int> {
     return if (parsed != null && parsed.size == 24) parsed else List(24) { 0 }
 }
 
-private fun encodeRecords(records: List<DayRecord>): String =
-    records.joinToString(",") { "${it.epochDay}:${it.ml}:${it.goal}" }
-
-private fun decodeRecords(raw: String?): List<DayRecord> {
-    if (raw.isNullOrBlank()) return emptyList()
-    return raw.split(",").mapNotNull { entry ->
-        val parts = entry.split(":")
-        if (parts.size != 3) return@mapNotNull null
-        val epochDay = parts[0].toLongOrNull() ?: return@mapNotNull null
-        val ml = parts[1].toIntOrNull() ?: return@mapNotNull null
-        val goal = parts[2].toIntOrNull() ?: return@mapNotNull null
-        DayRecord(epochDay, ml, goal)
-    }.sortedBy { it.epochDay }
-}
-
-private fun encodeIntakes(intakes: List<Intake>): String =
-    intakes.joinToString(",") { "${it.hour}:${it.minute}:${it.ml}" }
-
-private fun decodeIntakes(raw: String?): List<Intake> {
-    if (raw.isNullOrBlank()) return emptyList()
-    return raw.split(",").mapNotNull { entry ->
-        val parts = entry.split(":")
-        if (parts.size != 3) return@mapNotNull null
-        val h = parts[0].toIntOrNull() ?: return@mapNotNull null
-        val m = parts[1].toIntOrNull() ?: return@mapNotNull null
-        val ml = parts[2].toIntOrNull() ?: return@mapNotNull null
-        Intake(h, m, ml)
-    }
-}
 
 /**
- * DataStore-backed replacement for the mockup's useHydrationMock hook.
- * Rolls the day over at midnight (archiving the streak) instead of the
- * mockup's static in-memory state.
+ * Stan aplikacji: ustawienia i drobne liczniki w DataStore, a łyki oraz
+ * historia dni w bazie Room (od 1.8 — wcześniej wszystko było tekstem w
+ * DataStore, stąd [migrateLegacyIfNeeded]).
+ *
+ * Dzień „zamyka się" przy pierwszym odczycie po północy ([current]): jego cel
+ * ląduje w `day_goal`, a łyki zostają w bazie, więc da się je potem oglądać i
+ * poprawiać wstecz.
  */
 class HydrationRepository(private val context: Context) {
 
-    val state: Flow<HydrationState> = context.hydrationStore.data.map { prefs ->
-        HydrationState(
-            goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
-            intakes = decodeIntakes(prefs[Keys.INTAKES]),
-            records = decodeRecords(prefs[Keys.HISTORY]),
+    private val dao: IntakeDao get() = KropiDatabase.get(context).dao()
+
+    val state: Flow<HydrationState> = combine(
+        context.hydrationStore.data,
+        dao.observeIntakes(),
+        dao.observeDayGoals(),
+    ) { prefs, intakes, goals -> assemble(prefs, intakes, goals) }
+        .onStart { migrateLegacyIfNeeded() }
+
+    private fun assemble(prefs: Preferences, intakes: List<IntakeEntity>, goals: List<DayGoalEntity>): HydrationState {
+        val settings = readSettings(prefs)
+        val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
+        val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+        val net = settings.netHydration
+        val recentFrom = currentDay - RECENT_DAYS
+        return HydrationState(
+            goal = goal,
+            intakes = intakes.filter { it.epochDay == currentDay }.map { it.toIntake(net) },
+            records = DayRecords.build(intakes, goals, currentDay, goal, net),
             hourlyProfile = decodeProfile(prefs[Keys.HOURLY_PROFILE]),
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
-            settings = readSettings(prefs),
+            settings = settings,
             lastChangeEpochMs = prefs[Keys.LAST_CHANGE_EPOCH_MS] ?: 0L,
+            recentIntakes = intakes.filter { it.epochDay >= recentFrom }.map { it.toIntake(net) },
         )
     }
 
     companion object {
+        private const val RECENT_DAYS = 30L
+        private val migrationMutex = Mutex()
+
         /** Dzisiejszy stan w kształcie eksportu (provider dla Szpili). */
         fun exportToday(state: HydrationState): ExportToday = ExportToday(
             epochDay = state.today.epochDay,
@@ -274,109 +321,199 @@ class HydrationRepository(private val context: Context) {
         )
     }
 
-    /** To, co widzi eksport — porównujemy przed i po edycji, żeby wiedzieć, czy ogłosić zmianę. */
-    private data class ExportSnapshot(val epochDay: Long?, val ml: Int, val goal: Int, val intakes: Int)
+    /**
+     * Przenosi łyki i historię z dawnego tekstu w DataStore do bazy. Idempotentne:
+     * jeśli baza ma już dane (np. przerwana migracja), tylko sprząta stare klucze.
+     */
+    suspend fun migrateLegacyIfNeeded() = migrationMutex.withLock {
+        val prefs = context.hydrationStore.data.first()
+        val rawIntakes = prefs[Keys.INTAKES]
+        val rawHistory = prefs[Keys.HISTORY]
+        if (rawIntakes == null && rawHistory == null) return@withLock
+        if (dao.intakeCount() == 0 && dao.dayGoalCount() == 0) {
+            val parsed = LegacyMigration.parse(rawIntakes, rawHistory, prefs[Keys.LAST_EPOCH_DAY])
+            dao.replaceAll(parsed.intakes, parsed.dayGoals)
+        }
+        context.hydrationStore.edit {
+            it.remove(Keys.INTAKES)
+            it.remove(Keys.HISTORY)
+        }
+    }
 
-    private fun snapshotOf(prefs: Preferences): ExportSnapshot {
-        val intakes = decodeIntakes(prefs[Keys.INTAKES])
+    /** To, co widzi eksport — porównujemy przed i po zmianie, żeby wiedzieć, czy ogłosić ją Szpili. */
+    private data class ExportSnapshot(val epochDay: Long?, val ml: Int, val goal: Int, val intakes: Int, val allCount: Int, val allMl: Long)
+
+    private suspend fun exportSnapshot(): ExportSnapshot {
+        val prefs = context.hydrationStore.data.first()
+        val day = prefs[Keys.LAST_EPOCH_DAY]
+        val net = readSettings(prefs).netHydration
+        val today = if (day != null) dao.intakesOfDay(day) else emptyList()
         return ExportSnapshot(
-            epochDay = prefs[Keys.LAST_EPOCH_DAY],
-            ml = intakes.sumOf { it.ml },
+            epochDay = day,
+            ml = today.sumOf { Drink.of(it.drink).counted(it.ml, net) },
             goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL,
-            intakes = intakes.size,
+            intakes = today.size,
+            allCount = dao.intakeCount(),
+            allMl = dao.totalMl(),
         )
     }
 
     /**
-     * Edycja DataStore, po której — jeśli zmieniła się dzisiejsza suma, cel,
-     * liczba łyków albo dzień — zapisujemy znacznik czasu i ogłaszamy zmianę
-     * Szpili. Wszystkie mutacje dnia idą tędy, więc widget, kafelek, szybkie
-     * dolewanie, akcje powiadomień i UI są objęte automatycznie.
+     * Każda zmiana danych dnia (dolanie, edycja, cofnięcie, nowy cel, nowy dzień)
+     * idzie tędy: jeśli zmieniła dzisiejszą sumę, cel, liczbę łyków albo cokolwiek
+     * w historii, zapisujemy znacznik czasu i ogłaszamy to Szpili. Dzięki temu
+     * widget, kafelek, szybkie dolewanie, powiadomienia i UI są objęte automatycznie.
      */
-    private suspend fun editAndExport(transform: (MutablePreferences) -> Unit) {
-        var changed: ExportToday? = null
-        context.hydrationStore.edit { prefs ->
-            val before = snapshotOf(prefs)
-            transform(prefs)
-            val after = snapshotOf(prefs)
-            if (after != before) {
-                val now = System.currentTimeMillis()
-                prefs[Keys.LAST_CHANGE_EPOCH_MS] = now
-                changed = ExportToday(
+    private suspend fun <T> mutate(block: suspend () -> T): T {
+        val before = exportSnapshot()
+        val result = block()
+        val after = exportSnapshot()
+        if (after != before) {
+            val now = System.currentTimeMillis()
+            context.hydrationStore.edit { it[Keys.LAST_CHANGE_EPOCH_MS] = now }
+            HydrationExport.notifyChanged(
+                context,
+                ExportToday(
                     epochDay = after.epochDay ?: LocalDate.now().toEpochDay(),
                     ml = after.ml,
                     goal = after.goal,
                     intakes = after.intakes,
                     updatedEpochMs = now,
-                )
-            }
+                ),
+            )
         }
-        changed?.let { HydrationExport.notifyChanged(context, it) }
+        return result
     }
 
     suspend fun current(): HydrationState = rollDayIfNeeded()
 
     /**
-     * Zamyka poprzedni dzień: dopisuje go do historii (to z niej liczą się
-     * potem statystyki i seria) i zeruje dzisiejsze łyki. Dni, w których
-     * aplikacja w ogóle nie działała, zapisujemy jako zerowe — inaczej luka
-     * udawałaby, że tamtego dnia cel został zaliczony.
+     * Zamyka poprzedni dzień: zapisuje jego cel (łyki już leżą w bazie), dolicza go
+     * do profilu godzinowego i pilnuje, żeby dni bez używania aplikacji też trafiły
+     * do historii — pustą, inaczej luka udawałaby, że cel został zaliczony.
      */
     private suspend fun rollDayIfNeeded(): HydrationState {
+        migrateLegacyIfNeeded()
         val today = LocalDate.now().toEpochDay()
-        editAndExport { prefs ->
+        mutate {
+            val prefs = context.hydrationStore.data.first()
             val lastDay = prefs[Keys.LAST_EPOCH_DAY]
             if (lastDay == null) {
-                prefs[Keys.LAST_EPOCH_DAY] = today
-                prefs[Keys.GOAL] = prefs[Keys.GOAL] ?: readSettings(prefs).effectiveGoalMl
-                return@editAndExport
+                context.hydrationStore.edit {
+                    it[Keys.LAST_EPOCH_DAY] = today
+                    it[Keys.GOAL] = it[Keys.GOAL] ?: readSettings(it).effectiveGoalMl
+                }
+                return@mutate
             }
-            if (lastDay == today) return@editAndExport
+            if (lastDay >= today) return@mutate
 
             val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
-            val closingIntakes = decodeIntakes(prefs[Keys.INTAKES])
-            val total = closingIntakes.sumOf { it.ml }
+            val net = readSettings(prefs).netHydration
 
             // Profil „o której zwykle pijesz" — z niego plan dnia dobiera godziny.
             val profile = decodeProfile(prefs[Keys.HOURLY_PROFILE])
                 .map { (it * PROFILE_DECAY).toInt() }
                 .toIntArray()
-            closingIntakes.forEach { profile[it.hour.coerceIn(0, 23)] += it.ml }
-            prefs[Keys.HOURLY_PROFILE] = profile.joinToString(",")
-
-            val closedDays = buildList {
-                add(DayRecord(lastDay, total, goal))
-                // Przerwa w używaniu aplikacji: dni pomiędzy też się zamknęły, tyle że pusto.
-                for (day in (lastDay + 1) until today) add(DayRecord(day, 0, goal))
+            dao.intakesOfDay(lastDay).forEach {
+                profile[(it.minuteOfDay / 60).coerceIn(0, 23)] += Drink.of(it.drink).counted(it.ml, net)
             }
-            val merged = (decodeRecords(prefs[Keys.HISTORY]).filter { it.epochDay < lastDay } + closedDays)
-                .takeLast(HISTORY_LIMIT_DAYS)
-            prefs[Keys.HISTORY] = encodeRecords(merged)
 
-            prefs[Keys.LAST_EPOCH_DAY] = today
-            prefs[Keys.INTAKES] = encodeIntakes(emptyList())
+            dao.insertDayGoals(listOf(DayGoalEntity(lastDay, goal)))
+            for (day in (lastDay + 1) until today) dao.insertDayGoalIfAbsent(DayGoalEntity(day, goal))
+            dao.pruneIntakes(today - HISTORY_LIMIT_DAYS)
+            dao.pruneDayGoals(today - HISTORY_LIMIT_DAYS)
+
+            context.hydrationStore.edit {
+                it[Keys.HOURLY_PROFILE] = profile.joinToString(",")
+                it[Keys.LAST_EPOCH_DAY] = today
+            }
         }
         return state.first()
     }
 
+    private fun nowMinuteOfDay(): Int = LocalTime.now().let { it.hour * 60 + it.minute }
+
+    /** Dolewka „teraz" — to, co robią widget, kafelek, skróty i powiadomienia. */
     suspend fun addWater(ml: Int) {
+        addIntake(ml)
+    }
+
+    /**
+     * Dodaje wpis. Domyślnie „teraz" i dziś; [epochDay] i [minuteOfDay] pozwalają dopisać
+     * łyk wstecz. Zwraca id nowego wpisu.
+     */
+    suspend fun addIntake(
+        ml: Int,
+        drink: Drink = Drink.WATER,
+        note: String? = null,
+        epochDay: Long? = null,
+        minuteOfDay: Int? = null,
+    ): Long {
         rollDayIfNeeded()
-        editAndExport { prefs ->
-            val now = LocalTime.now()
-            val updated = decodeIntakes(prefs[Keys.INTAKES]) + Intake(now.hour, now.minute, ml)
-            prefs[Keys.INTAKES] = encodeIntakes(updated)
-            prefs[Keys.LAST_INTAKE_EPOCH_MINUTE] = java.time.LocalDateTime.now()
-                .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
+        return mutate {
+            val prefs = context.hydrationStore.data.first()
+            val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+            val day = epochDay ?: currentDay
+            if (day < currentDay) {
+                // Dzień z przeszłości bez zapisanego celu dostaje obecny, żeby trafił do historii.
+                dao.insertDayGoalIfAbsent(DayGoalEntity(day, prefs[Keys.GOAL] ?: DEFAULT_GOAL))
+            }
+            dao.insert(
+                IntakeEntity(
+                    epochDay = day,
+                    minuteOfDay = (minuteOfDay ?: nowMinuteOfDay()).coerceIn(0, 24 * 60 - 1),
+                    ml = ml.coerceAtLeast(1),
+                    drink = drink.name,
+                    note = note?.trim()?.takeIf { it.isNotEmpty() },
+                ),
+            )
         }
     }
 
-    /** Minutes since the last recorded sip, or null if none today. */
+    /** Zmienia istniejący wpis (ilość, napój, notatkę, godzinę, dzień). */
+    suspend fun updateIntake(
+        id: Long,
+        ml: Int,
+        drink: Drink,
+        note: String?,
+        epochDay: Long,
+        minuteOfDay: Int,
+    ) {
+        mutate {
+            val existing = dao.intakeById(id) ?: return@mutate
+            val currentDay = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+            if (epochDay < currentDay) {
+                dao.insertDayGoalIfAbsent(DayGoalEntity(epochDay, context.hydrationStore.data.first()[Keys.GOAL] ?: DEFAULT_GOAL))
+            }
+            dao.update(
+                existing.copy(
+                    epochDay = epochDay,
+                    minuteOfDay = minuteOfDay.coerceIn(0, 24 * 60 - 1),
+                    ml = ml.coerceAtLeast(1),
+                    drink = drink.name,
+                    note = note?.trim()?.takeIf { it.isNotEmpty() },
+                ),
+            )
+        }
+    }
+
+    suspend fun deleteIntake(id: Long) {
+        mutate { dao.delete(id) }
+    }
+
+    /** Cofa ostatnio dodany łyk dzisiejszego dnia (strzałka na widgecie). */
+    suspend fun undoLast() {
+        mutate {
+            val day = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+            dao.newestIdOfDay(day)?.let { dao.delete(it) }
+        }
+    }
+
+    /** Minuty od ostatniego dzisiejszego łyka (wg godziny wpisu) albo null, gdy nic dziś nie wypito. */
     suspend fun minutesSinceLastIntake(): Long? {
-        val prefs = context.hydrationStore.data.first()
-        val last = prefs[Keys.LAST_INTAKE_EPOCH_MINUTE] ?: return null
-        val nowMinute = java.time.LocalDateTime.now()
-            .atZone(java.time.ZoneId.systemDefault()).toEpochSecond() / 60
-        return (nowMinute - last).coerceAtLeast(0)
+        val day = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: return null
+        val last = dao.lastMinuteOfDay(day) ?: return null
+        return (nowMinuteOfDay() - last).coerceAtLeast(0).toLong()
     }
 
     private fun nowEpochMinute(): Long =
@@ -402,37 +539,24 @@ class HydrationRepository(private val context: Context) {
     }
 
     suspend fun saveSettings(settings: HydrationSettings) {
-        editAndExport { prefs ->
-            prefs[Keys.WEIGHT_KG] = settings.weightKg
-            prefs[Keys.TEMPERATURE] = settings.temperature.name
-            prefs[Keys.ACTIVITY] = settings.activity.name
-            prefs[Keys.GOAL_MODE] = settings.goalMode.name
-            prefs[Keys.MANUAL_GOAL] = settings.manualGoalMl
-            prefs[Keys.ACTIVE_START_HOUR] = settings.activeStartHour
-            prefs[Keys.ACTIVE_END_HOUR] = settings.activeEndHour
-            prefs[Keys.REMINDER_GLASS_ML] = settings.reminderGlassMl
-            prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
-            prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
-            prefs[Keys.BOTTLES_ML] = settings.bottlesMl.joinToString(",")
-            prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
-            prefs[Keys.ADAPTIVE_PLAN] = settings.adaptivePlan
-            prefs[Keys.GOAL] = settings.effectiveGoalMl
-        }
-    }
-
-    /** Usuwa jeden konkretny wpis — pomyłkowe dolanie nie wymaga cofania całej reszty. */
-    suspend fun removeIntakeAt(index: Int) {
-        editAndExport { prefs ->
-            val current = decodeIntakes(prefs[Keys.INTAKES])
-            if (index !in current.indices) return@editAndExport
-            prefs[Keys.INTAKES] = encodeIntakes(current.filterIndexed { i, _ -> i != index })
-        }
-    }
-
-    suspend fun undoLast() {
-        editAndExport { prefs ->
-            val updated = decodeIntakes(prefs[Keys.INTAKES]).dropLast(1)
-            prefs[Keys.INTAKES] = encodeIntakes(updated)
+        mutate {
+            context.hydrationStore.edit { prefs ->
+                prefs[Keys.WEIGHT_KG] = settings.weightKg
+                prefs[Keys.TEMPERATURE] = settings.temperature.name
+                prefs[Keys.ACTIVITY] = settings.activity.name
+                prefs[Keys.GOAL_MODE] = settings.goalMode.name
+                prefs[Keys.MANUAL_GOAL] = settings.manualGoalMl
+                prefs[Keys.ACTIVE_START_HOUR] = settings.activeStartHour
+                prefs[Keys.ACTIVE_END_HOUR] = settings.activeEndHour
+                prefs[Keys.REMINDER_GLASS_ML] = settings.reminderGlassMl
+                prefs[Keys.REMINDERS_ENABLED] = settings.remindersEnabled
+                prefs[Keys.NOTIFICATION_TONE] = settings.notificationTone.name
+                prefs[Keys.BOTTLES_ML] = settings.bottlesMl.joinToString(",")
+                prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
+                prefs[Keys.ADAPTIVE_PLAN] = settings.adaptivePlan
+                prefs[Keys.NET_HYDRATION] = settings.netHydration
+                prefs[Keys.GOAL] = settings.effectiveGoalMl
+            }
         }
     }
 
@@ -442,11 +566,16 @@ class HydrationRepository(private val context: Context) {
         }
     }
 
+    suspend fun setGoal(ml: Int) {
+        mutate { context.hydrationStore.edit { prefs -> prefs[Keys.GOAL] = ml } }
+    }
+
     /**
-     * Pełna kopia DataStore (poza chwilowym odroczeniem przypomnienia) — to, co
-     * trafia do pliku kopii zapasowej.
+     * Pełna kopia danych: DataStore (poza chwilowym odroczeniem przypomnienia) oraz
+     * wszystkie łyki i cele dni z bazy — to trafia do pliku kopii zapasowej.
      */
     suspend fun snapshot(): BackupFormat.Snapshot {
+        migrateLegacyIfNeeded()
         val prefs = context.hydrationStore.data.first()
         val entries = prefs.asMap().mapNotNull { (key, value) ->
             if (key.name == Keys.SNOOZE_UNTIL_EPOCH_MINUTE.name) null else BackupFormat.entryOf(key.name, value)
@@ -454,26 +583,40 @@ class HydrationRepository(private val context: Context) {
         val version = runCatching {
             context.packageManager.getPackageInfo(context.packageName, 0).versionName
         }.getOrNull().orEmpty()
-        return BackupFormat.Snapshot(System.currentTimeMillis(), version, entries)
+        return BackupFormat.Snapshot(
+            createdAtMs = System.currentTimeMillis(),
+            appVersion = version,
+            entries = entries,
+            intakes = dao.allIntakes().map { BackupFormat.IntakeRow(it.epochDay, it.minuteOfDay, it.ml, it.drink, it.note) },
+            dayGoals = dao.allDayGoals().map { BackupFormat.DayGoalRow(it.epochDay, it.goal) },
+        )
     }
 
     /**
-     * Zastępuje całe dane tym, co w kopii. Jeśli kopia jest sprzed paru dni,
-     * `current()` zamknie brakujące dni do historii przy najbliższym odczycie.
+     * Zastępuje całe dane tym, co w kopii. Kopia z wersji 1.x niesie łyki jako
+     * tekst w ustawieniach — wtedy [migrateLegacyIfNeeded] przenosi je do bazy.
+     * Jeśli kopia jest sprzed paru dni, `current()` zamknie brakujące dni.
      */
     suspend fun restore(snapshot: BackupFormat.Snapshot) {
-        editAndExport { prefs ->
-            prefs.clear()
-            snapshot.entries.forEach { e ->
-                when (e.type) {
-                    BackupFormat.Type.INT -> prefs[intPreferencesKey(e.name)] = e.value as Int
-                    BackupFormat.Type.LONG -> prefs[longPreferencesKey(e.name)] = e.value as Long
-                    BackupFormat.Type.FLOAT -> prefs[floatPreferencesKey(e.name)] = e.value as Float
-                    BackupFormat.Type.STRING -> prefs[stringPreferencesKey(e.name)] = e.value as String
-                    BackupFormat.Type.BOOL -> prefs[booleanPreferencesKey(e.name)] = e.value as Boolean
+        mutate {
+            dao.replaceAll(
+                snapshot.intakes.map { IntakeEntity(0, it.epochDay, it.minuteOfDay, it.ml, it.drink, it.note) },
+                snapshot.dayGoals.map { DayGoalEntity(it.epochDay, it.goal) },
+            )
+            context.hydrationStore.edit { prefs ->
+                prefs.clear()
+                snapshot.entries.forEach { e ->
+                    when (e.type) {
+                        BackupFormat.Type.INT -> prefs[intPreferencesKey(e.name)] = e.value as Int
+                        BackupFormat.Type.LONG -> prefs[longPreferencesKey(e.name)] = e.value as Long
+                        BackupFormat.Type.FLOAT -> prefs[floatPreferencesKey(e.name)] = e.value as Float
+                        BackupFormat.Type.STRING -> prefs[stringPreferencesKey(e.name)] = e.value as String
+                        BackupFormat.Type.BOOL -> prefs[booleanPreferencesKey(e.name)] = e.value as Boolean
+                    }
                 }
             }
         }
+        migrateLegacyIfNeeded()
         rollDayIfNeeded()
     }
 
@@ -483,24 +626,23 @@ class HydrationRepository(private val context: Context) {
      */
     suspend fun importHistory(rows: List<CsvHistory.Row>): Int {
         rollDayIfNeeded()
-        var added = 0
-        context.hydrationStore.edit { prefs ->
-            val today = LocalDate.now().toEpochDay()
-            val existing = decodeRecords(prefs[Keys.HISTORY])
-            val known = existing.map { it.epochDay }.toSet()
-            val fresh = rows
-                .filter { it.epochDay < today && it.epochDay !in known }
-                .distinctBy { it.epochDay }
-                .map { DayRecord(it.epochDay, it.ml, it.goal) }
-            added = fresh.size
-            if (fresh.isNotEmpty()) {
-                prefs[Keys.HISTORY] = encodeRecords((existing + fresh).sortedBy { it.epochDay }.takeLast(HISTORY_LIMIT_DAYS))
-            }
+        val today = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+        val known = dao.allDayGoals().map { it.epochDay }.toSet() + dao.allIntakes().map { it.epochDay }.toSet()
+        val fresh = rows.filter { it.epochDay < today && it.epochDay !in known }.distinctBy { it.epochDay }
+        if (fresh.isEmpty()) return 0
+        mutate {
+            dao.insertDayGoals(fresh.map { DayGoalEntity(it.epochDay, it.goal) })
+            dao.insertAll(
+                fresh.filter { it.ml > 0 }.map {
+                    IntakeEntity(
+                        epochDay = it.epochDay,
+                        minuteOfDay = LegacyMigration.SUMMARY_MINUTE,
+                        ml = it.ml,
+                        note = "z importu CSV",
+                    )
+                },
+            )
         }
-        return added
-    }
-
-    suspend fun setGoal(ml: Int) {
-        editAndExport { prefs -> prefs[Keys.GOAL] = ml }
+        return fresh.size
     }
 }

@@ -30,6 +30,8 @@ data class HydrationSettings(
     val snarkIntensity: SnarkIntensity = SnarkIntensity.NORMAL,
     /** Rozkładaj porcje w godzinach, w których naprawdę pijesz, zamiast równo co tyle samo. */
     val adaptivePlan: Boolean = true,
+    /** Liczy napoje wg współczynnika nawodnienia (kawa 80%, sok 85%…); wyłączone = każdy 1:1. */
+    val netHydration: Boolean = true,
     /** Cztery pojemności na kafelkach widgetu i w aplikacji — do przestawienia w Ustawieniach. */
     val bottlesMl: List<Int> = listOf(100, 250, 500, 750),
 ) {

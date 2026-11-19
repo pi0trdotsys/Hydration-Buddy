@@ -180,7 +180,7 @@ object IntakeChart {
         val lastMinute = sorted.lastOrNull()?.let { it.hour * 60 + it.minute }
         val startMinute = minOf(startHour * 60, firstMinute ?: (startHour * 60), nowMinutes)
         val endMinute = maxOf(endHour * 60, lastMinute ?: 0, nowMinutes, startMinute + 60)
-        val total = sorted.sumOf { it.ml }
+        val total = sorted.sumOf { it.counted }
         val scaleMax = maxOf(goalMl, total, 1)
 
         fun x(minute: Int): Float =
@@ -237,7 +237,7 @@ object IntakeChart {
         for (intake in sorted) {
             val minute = intake.hour * 60 + intake.minute
             stepPath.lineTo(x(minute), y(cumulative))
-            cumulative += intake.ml
+            cumulative += intake.counted
             stepPath.lineTo(x(minute), y(cumulative))
             dots.add(floatArrayOf(x(minute), y(cumulative), intake.ml.toFloat()))
         }

@@ -156,6 +156,8 @@ fun HistoryScreen(state: HydrationState) {
             }
         }
 
+        item { DrinkBreakdownCard(state) }
+
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
                 Text("Najlepszy dzień", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
@@ -190,6 +192,51 @@ fun HistoryScreen(state: HydrationState) {
                         color = KropiColors.mutedForeground,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
+                    )
+                }
+            }
+        }
+    }
+}
+
+/** Ile czego wypito w ostatnich ~30 dniach: udział napojów w wypitej objętości. */
+@Composable
+private fun DrinkBreakdownCard(state: HydrationState) {
+    val rows = state.recentIntakes
+        .groupBy { it.drink }
+        .map { (drink, list) -> Triple(drink, list.sumOf { it.ml }, list.sumOf { it.counted }) }
+        .sortedByDescending { it.second }
+    val totalMl = rows.sumOf { it.second }.coerceAtLeast(1)
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Text("Co pijesz (30 dni)", color = KropiColors.foreground, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+        if (rows.isEmpty()) {
+            Text("Brak wpisów.", color = KropiColors.mutedForeground, fontSize = 12.sp)
+            return@GlassCard
+        }
+        rows.forEach { (drink, ml, counted) ->
+            Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Text("${drink.emoji} ${drink.label}", color = KropiColors.foreground, fontSize = 13.sp, modifier = Modifier.weight(1f))
+                    Text(
+                        if (counted != ml) "$ml ml (liczy się $counted)" else "$ml ml",
+                        color = KropiColors.mutedForeground,
+                        fontSize = 12.sp,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(6.dp)
+                        .clip(RoundedCornerShape(999.dp))
+                        .background(KropiColors.secondary),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth(ml.toFloat() / totalMl)
+                            .height(6.dp)
+                            .clip(RoundedCornerShape(999.dp))
+                            .background(KropiColors.aqua.copy(alpha = 0.8f)),
                     )
                 }
             }

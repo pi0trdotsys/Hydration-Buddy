@@ -65,7 +65,30 @@ class MainActivity : ComponentActivity() {
                     mutableStateOf(Tab.entries.firstOrNull { it.name == intent?.getStringExtra(NotificationHelper.EXTRA_OPEN_TAB) } ?: Tab.HOME)
                 }
 
+                var editor by remember { mutableStateOf<EditorTarget?>(null) }
+
                 val current = state
+                editor?.let { target ->
+                    IntakeEditorSheet(
+                        initial = target.intake,
+                        netHydration = current?.settings?.netHydration ?: true,
+                        onSave = { ml, drink, note, day, minute ->
+                            scope.launch {
+                                if (target.intake == null) repo.addIntake(ml, drink, note, day, minute)
+                                else repo.updateIntake(target.intake.id, ml, drink, note, day, minute)
+                                HydrationWidget().updateAll(applicationContext)
+                            }
+                            editor = null
+                        },
+                        onDelete = target.intake?.let { old ->
+                            {
+                                scope.launch { repo.deleteIntake(old.id); HydrationWidget().updateAll(applicationContext) }
+                                editor = null
+                            }
+                        },
+                        onDismiss = { editor = null },
+                    )
+                }
                 Scaffold(
                     containerColor = KropiColors.background,
                     bottomBar = {
@@ -97,7 +120,9 @@ class MainActivity : ComponentActivity() {
                                     onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
                                     onSetGoal = { ml -> scope.launch { repo.setGoal(ml); HydrationWidget().updateAll(applicationContext) } },
-                                    onDeleteIntake = { index -> scope.launch { repo.removeIntakeAt(index); HydrationWidget().updateAll(applicationContext) } },
+                                    onAddEntry = { editor = EditorTarget(null) },
+                                    onEditIntake = { intake -> editor = EditorTarget(intake) },
+                                    onDeleteIntake = { id -> scope.launch { repo.deleteIntake(id); HydrationWidget().updateAll(applicationContext) } },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
                                     state = current,
@@ -136,6 +161,9 @@ class MainActivity : ComponentActivity() {
         }
     }
 }
+
+/** Cel edytora: null w [intake] = nowy wpis. */
+private class EditorTarget(val intake: com.kropi.hydration.data.Intake?)
 
 private enum class Tab(val label: String, val emoji: String) {
     HOME("Główny", "🏠"),

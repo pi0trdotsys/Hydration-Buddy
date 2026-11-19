@@ -1,0 +1,206 @@
+package com.kropi.hydration.ui
+
+import androidx.compose.foundation.background
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.kropi.hydration.data.Drink
+import com.kropi.hydration.data.Intake
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.DateTimeFormatter
+
+private val QUICK_AMOUNTS = listOf(100, 150, 200, 250, 300, 330, 400, 500, 750, 1000)
+private const val MAX_ML = 3000
+
+/**
+ * Dodawanie i edycja wpisu: ilość, napój, godzina, dzień (dziś/wczoraj) i notatka.
+ * [initial] = null oznacza nowy wpis; wtedy domyślnie jest „teraz", woda i 250 ml.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun IntakeEditorSheet(
+    initial: Intake?,
+    netHydration: Boolean,
+    onSave: (ml: Int, drink: Drink, note: String?, epochDay: Long, minuteOfDay: Int) -> Unit,
+    onDelete: (() -> Unit)?,
+    onDismiss: () -> Unit,
+) {
+    val today = remember { LocalDate.now().toEpochDay() }
+    val nowMinute = remember { LocalTime.now().let { it.hour * 60 + it.minute } }
+
+    var ml by remember { mutableIntStateOf(initial?.ml ?: 250) }
+    var drink by remember { mutableStateOf(initial?.drink ?: Drink.WATER) }
+    var note by remember { mutableStateOf(initial?.note.orEmpty()) }
+    var epochDay by remember { mutableLongStateOf(initial?.epochDay ?: today) }
+    var minuteOfDay by remember { mutableIntStateOf(initial?.minuteOfDay ?: nowMinute) }
+
+    // Dziś nie da się zalogować łyka z przyszłości.
+    fun clampTime(minute: Int): Int {
+        val upper = if (epochDay == today) nowMinute else 24 * 60 - 1
+        return minute.coerceIn(0, upper)
+    }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismiss,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = KropiColors.card,
+        contentColor = KropiColors.foreground,
+    ) {
+        Column(
+            verticalArrangement = Arrangement.spacedBy(14.dp),
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 20.dp)
+                .padding(bottom = 16.dp)
+                .navigationBarsPadding()
+                .imePadding(),
+        ) {
+            Text(
+                if (initial == null) "Dodaj wpis" else "Edytuj wpis",
+                color = KropiColors.foreground,
+                fontSize = 20.sp,
+                fontWeight = FontWeight.Bold,
+            )
+
+            // --- ilość ---
+            Label("Ilość")
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                StepperButton("−") { ml = (ml - 10).coerceAtLeast(10) }
+                Text(
+                    "$ml ml",
+                    color = KropiColors.foreground,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    modifier = Modifier.width(110.dp),
+                )
+                StepperButton("+") { ml = (ml + 10).coerceAtMost(MAX_ML) }
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                QUICK_AMOUNTS.forEach { amount -> ChipButton("$amount", ml == amount) { ml = amount } }
+            }
+
+            // --- napój ---
+            Label("Napój")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
+                Drink.entries.forEach { d -> ChipButton("${d.emoji} ${d.label}", drink == d) { drink = d } }
+            }
+            val counted = drink.counted(ml, netHydration)
+            Text(
+                if (!netHydration || drink.factor >= 1f) "Liczy się: $ml ml"
+                else "Liczy się: $counted ml (${drink.percent}% z $ml ml)",
+                color = KropiColors.aqua,
+                fontSize = 12.sp,
+            )
+
+            // --- kiedy ---
+            Label("Kiedy")
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                ChipButton("Dziś", epochDay == today) {
+                    epochDay = today
+                    minuteOfDay = clampTime(minuteOfDay)
+                }
+                ChipButton("Wczoraj", epochDay == today - 1) { epochDay = today - 1 }
+                if (epochDay < today - 1) {
+                    ChipButton(LocalDate.ofEpochDay(epochDay).format(DateTimeFormatter.ofPattern("dd.MM")), true) {}
+                }
+            }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                StepperButton("−") { minuteOfDay = clampTime(minuteOfDay - 60) }
+                Text(
+                    String.format("%02d", minuteOfDay / 60),
+                    color = KropiColors.foreground,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                StepperButton("+") { minuteOfDay = clampTime(minuteOfDay + 60) }
+                Text(":", color = KropiColors.mutedForeground, fontSize = 22.sp)
+                StepperButton("−") { minuteOfDay = clampTime(minuteOfDay - 5) }
+                Text(
+                    String.format("%02d", minuteOfDay % 60),
+                    color = KropiColors.foreground,
+                    fontSize = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                StepperButton("+") { minuteOfDay = clampTime(minuteOfDay + 5) }
+                if (epochDay == today && initial == null) {
+                    ChipButton("Teraz", minuteOfDay == nowMinute) { minuteOfDay = nowMinute }
+                }
+            }
+
+            // --- notatka ---
+            Label("Notatka (opcjonalnie)")
+            OutlinedTextField(
+                value = note,
+                onValueChange = { note = it.take(60) },
+                singleLine = true,
+                placeholder = { Text("np. po bieganiu", color = KropiColors.mutedForeground) },
+                keyboardOptions = KeyboardOptions.Default,
+                colors = OutlinedTextFieldDefaults.colors(
+                    focusedTextColor = KropiColors.foreground,
+                    unfocusedTextColor = KropiColors.foreground,
+                    focusedBorderColor = KropiColors.aqua,
+                    unfocusedBorderColor = KropiColors.secondary,
+                    cursorColor = KropiColors.aqua,
+                ),
+                modifier = Modifier.fillMaxWidth(),
+            )
+
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+                Button(
+                    onClick = { onSave(ml, drink, note.trim().ifEmpty { null }, epochDay, clampTime(minuteOfDay)) },
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.aqua, contentColor = KropiColors.background),
+                    modifier = Modifier.weight(1f),
+                ) { Text("Zapisz", fontWeight = FontWeight.Bold) }
+                Button(
+                    onClick = onDismiss,
+                    colors = ButtonDefaults.buttonColors(containerColor = KropiColors.secondary, contentColor = KropiColors.foreground),
+                    modifier = Modifier.weight(1f),
+                ) { Text("Anuluj") }
+            }
+            if (onDelete != null) {
+                TextButton(onClick = onDelete, modifier = Modifier.fillMaxWidth()) {
+                    Text("Usuń wpis", color = Color(0xFFFF8A65))
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun Label(text: String) {
+    Text(text, color = KropiColors.mutedForeground, fontSize = 12.sp)
+}

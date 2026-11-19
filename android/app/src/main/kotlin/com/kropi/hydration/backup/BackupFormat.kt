@@ -1,5 +1,6 @@
 package com.kropi.hydration.backup
 
+import org.json.JSONArray
 import org.json.JSONObject
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -7,18 +8,23 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 /**
- * Format kopii zapasowej Kropi: jeden plik JSON z całą zawartością DataStore
- * (łyki, historia, profil godzinowy, ustawienia) — tak samo jak Szpila trzyma
- * jeden plik z pełną kopią. Czysta logika, bez Androida, testowana na JVM.
+ * Format kopii zapasowej Kropi: jeden plik JSON z całością danych — ustawieniami
+ * i licznikami z DataStore oraz łykami i celami dni z bazy. Czysta logika, bez
+ * Androida, testowana na JVM.
  *
  * ```
- * { "app": "kropi", "format": 1, "createdAt": 1790000000000, "appVersion": "1.7.0",
- *   "prefs": { "goal": {"t": "int", "v": 2500}, "intakes": {"t": "string", "v": "7:20:250"} } }
+ * { "app": "kropi", "format": 2, "createdAt": 1790000000000, "appVersion": "1.8.0",
+ *   "prefs":    { "goal": {"t": "int", "v": 2500} },
+ *   "intakes":  [ {"d": 20773, "m": 440, "ml": 250, "k": "WATER", "n": "po bieganiu"} ],
+ *   "dayGoals": [ {"d": 20772, "g": 2500} ] }
  * ```
+ *
+ * Format 1 (do wersji 1.7) nie miał tablic `intakes`/`dayGoals` — łyki siedziały
+ * w `prefs` jako tekst; takie pliki nadal się wczytują.
  */
 object BackupFormat {
     const val APP = "kropi"
-    const val VERSION = 1
+    const val VERSION = 2
 
     enum class Type(val id: String) {
         INT("int"), LONG("long"), FLOAT("float"), STRING("string"), BOOL("bool");
@@ -30,7 +36,17 @@ object BackupFormat {
 
     data class Entry(val name: String, val type: Type, val value: Any)
 
-    data class Snapshot(val createdAtMs: Long, val appVersion: String, val entries: List<Entry>)
+    data class IntakeRow(val epochDay: Long, val minuteOfDay: Int, val ml: Int, val drink: String, val note: String?)
+
+    data class DayGoalRow(val epochDay: Long, val goal: Int)
+
+    data class Snapshot(
+        val createdAtMs: Long,
+        val appVersion: String,
+        val entries: List<Entry>,
+        val intakes: List<IntakeRow> = emptyList(),
+        val dayGoals: List<DayGoalRow> = emptyList(),
+    )
 
     /** Wpis z wartości DataStore albo null dla typu, którego kopia nie obsługuje. */
     fun entryOf(name: String, value: Any): Entry? = when (value) {
@@ -53,6 +69,20 @@ object BackupFormat {
             .put("createdAt", s.createdAtMs)
             .put("appVersion", s.appVersion)
             .put("prefs", prefs)
+            .put(
+                "intakes",
+                JSONArray().also { arr ->
+                    s.intakes.forEach {
+                        val o = JSONObject().put("d", it.epochDay).put("m", it.minuteOfDay).put("ml", it.ml).put("k", it.drink)
+                        if (it.note != null) o.put("n", it.note)
+                        arr.put(o)
+                    }
+                },
+            )
+            .put(
+                "dayGoals",
+                JSONArray().also { arr -> s.dayGoals.forEach { arr.put(JSONObject().put("d", it.epochDay).put("g", it.goal)) } },
+            )
             .toString(2)
     }
 
@@ -76,8 +106,22 @@ object BackupFormat {
                 add(Entry(name, type, value))
             }
         }
-        if (entries.isEmpty()) return null
-        Snapshot(root.optLong("createdAt", 0L), root.optString("appVersion", ""), entries)
+        val intakes = buildList {
+            val arr = root.optJSONArray("intakes")
+            for (i in 0 until (arr?.length() ?: 0)) {
+                val o = arr!!.getJSONObject(i)
+                add(IntakeRow(o.getLong("d"), o.getInt("m"), o.getInt("ml"), o.optString("k", "WATER"), o.optString("n").takeIf { o.has("n") && it.isNotEmpty() }))
+            }
+        }
+        val dayGoals = buildList {
+            val arr = root.optJSONArray("dayGoals")
+            for (i in 0 until (arr?.length() ?: 0)) {
+                val o = arr!!.getJSONObject(i)
+                add(DayGoalRow(o.getLong("d"), o.getInt("g")))
+            }
+        }
+        if (entries.isEmpty() && intakes.isEmpty()) return null
+        Snapshot(root.optLong("createdAt", 0L), root.optString("appVersion", ""), entries, intakes, dayGoals)
     }.getOrNull()
 }
 
