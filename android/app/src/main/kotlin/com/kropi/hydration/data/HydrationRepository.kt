@@ -92,6 +92,8 @@ data class HydrationState(
     val settings: HydrationSettings,
     /** Epoch ms ostatniej zmiany dzisiejszej sumy/celu (0 = nieznane, sprzed eksportu). */
     val lastChangeEpochMs: Long = 0L,
+    /** Napój wybrany na widgecie — następne dolanie z widgetu liczy się jako on, potem wraca woda. */
+    val widgetDrink: Drink = Drink.WATER,
     /** Wszystkie łyki z bazy (do ~400 dni wstecz) — kalendarz miesiąca i statystyki napojów. */
     val allIntakes: List<Intake> = emptyList(),
 ) {
@@ -237,6 +239,7 @@ private object Keys {
     val ADAPTIVE_PLAN = booleanPreferencesKey("adaptive_plan")
     val NET_HYDRATION = booleanPreferencesKey("net_hydration")
     val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
+    val WIDGET_DRINK = stringPreferencesKey("widget_drink")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
     val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
 }
@@ -318,6 +321,7 @@ class HydrationRepository(private val context: Context) {
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
             settings = settings,
             lastChangeEpochMs = prefs[Keys.LAST_CHANGE_EPOCH_MS] ?: 0L,
+            widgetDrink = Drink.of(prefs[Keys.WIDGET_DRINK]),
             allIntakes = intakes.map { it.toIntake(net) },
         )
     }
@@ -572,6 +576,14 @@ class HydrationRepository(private val context: Context) {
                 prefs[Keys.GOAL] = settings.effectiveGoalMl
             }
         }
+    }
+
+    /** Napój wybrany na widgecie (woda, jeśli nic nie wybrano). */
+    suspend fun widgetDrink(): Drink = Drink.of(context.hydrationStore.data.first()[Keys.WIDGET_DRINK])
+
+    /** Chwilowy wybór napoju na widgecie — to nie zmiana danych, więc bez ogłaszania Szpili. */
+    suspend fun setWidgetDrink(drink: Drink) {
+        context.hydrationStore.edit { it[Keys.WIDGET_DRINK] = drink.name }
     }
 
     suspend fun poke() {

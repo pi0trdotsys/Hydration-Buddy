@@ -57,6 +57,8 @@ fun IntakeEditorSheet(
     netHydration: Boolean,
     /** Dzień dla nowego wpisu (np. wybrany w kalendarzu); null = dziś. */
     defaultEpochDay: Long? = null,
+    /** Napój zaznaczony na starcie nowego wpisu (np. wybrany na widgecie). */
+    defaultDrink: Drink = Drink.WATER,
     onSave: (ml: Int, drink: Drink, note: String?, epochDay: Long, minuteOfDay: Int) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
@@ -65,7 +67,7 @@ fun IntakeEditorSheet(
     val nowMinute = remember { LocalTime.now().let { it.hour * 60 + it.minute } }
 
     var ml by remember { mutableIntStateOf(initial?.ml ?: 250) }
-    var drink by remember { mutableStateOf(initial?.drink ?: Drink.WATER) }
+    var drink by remember { mutableStateOf(initial?.drink ?: defaultDrink) }
     var note by remember { mutableStateOf(initial?.note.orEmpty()) }
     var epochDay by remember { mutableLongStateOf(initial?.epochDay ?: defaultEpochDay ?: today) }
     // Wpis dopisywany do minionego dnia startuje w południe, a nie o „teraz".

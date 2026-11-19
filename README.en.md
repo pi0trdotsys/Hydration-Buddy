@@ -68,7 +68,7 @@ and `NEXT / 250 ml at 12:30`. The footer carries your streak, the last logged
 sip and how many portions are left today.
 
 Four log buttons live on the tile, so **water gets logged without opening the
-app**. Tapped the wrong one? Undo sits right next to them. Three layouts —
+app**. Tapped the wrong one? Undo sits right next to them. A strip below the buttons lets you **pick a drink** (tea, coffee, juice…) for the next pour, and "**＋ wpis**" opens the full editor — past sips included. Three layouts —
 a 4×1 bar, a 2×1 tile and a full 2×2 — each showing as much as it can fit.
 
 <div align="center">

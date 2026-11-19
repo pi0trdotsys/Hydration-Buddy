@@ -62,7 +62,7 @@ odstajesz) i `NASTĘPNE / 250 ml o 12:30`. Na dole seria, ostatni zapisany łyk 
 ile porcji zostało do końca dnia.
 
 Cztery przyciski dolewania są na kafelku, więc **woda loguje się bez
-otwierania aplikacji**. Pomyłkę cofasz strzałką obok. Widget ma trzy układy:
+otwierania aplikacji**. Pomyłkę cofasz strzałką obok. Pasek pod przyciskami pozwala **wybrać napój** (herbata, kawa, sok…) na najbliższe dolanie, a „**＋ wpis**" otwiera pełny edytor — także na łyk z przeszłości. Widget ma trzy układy:
 pasek 4×1, kafelek 2×1 i duży 2×2 — każdy pokazuje tyle, ile się mieści.
 
 <div align="center">

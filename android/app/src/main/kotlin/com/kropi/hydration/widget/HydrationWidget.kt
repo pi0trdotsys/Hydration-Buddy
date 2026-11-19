@@ -19,6 +19,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.SizeMode
 import androidx.glance.appwidget.action.actionRunCallback
+import androidx.glance.appwidget.action.actionStartActivity
 import androidx.glance.appwidget.cornerRadius
 import androidx.glance.appwidget.provideContent
 import androidx.glance.background
@@ -40,6 +41,7 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import com.kropi.hydration.data.Drink
 import com.kropi.hydration.data.HydrationPlan
 import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.HydrationState
@@ -57,6 +59,7 @@ private val Muted = ColorProvider(com.kropi.hydration.ui.KropiColors.mutedForegr
 private val Secondary = ColorProvider(com.kropi.hydration.ui.KropiColors.secondary)
 private val CardBg = ColorProvider(com.kropi.hydration.ui.KropiColors.card)
 private val ScreenBg = ColorProvider(com.kropi.hydration.ui.KropiColors.background)
+private val AquaSoft = ColorProvider(com.kropi.hydration.ui.KropiColors.aqua.copy(alpha = 0.28f))
 private val Warn = ColorProvider(androidx.compose.ui.graphics.Color(0xFFFF8A65))
 
 private enum class Variant { TINY, BAR, COMPACT, FULL }
@@ -99,7 +102,7 @@ private fun HydrationWidgetContent(state: HydrationState) {
     val variant = when {
         size.height < 120.dp && size.width < 180.dp -> Variant.TINY
         size.height < 150.dp -> Variant.BAR
-        size.height < 250.dp -> Variant.COMPACT
+        size.height < 290.dp -> Variant.COMPACT
         else -> Variant.FULL
     }
     val pad = if (variant == Variant.TINY) 10.dp else 14.dp
@@ -115,7 +118,7 @@ private fun HydrationWidgetContent(state: HydrationState) {
         when (variant) {
             Variant.TINY -> TinyContent(state)
             Variant.BAR -> BarContent(state)
-            Variant.COMPACT -> CompactContent(state)
+            Variant.COMPACT -> CompactContent(state, size.width, size.height)
             Variant.FULL -> FullContent(state, size.width, size.height, pad)
         }
     }
@@ -181,13 +184,18 @@ private fun FixedBottleChip(ml: Int, size: Dp) {
 }
 
 @androidx.compose.runtime.Composable
-private fun CompactContent(state: HydrationState) {
+private fun CompactContent(state: HydrationState, width: Dp, height: Dp) {
     val plan = state.plan()
     Column(modifier = GlanceModifier.fillMaxSize()) {
-        Header(state, ringSize = 58.dp, titleSize = 16.sp, showMascot = false)
+        Header(state, ringSize = 58.dp, titleSize = 14.sp, showMascot = false)
         Spacer(GlanceModifier.height(6.dp))
         StatusRow(state, plan)
         Spacer(GlanceModifier.defaultWeight())
+        // Napoje i wpis z przeszłości — tylko gdy kafelek jest dość wysoki, żeby się zmieściły.
+        if (height >= 210.dp) {
+            ToolRow(state, width - 28.dp)
+            Spacer(GlanceModifier.height(6.dp))
+        }
         BottleRow(height = 50.dp, bottles = state.settings.bottlesMl)
     }
 }
@@ -204,21 +212,25 @@ private fun FullContent(state: HydrationState, width: Dp, height: Dp, pad: Dp) {
     val headerHeight = 74.dp
     val statusHeight = 30.dp
     val bottlesHeight = 54.dp
-    val footerHeight = 18.dp
-    val gaps = 8.dp * 4
-    val reserved = headerHeight + statusHeight + bottlesHeight + footerHeight + gaps + pad * 2
-    val chartHeight = (height - reserved).coerceIn(64.dp, 190.dp)
+    val toolsHeight = 30.dp
+    // Stopka jest najmniej ważna: pokazujemy ją dopiero, gdy po pasku napojów wykresowi
+    // zostaje jeszcze porządnie dużo miejsca (min. ~94 dp po odjęciu stopki).
+    val baseReserved = headerHeight + statusHeight + bottlesHeight + toolsHeight + 8.dp * 4 + pad * 2
+    val showFooter = height - baseReserved >= 120.dp
+    val footerExtra = if (showFooter) 18.dp + 8.dp else 0.dp
+    val chartHeight = (height - baseReserved - footerExtra).coerceIn(64.dp, 190.dp)
 
+    // Odstępy to padding, nie Spacer: kontener Glance mieści maksymalnie 10 dzieci,
+    // a sześć sekcji przedzielonych pięcioma Spacerami dawało 11 — stopka znikała.
     Column(modifier = GlanceModifier.fillMaxSize()) {
         Header(state, ringSize = headerHeight, titleSize = 20.sp, showMascot = width >= 300.dp)
-        Spacer(GlanceModifier.height(8.dp))
-        StatusRow(state, plan)
-        Spacer(GlanceModifier.height(8.dp))
-        BottleRow(height = bottlesHeight, bottles = state.settings.bottlesMl)
-        Spacer(GlanceModifier.height(8.dp))
-        ChartPanel(state, width = width - pad * 2, height = chartHeight)
-        Spacer(GlanceModifier.height(8.dp))
-        Footer(state, plan)
+        Box(modifier = GlanceModifier.padding(top = 8.dp)) { StatusRow(state, plan) }
+        Box(modifier = GlanceModifier.padding(top = 8.dp)) { BottleRow(height = bottlesHeight, bottles = state.settings.bottlesMl) }
+        Box(modifier = GlanceModifier.padding(top = 8.dp)) { ToolRow(state, width - pad * 2) }
+        Box(modifier = GlanceModifier.padding(top = 8.dp)) { ChartPanel(state, width = width - pad * 2, height = chartHeight) }
+        if (showFooter) {
+            Box(modifier = GlanceModifier.padding(top = 8.dp)) { Footer(state, plan) }
+        }
     }
 }
 
@@ -482,5 +494,72 @@ private fun UndoChip(height: Dp) {
         contentAlignment = Alignment.Center,
     ) {
         Text("↺", style = TextStyle(color = Muted, fontSize = 17.sp))
+    }
+}
+
+/**
+ * Pasek napojów i „＋ wpis". Szeroki kafelek pokazuje wszystkie napoje naraz (dotknięcie
+ * zaznacza, ponowne cofa do wody), wąski — jeden przycisk, który przełącza kolejne.
+ * Zaznaczony napój obowiązuje na najbliższe dolanie butelką; „＋ wpis" otwiera pełny
+ * edytor, w którym można też wpisać łyk z przeszłości.
+ */
+@androidx.compose.runtime.Composable
+private fun ToolRow(state: HydrationState, width: Dp) {
+    val selected = state.widgetDrink
+    Row(
+        verticalAlignment = Alignment.CenterVertically,
+        modifier = GlanceModifier.fillMaxWidth().height(30.dp),
+    ) {
+        if (width >= 280.dp) {
+            // Odstęp jako padding, nie Spacer: kontener Glance mieści maksymalnie 10 dzieci,
+            // a 7 pigułek + 7 odstępów + „＋ wpis" to 15 — nadmiar byłby po cichu ucinany.
+            Drink.entries.forEach { drink ->
+                Box(
+                    modifier = GlanceModifier.defaultWeight().fillMaxHeight().padding(end = 4.dp),
+                ) {
+                    Box(
+                        modifier = GlanceModifier
+                            .fillMaxSize()
+                            .background(if (drink == selected) AquaSoft else Secondary)
+                            .cornerRadius(10.dp)
+                            .clickable(actionRunCallback<SetDrinkAction>(actionParametersOf(DrinkKey to drink.name))),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Text(drink.emoji, style = TextStyle(fontSize = 13.sp))
+                    }
+                }
+            }
+        } else {
+            Box(
+                modifier = GlanceModifier
+                    .defaultWeight()
+                    .fillMaxHeight()
+                    .background(if (selected == Drink.WATER) Secondary else AquaSoft)
+                    .cornerRadius(10.dp)
+                    .clickable(actionRunCallback<CycleDrinkAction>()),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    "${selected.emoji} ${selected.label}  ⟳",
+                    style = TextStyle(color = if (selected == Drink.WATER) Muted else Foreground, fontSize = 11.sp, fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                )
+            }
+            Spacer(GlanceModifier.width(4.dp))
+        }
+        Box(
+            modifier = GlanceModifier
+                .width(64.dp)
+                .fillMaxHeight()
+                .background(Secondary)
+                .cornerRadius(10.dp)
+                .clickable(actionStartActivity(
+                    android.content.Intent(androidx.glance.LocalContext.current, com.kropi.hydration.ui.QuickEntryActivity::class.java)
+                        .addFlags(android.content.Intent.FLAG_ACTIVITY_NEW_TASK),
+                )),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text("＋ wpis", style = TextStyle(color = Aqua, fontSize = 11.sp, fontWeight = FontWeight.Bold), maxLines = 1)
+        }
     }
 }
