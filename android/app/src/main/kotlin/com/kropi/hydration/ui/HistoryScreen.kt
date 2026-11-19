@@ -28,6 +28,21 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.platform.LocalContext
 import com.kropi.hydration.data.HistoryDay
+import com.kropi.hydration.data.Intake
+import com.kropi.hydration.data.MonthCalendar
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.style.TextAlign
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -36,7 +51,11 @@ import com.kropi.hydration.data.HydrationState
 
 /** Mirrors src/routes/history.tsx. */
 @Composable
-fun HistoryScreen(state: HydrationState) {
+fun HistoryScreen(
+    state: HydrationState,
+    onAddEntryOn: (Long) -> Unit,
+    onEditIntake: (Intake) -> Unit,
+) {
     val history = state.history
     val total = history.sumOf { it.ml }
     val avg = total / history.size
@@ -108,6 +127,8 @@ fun HistoryScreen(state: HydrationState) {
         }
 
         item { WeekHistoryChart(history, max) }
+
+        item { MonthCard(state, onAddEntryOn, onEditIntake) }
 
         item {
             GlassCard(modifier = Modifier.fillMaxWidth()) {
@@ -354,6 +375,190 @@ private suspend fun writeCsv(context: android.content.Context, uri: android.net.
                             "${(record.pct * 100).toInt()};${if (record.reached) "tak" else "nie"}",
                     )
                 }
+            }
+        }
+    }
+}
+
+
+private val POLISH_LOCALE = Locale.forLanguageTag("pl-PL")
+private val WEEKDAYS = listOf("Pn", "Wt", "Śr", "Cz", "Pt", "So", "Nd")
+
+/**
+ * Kalendarz miesiąca: każdy dzień zabarwiony wg realizacji celu, strzałki do przeglądania
+ * wcześniejszych miesięcy, a po dotknięciu dnia — jego łyki, które można poprawiać albo
+ * dopisywać wstecz.
+ */
+@Composable
+private fun MonthCard(state: HydrationState, onAddEntryOn: (Long) -> Unit, onEditIntake: (Intake) -> Unit) {
+    val today = LocalDate.now()
+    var month by remember { mutableStateOf(YearMonth.from(today)) }
+    var selected by remember { mutableLongStateOf(today.toEpochDay()) }
+
+    val minMonth = YearMonth.from(LocalDate.ofEpochDay(state.firstKnownDay))
+    val currentMonth = YearMonth.from(today)
+    val byDay = remember(state.records, state.total, state.goal) {
+        (state.records + state.today).associateBy { it.epochDay }
+    }
+    val cells = MonthCalendar.cells(month, byDay, today)
+    val summary = MonthCalendar.summary(cells)
+
+    GlassCard(modifier = Modifier.fillMaxWidth()) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            ChipButton("‹", false) { if (month > minMonth) month = month.minusMonths(1) }
+            Text(
+                month.month.getDisplayName(TextStyle.FULL_STANDALONE, POLISH_LOCALE)
+                    .replaceFirstChar { it.uppercase(POLISH_LOCALE) } + " ${month.year}",
+                color = KropiColors.foreground,
+                fontSize = 16.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.weight(1f),
+            )
+            ChipButton("›", false) { if (month < currentMonth) month = month.plusMonths(1) }
+        }
+
+        Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+            WEEKDAYS.forEach {
+                Text(it, color = KropiColors.mutedForeground, fontSize = 11.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+            }
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            MonthCalendar.weeks(month, cells).forEach { week ->
+                Row(horizontalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
+                    week.forEach { cell ->
+                        if (cell == null) {
+                            Box(modifier = Modifier.weight(1f).height(40.dp))
+                        } else {
+                            DayCell(
+                                day = cell.date.dayOfMonth,
+                                pct = cell.record?.takeIf { it.ml > 0 }?.pct,
+                                reached = cell.record?.takeIf { it.ml > 0 }?.reached == true,
+                                isToday = cell.date == today,
+                                isSelected = cell.date.toEpochDay() == selected,
+                                enabled = !cell.date.isAfter(today),
+                                onClick = { selected = cell.date.toEpochDay() },
+                                modifier = Modifier.weight(1f),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+
+        Text(
+            if (summary.trackedDays == 0) "W tym miesiącu nie ma jeszcze zapisów."
+            else "Średnio ${summary.averageMl} ml przez ${summary.trackedDays} dni z zapisami, cel zaliczony ${summary.reachedDays} razy.",
+            color = KropiColors.mutedForeground,
+            fontSize = 12.sp,
+            lineHeight = 17.sp,
+        )
+
+        DayDetail(state, selected, onAddEntryOn, onEditIntake)
+    }
+}
+
+@Composable
+private fun DayCell(
+    day: Int,
+    pct: Float?,
+    reached: Boolean,
+    isToday: Boolean,
+    isSelected: Boolean,
+    enabled: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val fill = when {
+        pct == null -> KropiColors.secondary.copy(alpha = if (enabled) 0.6f else 0.25f)
+        reached -> KropiColors.aqua
+        else -> KropiColors.aqua.copy(alpha = 0.2f + 0.5f * pct)
+    }
+    val border = when {
+        isSelected -> Color.White
+        isToday -> KropiColors.aqua
+        else -> Color.Transparent
+    }
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = modifier
+            .height(40.dp)
+            .clip(RoundedCornerShape(12.dp))
+            .background(fill)
+            .border(if (isSelected || isToday) 2.dp else 0.dp, border, RoundedCornerShape(12.dp))
+            .clickable(enabled = enabled, onClick = onClick),
+    ) {
+        Text(
+            "$day",
+            color = when {
+                reached -> KropiColors.background
+                enabled -> KropiColors.foreground
+                else -> KropiColors.mutedForeground.copy(alpha = 0.5f)
+            },
+            fontSize = 13.sp,
+            fontWeight = if (isToday) FontWeight.Bold else FontWeight.Normal,
+        )
+    }
+}
+
+@Composable
+private fun DayDetail(state: HydrationState, epochDay: Long, onAddEntryOn: (Long) -> Unit, onEditIntake: (Intake) -> Unit) {
+    val date = LocalDate.ofEpochDay(epochDay)
+    val record = state.recordOn(epochDay)
+    val intakes = state.intakesOn(epochDay)
+    val dayName = date.dayOfWeek.getDisplayName(TextStyle.FULL, POLISH_LOCALE)
+    Column(
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(20.dp))
+            .background(KropiColors.secondary.copy(alpha = 0.5f))
+            .padding(14.dp),
+    ) {
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    "$dayName, ${date.format(DateTimeFormatter.ofPattern("dd.MM"))}",
+                    color = KropiColors.foreground,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                Text(
+                    if (record == null || record.ml == 0) "Brak zapisów"
+                    else "${record.ml} / ${record.goal} ml · ${Math.round(record.pct * 100)}%",
+                    color = if (record?.reached == true) KropiColors.aqua else KropiColors.mutedForeground,
+                    fontSize = 12.sp,
+                )
+            }
+            ChipButton("＋ Dopisz", selected = true) { onAddEntryOn(epochDay) }
+        }
+        intakes.forEach { intake ->
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .clickable { onEditIntake(intake) }
+                    .padding(vertical = 4.dp),
+            ) {
+                Text(intake.drink.emoji, fontSize = 14.sp, modifier = Modifier.padding(end = 8.dp))
+                Text(
+                    String.format("%02d:%02d", intake.hour, intake.minute),
+                    color = KropiColors.mutedForeground,
+                    fontSize = 12.sp,
+                    modifier = Modifier.padding(end = 10.dp),
+                )
+                Text(
+                    listOfNotNull(
+                        if (intake.counted != intake.ml) "liczy się ${intake.counted}" else null,
+                        intake.note,
+                    ).joinToString(" · "),
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    modifier = Modifier.weight(1f),
+                )
+                Text("${intake.ml} ml", color = KropiColors.foreground, fontSize = 13.sp, fontWeight = FontWeight.Bold)
             }
         }
     }

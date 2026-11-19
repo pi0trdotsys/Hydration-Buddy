@@ -92,9 +92,24 @@ data class HydrationState(
     val settings: HydrationSettings,
     /** Epoch ms ostatniej zmiany dzisiejszej sumy/celu (0 = nieznane, sprzed eksportu). */
     val lastChangeEpochMs: Long = 0L,
-    /** Łyki z ostatnich ~30 dni (razem z dzisiejszymi) — do statystyk napojów. */
-    val recentIntakes: List<Intake> = emptyList(),
+    /** Wszystkie łyki z bazy (do ~400 dni wstecz) — kalendarz miesiąca i statystyki napojów. */
+    val allIntakes: List<Intake> = emptyList(),
 ) {
+    /** Łyki z ostatnich ~30 dni (razem z dzisiejszymi) — do statystyk napojów. */
+    val recentIntakes: List<Intake>
+        get() = LocalDate.now().toEpochDay().let { today -> allIntakes.filter { it.epochDay >= today - 30 } }
+
+    /** Łyki jednego dnia, od najwcześniejszego. */
+    fun intakesOn(epochDay: Long): List<Intake> =
+        allIntakes.filter { it.epochDay == epochDay }.sortedWith(compareBy({ it.minuteOfDay }, { it.id }))
+
+    /** Rekord dnia: dzisiejszy liczony w locie, wcześniejsze z historii, null = brak danych. */
+    fun recordOn(epochDay: Long): DayRecord? =
+        if (epochDay == LocalDate.now().toEpochDay()) today else records.firstOrNull { it.epochDay == epochDay }
+
+    /** Najstarszy dzień, o którym Kropi coś wie (do ograniczenia nawigacji po miesiącach). */
+    val firstKnownDay: Long get() = records.minOfOrNull { it.epochDay } ?: LocalDate.now().toEpochDay()
+
     val total: Int get() = intakes.sumOf { it.counted }
     val progress: Double get() = (total.toDouble() / goal).coerceIn(0.0, 1.0)
     val remaining: Int get() = (goal - total).coerceAtLeast(0)
@@ -221,6 +236,7 @@ private object Keys {
     val LAST_SUMMARY_EPOCH_DAY = longPreferencesKey("last_summary_epoch_day")
     val ADAPTIVE_PLAN = booleanPreferencesKey("adaptive_plan")
     val NET_HYDRATION = booleanPreferencesKey("net_hydration")
+    val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
     val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
 }
@@ -294,7 +310,6 @@ class HydrationRepository(private val context: Context) {
         val goal = prefs[Keys.GOAL] ?: DEFAULT_GOAL
         val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
         val net = settings.netHydration
-        val recentFrom = currentDay - RECENT_DAYS
         return HydrationState(
             goal = goal,
             intakes = intakes.filter { it.epochDay == currentDay }.map { it.toIntake(net) },
@@ -303,12 +318,11 @@ class HydrationRepository(private val context: Context) {
             pokeSeed = prefs[Keys.POKE_SEED] ?: 0,
             settings = settings,
             lastChangeEpochMs = prefs[Keys.LAST_CHANGE_EPOCH_MS] ?: 0L,
-            recentIntakes = intakes.filter { it.epochDay >= recentFrom }.map { it.toIntake(net) },
+            allIntakes = intakes.map { it.toIntake(net) },
         )
     }
 
     companion object {
-        private const val RECENT_DAYS = 30L
         private val migrationMutex = Mutex()
 
         /** Dzisiejszy stan w kształcie eksportu (provider dla Szpili). */
@@ -616,8 +630,32 @@ class HydrationRepository(private val context: Context) {
                 }
             }
         }
+        // Kopia z wcześniejszej wersji nie zna powitania, a jej właściciel nie potrzebuje go drugi raz.
+        context.hydrationStore.edit { it[Keys.ONBOARDING_DONE] = true }
         migrateLegacyIfNeeded()
         rollDayIfNeeded()
+    }
+
+    /**
+     * Czy pokazać powitanie: tylko przy świeżej instalacji bez żadnych danych. Aktualizacja
+     * starszej wersji, istniejące wpisy albo zapisane ustawienia oznaczają, że to nie pierwszy raz.
+     */
+    suspend fun needsOnboarding(): Boolean {
+        val prefs = context.hydrationStore.data.first()
+        prefs[Keys.ONBOARDING_DONE]?.let { return !it }
+        val info = runCatching { context.packageManager.getPackageInfo(context.packageName, 0) }.getOrNull()
+        val updated = info != null && info.lastUpdateTime > info.firstInstallTime
+        val hasData = dao.intakeCount() > 0 || prefs[Keys.WEIGHT_KG] != null ||
+            prefs[Keys.INTAKES] != null || prefs[Keys.HISTORY] != null
+        val needs = !updated && !hasData
+        if (!needs) context.hydrationStore.edit { it[Keys.ONBOARDING_DONE] = true }
+        return needs
+    }
+
+    /** Kończy powitanie; [settings] = null oznacza „pomiń" i zostawia domyślne ustawienia. */
+    suspend fun completeOnboarding(settings: HydrationSettings?) {
+        if (settings != null) saveSettings(settings)
+        context.hydrationStore.edit { it[Keys.ONBOARDING_DONE] = true }
     }
 
     /**

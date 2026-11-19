@@ -127,16 +127,16 @@ private fun BackgroundRestrictionsCard() {
     }
 }
 
-private fun isProbablyMiui(): Boolean =
+internal fun isProbablyMiui(): Boolean =
     Build.MANUFACTURER.equals("xiaomi", ignoreCase = true) || Build.BRAND.equals("redmi", ignoreCase = true) ||
         Build.BRAND.equals("poco", ignoreCase = true)
 
-private fun isIgnoringBatteryOptimizations(context: Context): Boolean {
+internal fun isIgnoringBatteryOptimizations(context: Context): Boolean {
     val pm = context.getSystemService(Context.POWER_SERVICE) as? PowerManager ?: return true
     return pm.isIgnoringBatteryOptimizations(context.packageName)
 }
 
-private fun requestIgnoreBatteryOptimizations(context: Context) {
+internal fun requestIgnoreBatteryOptimizations(context: Context) {
     runCatching {
         val intent = Intent(Settings.ACTION_REQUEST_IGNORE_BATTERY_OPTIMIZATIONS).apply {
             data = Uri.parse("package:${context.packageName}")
@@ -146,7 +146,7 @@ private fun requestIgnoreBatteryOptimizations(context: Context) {
     }
 }
 
-private fun openMiuiAutostartSettings(context: Context) {
+internal fun openMiuiAutostartSettings(context: Context) {
     val candidates = listOf(
         ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivity"),
         ComponentName("com.miui.securitycenter", "com.miui.permcenter.autostart.AutoStartManagementActivityNew"),

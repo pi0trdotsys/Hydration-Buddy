@@ -129,10 +129,12 @@ inside that window, outside it Kropi leaves you alone.
 ## ◉ History that doesn't lie
 
 Every closed day goes into history: how much you drank, what the goal was,
-whether you made it. The week, the **last 30 days**, your best day and your
-**streak** — all computed from real entries, not from sample data. A mistake is
-one tap away from being deleted on the day's timeline, and the whole thing
-exports to **CSV** without any storage permissions.
+whether you made it. The week, a **month calendar** (every day tinted by how
+close you got, arrows take you back through older months), the **last 30
+days**, your best day and your **streak** — all computed from real entries, not
+from sample data. Tap a day in the calendar to see its sips, fix them or **add
+a forgotten one**; the whole thing exports to **CSV** without any storage
+permissions.
 
 ## ◉ Not just water
 
@@ -182,6 +184,9 @@ condition: both apps must be signed with the **same key** (see below).
 Android 8.0 or newer. Updates install over the top — your data stays put.
 
 ## ▸ The first two minutes that matter
+
+On first launch Kropi walks you through the same in four screens (goal, hours,
+tone, notifications, widget) — below is a cheat sheet of where to change it all later.
 
 |     | Where                                                        | Why                                                |
 | --- | ------------------------------------------------------------ | -------------------------------------------------- |

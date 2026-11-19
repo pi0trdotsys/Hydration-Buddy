@@ -55,6 +55,8 @@ private const val MAX_ML = 3000
 fun IntakeEditorSheet(
     initial: Intake?,
     netHydration: Boolean,
+    /** Dzień dla nowego wpisu (np. wybrany w kalendarzu); null = dziś. */
+    defaultEpochDay: Long? = null,
     onSave: (ml: Int, drink: Drink, note: String?, epochDay: Long, minuteOfDay: Int) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
@@ -65,8 +67,11 @@ fun IntakeEditorSheet(
     var ml by remember { mutableIntStateOf(initial?.ml ?: 250) }
     var drink by remember { mutableStateOf(initial?.drink ?: Drink.WATER) }
     var note by remember { mutableStateOf(initial?.note.orEmpty()) }
-    var epochDay by remember { mutableLongStateOf(initial?.epochDay ?: today) }
-    var minuteOfDay by remember { mutableIntStateOf(initial?.minuteOfDay ?: nowMinute) }
+    var epochDay by remember { mutableLongStateOf(initial?.epochDay ?: defaultEpochDay ?: today) }
+    // Wpis dopisywany do minionego dnia startuje w południe, a nie o „teraz".
+    var minuteOfDay by remember {
+        mutableIntStateOf(initial?.minuteOfDay ?: if (epochDay < today) 12 * 60 else nowMinute)
+    }
 
     // Dziś nie da się zalogować łyka z przyszłości.
     fun clampTime(minute: Int): Int {

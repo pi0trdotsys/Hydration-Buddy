@@ -120,10 +120,12 @@ działają przypomnienia i liczy się tempo, poza nim Kropi daje spokój.
 ## ◉ Historia, która nie kłamie
 
 Każdy zamknięty dzień ląduje w historii: ile wypite, jaki był cel, czy się
-udało. Tydzień, **ostatnie 30 dni**, najlepszy dzień i **seria** — liczone z
-prawdziwych zapisów, nie z przykładowych danych. Pomyłkę kasujesz krzyżykiem
-na osi czasu dnia, a całość wyeksportujesz do **CSV** jednym dotknięciem, bez
-żadnych uprawnień do pamięci.
+udało. Tydzień, **kalendarz miesiąca** (każdy dzień zabarwiony wg realizacji
+celu, strzałkami cofasz się do starszych miesięcy), **ostatnie 30 dni**,
+najlepszy dzień i **seria** — liczone z prawdziwych zapisów, nie z
+przykładowych danych. Dotknij dnia w kalendarzu, żeby zobaczyć jego łyki,
+poprawić je albo **dopisać zapomniany** — całość wyeksportujesz do **CSV**
+jednym dotknięciem, bez żadnych uprawnień do pamięci.
 
 ## ◉ Nie tylko woda
 
@@ -173,6 +175,10 @@ Wymagany Android 8.0 lub nowszy. Aktualizacje instalują się przez nadpisanie �
 dane zostają.
 
 ## ▸ Pierwsze 2 minuty, które robią różnicę
+
+Przy pierwszym uruchomieniu Kropi przeprowadzi Cię przez to samo w czterech
+ekranach (cel, godziny, ton, powiadomienia, widget) — poniżej ściąga, gdzie
+wszystko potem zmienisz.
 
 |     | Gdzie                                                        | Po co                                                 |
 | --- | ------------------------------------------------------------ | ----------------------------------------------------- |

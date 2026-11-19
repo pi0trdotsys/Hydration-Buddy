@@ -9,6 +9,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.MaterialTheme
@@ -51,10 +52,17 @@ class MainActivity : ComponentActivity() {
                 ActivityResultContracts.RequestPermission(),
             ) { /* no-op, reminders simply do not fire without the permission */ }
 
-            LaunchedEffect(Unit) {
+            fun askNotificationPermission() {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                     notificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
                 }
+            }
+
+            // null = jeszcze sprawdzamy; powitanie ma własny moment na pytanie o powiadomienia.
+            var onboarding by remember { mutableStateOf<Boolean?>(null) }
+            LaunchedEffect(Unit) {
+                onboarding = repo.needsOnboarding()
+                if (onboarding == false) askNotificationPermission()
             }
 
             MaterialTheme {
@@ -68,9 +76,34 @@ class MainActivity : ComponentActivity() {
                 var editor by remember { mutableStateOf<EditorTarget?>(null) }
 
                 val current = state
+                if (onboarding == null) {
+                    androidx.compose.foundation.layout.Box(modifier = Modifier.fillMaxSize().background(KropiColors.background))
+                    return@MaterialTheme
+                }
+                if (onboarding == true && current != null) {
+                    OnboardingScreen(
+                        initial = current.settings,
+                        onRequestNotifications = { askNotificationPermission() },
+                        onPinWidget = { pinWidget() },
+                        onFinish = { settings ->
+                            scope.launch {
+                                repo.completeOnboarding(settings)
+                                HydrationWidget().updateAll(applicationContext)
+                                NotificationScheduler.schedule(applicationContext)
+                            }
+                            onboarding = false
+                        },
+                        onSkip = {
+                            scope.launch { repo.completeOnboarding(null) }
+                            onboarding = false
+                        },
+                    )
+                    return@MaterialTheme
+                }
                 editor?.let { target ->
                     IntakeEditorSheet(
                         initial = target.intake,
+                        defaultEpochDay = target.epochDay,
                         netHydration = current?.settings?.netHydration ?: true,
                         onSave = { ml, drink, note, day, minute ->
                             scope.launch {
@@ -120,8 +153,8 @@ class MainActivity : ComponentActivity() {
                                     onUndo = { scope.launch { repo.undoLast(); HydrationWidget().updateAll(applicationContext) } },
                                     onPoke = { scope.launch { repo.poke() } },
                                     onSetGoal = { ml -> scope.launch { repo.setGoal(ml); HydrationWidget().updateAll(applicationContext) } },
-                                    onAddEntry = { editor = EditorTarget(null) },
-                                    onEditIntake = { intake -> editor = EditorTarget(intake) },
+                                    onAddEntry = { editor = EditorTarget(null, null) },
+                                    onEditIntake = { intake -> editor = EditorTarget(intake, null) },
                                     onDeleteIntake = { id -> scope.launch { repo.deleteIntake(id); HydrationWidget().updateAll(applicationContext) } },
                                 )
                                 Tab.WIDGET -> WidgetScreen(
@@ -131,7 +164,11 @@ class MainActivity : ComponentActivity() {
                                     onPoke = { scope.launch { repo.poke() } },
                                     onPin = { pinWidget() },
                                 )
-                                Tab.HISTORY -> HistoryScreen(state = current)
+                                Tab.HISTORY -> HistoryScreen(
+                                    state = current,
+                                    onAddEntryOn = { day -> editor = EditorTarget(null, day) },
+                                    onEditIntake = { intake -> editor = EditorTarget(intake, null) },
+                                )
                                 Tab.INSIGHTS -> InsightsScreen()
                                 Tab.SETTINGS -> SettingsScreen(
                                     initial = current.settings,
@@ -163,7 +200,7 @@ class MainActivity : ComponentActivity() {
 }
 
 /** Cel edytora: null w [intake] = nowy wpis. */
-private class EditorTarget(val intake: com.kropi.hydration.data.Intake?)
+private class EditorTarget(val intake: com.kropi.hydration.data.Intake?, val epochDay: Long?)
 
 private enum class Tab(val label: String, val emoji: String) {
     HOME("Główny", "🏠"),
