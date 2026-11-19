@@ -32,6 +32,10 @@ data class HydrationSettings(
     val adaptivePlan: Boolean = true,
     /** Liczy napoje wg współczynnika nawodnienia (kawa 80%, sok 85%…); wyłączone = każdy 1:1. */
     val netHydration: Boolean = true,
+    /** Nie wysyłaj przypomnień, gdy telefon ma włączone „Nie przeszkadzać". */
+    val respectDnd: Boolean = true,
+    /** Nie wysyłaj przypomnień podczas spotkań z kalendarza (wymaga zgody na odczyt kalendarza). */
+    val quietDuringMeetings: Boolean = false,
     /** Zapisuj wypite napoje do Health Connect (jako nawodnienie). */
     val healthWriteHydration: Boolean = false,
     /** Waga i aktywność (kroki) z Health Connect zamiast ręcznych ustawień celu. */

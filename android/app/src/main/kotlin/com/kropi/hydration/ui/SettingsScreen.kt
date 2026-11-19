@@ -195,6 +195,19 @@ private fun SettingsSection(
     var intensity by remember { mutableStateOf(initial.snarkIntensity) }
     var adaptivePlan by remember { mutableStateOf(initial.adaptivePlan) }
     var netHydration by remember { mutableStateOf(initial.netHydration) }
+    var respectDnd by remember { mutableStateOf(initial.respectDnd) }
+    var quietMeetings by remember { mutableStateOf(initial.quietDuringMeetings) }
+    val calendarPermission = androidx.activity.compose.rememberLauncherForActivityResult(
+        androidx.activity.result.contract.ActivityResultContracts.RequestPermission(),
+    ) { granted -> quietMeetings = granted }
+    val appContext = LocalContext.current
+    // Na żywo: co teraz wstrzymałoby przypomnienie (spotkanie albo „Nie przeszkadzać").
+    var holdNow by remember { mutableStateOf<com.kropi.hydration.notifications.ReminderGate.Reason?>(null) }
+    androidx.compose.runtime.LaunchedEffect(respectDnd, quietMeetings) {
+        holdNow = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+            com.kropi.hydration.notifications.ReminderGate.currentHold(appContext, respectDnd, quietMeetings)
+        }
+    }
 
     val calculatedGoal = GoalCalculator.calculate(weightKg, activity, temperature)
     val effectiveGoal = if (goalMode == GoalMode.AUTO) calculatedGoal else manualGoal.toInt()
@@ -221,6 +234,55 @@ private fun SettingsSection(
                 checked = remindersEnabled,
                 onCheckedChange = { remindersEnabled = it },
                 colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+            )
+        }
+
+        // --- cisza: Nie przeszkadzać i spotkania ---
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Szanuj „Nie przeszkadzać”", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Gdy telefon ma włączony ten tryb, przypomnienie czeka i odezwie się, gdy się skończy.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Switch(
+                checked = respectDnd,
+                onCheckedChange = { respectDnd = it },
+                colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+            )
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+            Column(modifier = Modifier.weight(1f)) {
+                Text("Cisza podczas spotkań", color = KropiColors.foreground, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                Text(
+                    "Kropi zagląda do kalendarza na telefonie (tylko lokalnie) i nie przypomina, gdy trwa spotkanie.",
+                    color = KropiColors.mutedForeground,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                )
+            }
+            Switch(
+                checked = quietMeetings,
+                onCheckedChange = { on ->
+                    if (!on) {
+                        quietMeetings = false
+                    } else if (com.kropi.hydration.notifications.ReminderGate.hasCalendarPermission(appContext)) {
+                        quietMeetings = true
+                    } else {
+                        calendarPermission.launch(android.Manifest.permission.READ_CALENDAR)
+                    }
+                },
+                colors = SwitchDefaults.colors(checkedTrackColor = KropiColors.aqua, checkedThumbColor = KropiColors.background),
+            )
+        }
+        if (respectDnd || quietMeetings) {
+            Text(
+                holdNow?.let { "Teraz przypomnienia czekają: ${it.label}." } ?: "Teraz nic nie wstrzymuje przypomnień.",
+                color = if (holdNow != null) KropiColors.aqua else KropiColors.mutedForeground,
+                fontSize = 11.sp,
             )
         }
 
@@ -399,6 +461,8 @@ private fun SettingsSection(
                             activeEndHour = endHour,
                             reminderGlassMl = glassMl,
                             remindersEnabled = remindersEnabled,
+                            respectDnd = respectDnd,
+                            quietDuringMeetings = quietMeetings,
                             notificationTone = tone,
                             bottlesMl = bottles,
                             snarkIntensity = intensity,

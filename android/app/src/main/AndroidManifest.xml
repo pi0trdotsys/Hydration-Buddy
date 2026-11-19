@@ -16,6 +16,9 @@
     <!-- Kropi sam wysyła broadcasty wymagające tego uprawnienia. -->
     <uses-permission android:name="com.kropi.hydration.permission.READ_HYDRATION" />
 
+    <!-- Opcjonalnie: wyciszanie przypomnień na czas spotkań z kalendarza. -->
+    <uses-permission android:name="android.permission.READ_CALENDAR" />
+
     <!-- Health Connect: zapis nawodnienia, odczyt wagi i kroków (do liczenia celu). -->
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
     <uses-permission android:name="android.permission.health.READ_WEIGHT" />

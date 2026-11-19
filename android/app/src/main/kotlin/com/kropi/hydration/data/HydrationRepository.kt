@@ -252,6 +252,8 @@ private object Keys {
     val NET_HYDRATION = booleanPreferencesKey("net_hydration")
     val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     val WIDGET_DRINK = stringPreferencesKey("widget_drink")
+    val RESPECT_DND = booleanPreferencesKey("respect_dnd")
+    val QUIET_MEETINGS = booleanPreferencesKey("quiet_during_meetings")
     val HEALTH_WRITE = booleanPreferencesKey("health_write_hydration")
     val HEALTH_PROFILE = booleanPreferencesKey("health_sync_profile")
     val HC_WRITTEN = stringPreferencesKey("hc_written_ids") // id wpisów zapisanych do Health Connect (ostatnie 3 dni)
@@ -301,6 +303,8 @@ private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences)
             ?: defaults.notificationTone,
         adaptivePlan = prefs[Keys.ADAPTIVE_PLAN] ?: defaults.adaptivePlan,
         netHydration = prefs[Keys.NET_HYDRATION] ?: defaults.netHydration,
+        respectDnd = prefs[Keys.RESPECT_DND] ?: defaults.respectDnd,
+        quietDuringMeetings = prefs[Keys.QUIET_MEETINGS] ?: defaults.quietDuringMeetings,
         healthWriteHydration = prefs[Keys.HEALTH_WRITE] ?: defaults.healthWriteHydration,
         healthSyncProfile = prefs[Keys.HEALTH_PROFILE] ?: defaults.healthSyncProfile,
         snarkIntensity = prefs[Keys.SNARK_INTENSITY]?.let { runCatching { SnarkIntensity.valueOf(it) }.getOrNull() }
@@ -700,6 +704,8 @@ class HydrationRepository(private val context: Context) {
                 prefs[Keys.SNARK_INTENSITY] = settings.snarkIntensity.name
                 prefs[Keys.ADAPTIVE_PLAN] = settings.adaptivePlan
                 prefs[Keys.NET_HYDRATION] = settings.netHydration
+                prefs[Keys.RESPECT_DND] = settings.respectDnd
+                prefs[Keys.QUIET_MEETINGS] = settings.quietDuringMeetings
                 prefs[Keys.HEALTH_WRITE] = settings.healthWriteHydration
                 prefs[Keys.HEALTH_PROFILE] = settings.healthSyncProfile
                 prefs[Keys.GOAL] = settings.effectiveGoalMl

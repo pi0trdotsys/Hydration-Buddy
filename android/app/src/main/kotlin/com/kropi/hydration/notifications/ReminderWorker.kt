@@ -139,6 +139,8 @@ class ReminderWorker(context: Context, params: WorkerParameters) : CoroutineWork
             if (!settings.remindersEnabled) return
             if (state.remaining <= 0) return
             if (repo.isSnoozed()) return
+            // Spotkanie albo „Nie przeszkadzać": przypomnienie czeka do następnego tiku, nie przepada.
+            if (ReminderGate.currentHold(applicationContext, settings.respectDnd, settings.quietDuringMeetings) != null) return
         }
 
         val now = LocalTime.now()
