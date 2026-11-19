@@ -20,6 +20,7 @@ object NotificationScheduler {
         val request = PeriodicWorkRequestBuilder<ReminderWorker>(15, TimeUnit.MINUTES).build()
         WorkManager.getInstance(context)
             .enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.KEEP, request)
+        MidnightRollWorker.schedule(context)
     }
 
     /** Enqueued from the "test notification" button — bypasses timing/interval gating. */

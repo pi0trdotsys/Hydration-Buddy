@@ -11,6 +11,43 @@ import com.kropi.hydration.data.Intake
 import com.kropi.hydration.data.Level
 
 /**
+ * Kolory, którymi rysujemy bitmapy widgetu (pierścień, maskotka, wykres). Glance sam
+ * wybiera kolory tekstu i teł, ale bitmapy trzeba pomalować samemu — stąd paleta
+ * przekazywana z motywu widgetu (jasny/ciemny/Material You).
+ */
+data class GraphicsPalette(
+    val accent: Int,
+    val accentDeep: Int,
+    val track: Int,
+    val card: Int,
+    val muted: Int,
+    val foreground: Int,
+    val pupil: Int = 0xFF0A1F2C.toInt(),
+) {
+    /** Ta sama paleta z innym kolorem akcentu — np. pomarańcz, gdy jesteś za planem. */
+    fun withAccent(color: Int, deep: Int) = copy(accent = color, accentDeep = deep)
+
+    companion object {
+        val DARK = GraphicsPalette(
+            accent = 0xFF00DFE8.toInt(),
+            accentDeep = 0xFF007BB2.toInt(),
+            track = 0xFF132938.toInt(),
+            card = 0xFF071A27.toInt(),
+            muted = 0xFF91A9B3.toInt(),
+            foreground = 0xFFEEF7FA.toInt(),
+        )
+        val LIGHT = GraphicsPalette(
+            accent = 0xFF00B3BE.toInt(),
+            accentDeep = 0xFF006FA3.toInt(),
+            track = 0xFFD3E4EA.toInt(),
+            card = 0xFFF3FAFC.toInt(),
+            muted = 0xFF4F6A77.toInt(),
+            foreground = 0xFF06202C.toInt(),
+        )
+    }
+}
+
+/**
  * The Glance widget API has no arbitrary Canvas/SVG rendering, so the
  * progress ring and mascot from the TS mockup (progress-ring.tsx,
  * mascot-drop.tsx — both raw <svg>) are pre-rendered to bitmaps here and
@@ -25,7 +62,10 @@ object WidgetGraphics {
     private const val CARD = 0xFF071A27.toInt()
 
     /** Mirrors ProgressRing.tsx: a gradient arc over a flat track, starting at 12 o'clock. */
-    fun progressRing(sizePx: Int, strokePx: Float, progress: Float): Bitmap {
+    fun progressRing(sizePx: Int, strokePx: Float, progress: Float, palette: GraphicsPalette = GraphicsPalette.DARK): Bitmap {
+        val AQUA = palette.accent
+        val AQUA_DEEP = palette.accentDeep
+        val TRACK = palette.track
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         val pad = strokePx / 2f + 2f
@@ -56,7 +96,10 @@ object WidgetGraphics {
     }
 
     /** Mirrors mascot-drop.tsx's inline <svg> path 1:1 (viewBox -50 -55 100 110). */
-    fun mascot(sizePx: Int, level: Level): Bitmap {
+    fun mascot(sizePx: Int, level: Level, palette: GraphicsPalette = GraphicsPalette.DARK): Bitmap {
+        val AQUA = palette.accent
+        val AQUA_DEEP = palette.accentDeep
+        val CARD = palette.card
         val bmp = Bitmap.createBitmap(sizePx, sizePx, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bmp)
         canvas.translate(sizePx / 2f, sizePx / 2f)
@@ -88,7 +131,7 @@ object WidgetGraphics {
         canvas.drawOval(RectF(-22f, -16f, -6f, 4f), eyeWhite)
         canvas.drawOval(RectF(6f, -16f, 22f, 4f), eyeWhite)
 
-        val pupil = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF0A1F2C.toInt() }
+        val pupil = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.pupil }
         canvas.drawCircle(-12f, -4f, 4f, pupil)
         canvas.drawCircle(16f, -4f, 4f, pupil)
 
@@ -161,8 +204,15 @@ object IntakeChart {
         startHour: Int,
         endHour: Int,
         nowMinutes: Int,
+        palette: GraphicsPalette = GraphicsPalette.DARK,
     ) {
         if (width <= 0f || height <= 0f) return
+        val AQUA = palette.accent
+        val AQUA_SOFT = (palette.accent and 0x00FFFFFF) or 0x4D000000
+        val AQUA_FADE = (palette.accent and 0x00FFFFFF) or 0x08000000
+        val TRACK = palette.track
+        val MUTED = palette.muted
+        val FOREGROUND = palette.foreground
 
         // Im wyższy panel, tym większe podpisy — na kafelku 4×4 wykres dostaje
         // ~190 dp i przy stałych 8 sp wyglądałby jak znaczek na tle pustki.
@@ -316,6 +366,7 @@ fun intakeChartBitmap(
     startHour: Int,
     endHour: Int,
     nowMinutes: Int,
+    palette: GraphicsPalette = GraphicsPalette.DARK,
 ): Bitmap {
     val width = widthPx.coerceAtLeast(1)
     val height = heightPx.coerceAtLeast(1)
@@ -330,6 +381,7 @@ fun intakeChartBitmap(
         startHour = startHour,
         endHour = endHour,
         nowMinutes = nowMinutes,
+        palette = palette,
     )
     return bitmap
 }

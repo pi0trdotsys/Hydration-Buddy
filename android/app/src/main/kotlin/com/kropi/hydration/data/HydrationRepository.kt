@@ -16,6 +16,7 @@ import com.kropi.hydration.export.HydrationExport
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -92,6 +93,10 @@ data class HydrationState(
     val settings: HydrationSettings,
     /** Epoch ms ostatniej zmiany dzisiejszej sumy/celu (0 = nieznane, sprzed eksportu). */
     val lastChangeEpochMs: Long = 0L,
+    /** Ostatnio cofnięty łyk (widget pozwala go na chwilę przywrócić). */
+    val undo: UndoInfo? = null,
+    /** Ostatnio użyta ilość dla każdego napoju — „typowa porcja". */
+    val drinkMemory: Map<Drink, Int> = emptyMap(),
     /** Napój wybrany na widgecie — następne dolanie z widgetu liczy się jako on, potem wraca woda. */
     val widgetDrink: Drink = Drink.WATER,
     /** Wszystkie łyki z bazy (do ~400 dni wstecz) — kalendarz miesiąca i statystyki napojów. */
@@ -100,6 +105,9 @@ data class HydrationState(
     /** Łyki z ostatnich ~30 dni (razem z dzisiejszymi) — do statystyk napojów. */
     val recentIntakes: List<Intake>
         get() = LocalDate.now().toEpochDay().let { today -> allIntakes.filter { it.epochDay >= today - 30 } }
+
+    /** Typowa porcja napoju: ostatnio użyta ilość albo rozsądna wartość domyślna. */
+    fun typicalMl(drink: Drink): Int = drinkMemory[drink] ?: drink.defaultMl
 
     /** Łyki jednego dnia, od najwcześniejszego. */
     fun intakesOn(epochDay: Long): List<Intake> =
@@ -240,8 +248,29 @@ private object Keys {
     val NET_HYDRATION = booleanPreferencesKey("net_hydration")
     val ONBOARDING_DONE = booleanPreferencesKey("onboarding_done")
     val WIDGET_DRINK = stringPreferencesKey("widget_drink")
+    val UNDO_ML = intPreferencesKey("undo_ml")
+    val UNDO_DRINK = stringPreferencesKey("undo_drink")
+    val UNDO_DAY = longPreferencesKey("undo_day")
+    val UNDO_MINUTE = intPreferencesKey("undo_minute")
+    val UNDO_NOTE = stringPreferencesKey("undo_note")
+    val UNDO_AT = longPreferencesKey("undo_at")
     val HOURLY_PROFILE = stringPreferencesKey("hourly_profile") // 24 liczby: ile zwykle pijesz o tej godzinie
     val LAST_CHANGE_EPOCH_MS = longPreferencesKey("last_change_epoch_ms") // dla eksportu do Szpili
+}
+
+private const val LAST_ML_PREFIX = "last_ml_"
+private const val WIDGET_CONFIG_PREFIX = "widget_cfg_"
+
+private fun lastMlKey(drink: Drink) = intPreferencesKey(LAST_ML_PREFIX + drink.name)
+private fun widgetConfigKey(appWidgetId: Int) = stringPreferencesKey(WIDGET_CONFIG_PREFIX + appWidgetId)
+
+private fun readDrinkMemory(prefs: Preferences): Map<Drink, Int> =
+    Drink.entries.mapNotNull { d -> prefs[lastMlKey(d)]?.let { d to it } }.toMap()
+
+private fun readUndo(prefs: Preferences): UndoInfo? {
+    val ml = prefs[Keys.UNDO_ML] ?: return null
+    val at = prefs[Keys.UNDO_AT] ?: return null
+    return UndoInfo(ml, Drink.of(prefs[Keys.UNDO_DRINK]), at)
 }
 
 private fun readSettings(prefs: androidx.datastore.preferences.core.Preferences): HydrationSettings {
@@ -322,6 +351,8 @@ class HydrationRepository(private val context: Context) {
             settings = settings,
             lastChangeEpochMs = prefs[Keys.LAST_CHANGE_EPOCH_MS] ?: 0L,
             widgetDrink = Drink.of(prefs[Keys.WIDGET_DRINK]),
+            undo = readUndo(prefs),
+            drinkMemory = readDrinkMemory(prefs),
             allIntakes = intakes.map { it.toIntake(net) },
         )
     }
@@ -468,6 +499,7 @@ class HydrationRepository(private val context: Context) {
         minuteOfDay: Int? = null,
     ): Long {
         rollDayIfNeeded()
+        rememberAmount(drink, ml)
         return mutate {
             val prefs = context.hydrationStore.data.first()
             val currentDay = prefs[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
@@ -497,6 +529,7 @@ class HydrationRepository(private val context: Context) {
         epochDay: Long,
         minuteOfDay: Int,
     ) {
+        rememberAmount(drink, ml)
         mutate {
             val existing = dao.intakeById(id) ?: return@mutate
             val currentDay = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
@@ -515,6 +548,11 @@ class HydrationRepository(private val context: Context) {
         }
     }
 
+    /** Zapamiętuje ilość jako typową porcję tego napoju (podpowiedź w edytorze i na widgecie). */
+    private suspend fun rememberAmount(drink: Drink, ml: Int) {
+        context.hydrationStore.edit { it[lastMlKey(drink)] = ml.coerceAtLeast(1) }
+    }
+
     suspend fun deleteIntake(id: Long) {
         mutate { dao.delete(id) }
     }
@@ -525,6 +563,83 @@ class HydrationRepository(private val context: Context) {
             val day = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
             dao.newestIdOfDay(day)?.let { dao.delete(it) }
         }
+    }
+
+    /**
+     * Cofnięcie z widgetu: usuwa ostatni łyk dnia, ale zostawia go w pamięci, żeby
+     * widget mógł pokazać „Cofnięto … · przywróć". Zwraca, czy coś usunięto.
+     */
+    suspend fun undoLastKeeping(): Boolean {
+        rollDayIfNeeded()
+        var removed = false
+        mutate {
+            val day = context.hydrationStore.data.first()[Keys.LAST_EPOCH_DAY] ?: LocalDate.now().toEpochDay()
+            val id = dao.newestIdOfDay(day) ?: return@mutate
+            val entry = dao.intakeById(id) ?: return@mutate
+            dao.delete(id)
+            context.hydrationStore.edit {
+                it[Keys.UNDO_ML] = entry.ml
+                it[Keys.UNDO_DRINK] = entry.drink
+                it[Keys.UNDO_DAY] = entry.epochDay
+                it[Keys.UNDO_MINUTE] = entry.minuteOfDay
+                if (entry.note != null) it[Keys.UNDO_NOTE] = entry.note else it.remove(Keys.UNDO_NOTE)
+                it[Keys.UNDO_AT] = System.currentTimeMillis()
+            }
+            removed = true
+        }
+        return removed
+    }
+
+    /** Odtwarza łyk cofnięty z widgetu, o ile nie minęło za dużo czasu. */
+    suspend fun restoreUndone() {
+        val prefs = context.hydrationStore.data.first()
+        val ml = prefs[Keys.UNDO_ML] ?: return
+        val at = prefs[Keys.UNDO_AT] ?: return
+        val fresh = System.currentTimeMillis() - at <= 60_000L
+        if (fresh) {
+            mutate {
+                dao.insert(
+                    IntakeEntity(
+                        epochDay = prefs[Keys.UNDO_DAY] ?: LocalDate.now().toEpochDay(),
+                        minuteOfDay = prefs[Keys.UNDO_MINUTE] ?: nowMinuteOfDay(),
+                        ml = ml,
+                        drink = prefs[Keys.UNDO_DRINK] ?: Drink.WATER.name,
+                        note = prefs[Keys.UNDO_NOTE],
+                    ),
+                )
+            }
+        }
+        clearUndo()
+    }
+
+    /** Zapomina cofnięty łyk; [olderThanMs] > 0 oznacza „tylko jeśli już się przeterminował". */
+    suspend fun clearUndo(olderThanMs: Long = 0L) {
+        context.hydrationStore.edit {
+            val at = it[Keys.UNDO_AT] ?: return@edit
+            if (olderThanMs > 0 && System.currentTimeMillis() - at < olderThanMs) return@edit
+            it.remove(Keys.UNDO_ML)
+            it.remove(Keys.UNDO_DRINK)
+            it.remove(Keys.UNDO_DAY)
+            it.remove(Keys.UNDO_MINUTE)
+            it.remove(Keys.UNDO_NOTE)
+            it.remove(Keys.UNDO_AT)
+        }
+    }
+
+    /** Konfiguracja jednego widgetu; bez zapisu — domyślne butelki z Ustawień. */
+    fun widgetConfig(appWidgetId: Int): Flow<WidgetConfig> =
+        context.hydrationStore.data.map { prefs ->
+            WidgetConfig.decode(prefs[widgetConfigKey(appWidgetId)], readSettings(prefs).bottlesMl)
+        }
+
+    suspend fun widgetConfigOnce(appWidgetId: Int): WidgetConfig = widgetConfig(appWidgetId).first()
+
+    suspend fun saveWidgetConfig(appWidgetId: Int, config: WidgetConfig) {
+        context.hydrationStore.edit { it[widgetConfigKey(appWidgetId)] = config.encode() }
+    }
+
+    suspend fun removeWidgetConfigs(appWidgetIds: IntArray) {
+        context.hydrationStore.edit { prefs -> appWidgetIds.forEach { prefs.remove(widgetConfigKey(it)) } }
     }
 
     /** Minuty od ostatniego dzisiejszego łyka (wg godziny wpisu) albo null, gdy nic dziś nie wypito. */

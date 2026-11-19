@@ -104,6 +104,7 @@ class MainActivity : ComponentActivity() {
                     IntakeEditorSheet(
                         initial = target.intake,
                         defaultEpochDay = target.epochDay,
+                        typicalMl = { drink -> current?.typicalMl(drink) ?: drink.defaultMl },
                         netHydration = current?.settings?.netHydration ?: true,
                         onSave = { ml, drink, note, day, minute ->
                             scope.launch {

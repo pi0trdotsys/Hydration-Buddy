@@ -59,6 +59,8 @@ fun IntakeEditorSheet(
     defaultEpochDay: Long? = null,
     /** Napój zaznaczony na starcie nowego wpisu (np. wybrany na widgecie). */
     defaultDrink: Drink = Drink.WATER,
+    /** Typowa porcja napoju (ostatnio użyta ilość) — podpowiedź przy zmianie napoju w nowym wpisie. */
+    typicalMl: (Drink) -> Int = { it.defaultMl },
     onSave: (ml: Int, drink: Drink, note: String?, epochDay: Long, minuteOfDay: Int) -> Unit,
     onDelete: (() -> Unit)?,
     onDismiss: () -> Unit,
@@ -66,7 +68,9 @@ fun IntakeEditorSheet(
     val today = remember { LocalDate.now().toEpochDay() }
     val nowMinute = remember { LocalTime.now().let { it.hour * 60 + it.minute } }
 
-    var ml by remember { mutableIntStateOf(initial?.ml ?: 250) }
+    var ml by remember { mutableIntStateOf(initial?.ml ?: typicalMl(defaultDrink)) }
+    // Dopóki nie ruszysz ilości sam/a, zmiana napoju podpowiada jego typową porcję.
+    var amountTouched by remember { mutableStateOf(initial != null) }
     var drink by remember { mutableStateOf(initial?.drink ?: defaultDrink) }
     var note by remember { mutableStateOf(initial?.note.orEmpty()) }
     var epochDay by remember { mutableLongStateOf(initial?.epochDay ?: defaultEpochDay ?: today) }
@@ -106,7 +110,7 @@ fun IntakeEditorSheet(
             // --- ilość ---
             Label("Ilość")
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                StepperButton("−") { ml = (ml - 10).coerceAtLeast(10) }
+                StepperButton("−") { amountTouched = true; ml = (ml - 10).coerceAtLeast(10) }
                 Text(
                     "$ml ml",
                     color = KropiColors.foreground,
@@ -114,16 +118,19 @@ fun IntakeEditorSheet(
                     fontWeight = FontWeight.Bold,
                     modifier = Modifier.width(110.dp),
                 )
-                StepperButton("+") { ml = (ml + 10).coerceAtMost(MAX_ML) }
+                StepperButton("+") { amountTouched = true; ml = (ml + 10).coerceAtMost(MAX_ML) }
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                QUICK_AMOUNTS.forEach { amount -> ChipButton("$amount", ml == amount) { ml = amount } }
+                QUICK_AMOUNTS.forEach { amount -> ChipButton("$amount", ml == amount) { amountTouched = true; ml = amount } }
             }
 
             // --- napój ---
             Label("Napój")
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                Drink.entries.forEach { d -> ChipButton("${d.emoji} ${d.label}", drink == d) { drink = d } }
+                Drink.entries.forEach { d -> ChipButton("${d.emoji} ${d.label}", drink == d) {
+                    drink = d
+                    if (!amountTouched) ml = typicalMl(d)
+                } }
             }
             val counted = drink.counted(ml, netHydration)
             Text(
