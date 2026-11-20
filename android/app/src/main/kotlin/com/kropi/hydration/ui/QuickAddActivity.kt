@@ -14,6 +14,8 @@ import com.kropi.hydration.data.HydrationRepository
 import com.kropi.hydration.data.NfcTag
 import com.kropi.hydration.data.formatMl
 import kotlinx.coroutines.launch
+import java.time.Instant
+import java.time.ZoneId
 
 /**
  * Bezokienkowa trampolina dla skrótów spod ikony aplikacji (`res/xml/shortcuts.xml`) i dla tagów NFC:
@@ -21,6 +23,7 @@ import kotlinx.coroutines.launch
  *
  * Adres: `kropi://add/500` (ilość w ostatnim segmencie) albo `kropi://add?ml=250&drink=COFFEE`
  * (patrz [NfcTag]). Bez ilości dolewamy szklankę z ustawień, więc skrót nadąża za zmianą jej rozmiaru.
+ * Opcjonalne `at` i `note` (np. z Drink Trackera) zapisują wpis wstecz i z notatką.
  * Zawartość tagu jest nieufna: ilość jest przycinana, a nieznany napój to woda.
  */
 class QuickAddActivity : ComponentActivity() {
@@ -44,7 +47,16 @@ class QuickAddActivity : ComponentActivity() {
                 return@launch
             }
 
-            repository.addIntake(ml, drink)
+            // Wpis z innej aplikacji może nieść czas wypicia (np. piwo zalogowane wstecz) – wtedy trafia
+            // na właściwy dzień i godzinę zamiast na „teraz”.
+            val at = request?.atMs?.let { Instant.ofEpochMilli(it).atZone(ZoneId.systemDefault()) }
+            repository.addIntake(
+                ml = ml,
+                drink = drink,
+                note = request?.note,
+                epochDay = at?.toLocalDate()?.toEpochDay(),
+                minuteOfDay = at?.let { it.hour * 60 + it.minute },
+            )
             updateAllWidgets(applicationContext)
             if (fromTag) buzz()
 
